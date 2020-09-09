@@ -7,7 +7,6 @@ use ironic::mem::*;
 
 const SEQ_ACCESS_LEN: usize = 0x400;
 
-/// Issue 0x100 bytes of sequential reads, of type $prim.
 macro_rules! def_bemem_read {
     ($prim:ty, $func_name:ident) => {
         #[bench]
@@ -24,7 +23,6 @@ macro_rules! def_bemem_read {
     }
 }
 
-/// Issue 0x100 bytes of sequential reads, of type $prim.
 macro_rules! def_bemem_write {
     ($prim:ty, $func_name:ident, $val:expr) => {
         #[bench]

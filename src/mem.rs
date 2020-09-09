@@ -1,5 +1,7 @@
 //! Containers for emulated memories.
 
+pub mod host;
+
 use std::mem;
 use core::slice;
 use std::fs::File;
