@@ -45,8 +45,8 @@ macro_rules! def_hostmem_read {
     ($prim:ty, $func_name:ident) => {
         #[bench]
         fn $func_name(b: &mut Bencher) {
-            let mut mem = HostMemBacking::<u32, &str>::new("test", SEQ_ACCESS_LEN);
-            mem.add_region("foo", 0x1000_0000u32, SEQ_ACCESS_LEN);
+            let mut mem = HostMemBacking::<&str>::new("test", SEQ_ACCESS_LEN);
+            mem.add_region("foo", SEQ_ACCESS_LEN);
             mem.enable_region("foo", 0x1000_0000);
 
             let width = std::mem::size_of::<$prim>();
@@ -68,8 +68,8 @@ macro_rules! def_hostmem_write {
     ($prim:ty, $func_name:ident, $val:expr) => {
         #[bench]
         fn $func_name(b: &mut Bencher) {
-            let mut mem = HostMemBacking::<u32, &str>::new("test", SEQ_ACCESS_LEN);
-            mem.add_region("foo", 0x1000_0000u32, SEQ_ACCESS_LEN);
+            let mut mem = HostMemBacking::<&str>::new("test", SEQ_ACCESS_LEN);
+            mem.add_region("foo", SEQ_ACCESS_LEN);
             mem.enable_region("foo", 0x1000_0000);
 
             let width = std::mem::size_of::<$prim>();
@@ -77,7 +77,7 @@ macro_rules! def_hostmem_write {
                 let iter = SEQ_ACCESS_LEN / width;
                 for i in 0..iter {
                     unsafe { 
-                        let _res = std::ptr::write::<$prim>(
+                        let _res = std::ptr::write_volatile::<$prim>(
                             (0x1000_0000 + (i * width)) as *mut $prim, $val
                         );
                     }
