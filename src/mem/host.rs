@@ -6,7 +6,6 @@
 //! security reasons. You can alter the behaviour with the `vm.mmap_min_addr`
 //! sysctl knob (also, see `/proc/sys/vm/mmap_min_addr`).
 
-use std::process;
 use std::ffi::CString;
 use std::convert::TryInto;
 use std::collections::HashMap;
@@ -126,7 +125,7 @@ impl <A> HostMemRegion<A> {
 /// Public interface to a [HostMemBacking].
 impl <A, T: Eq + std::hash::Hash> HostMemBacking<A, T> {
     pub fn new(backing_name: &str, len: usize) -> Self {
-        let name = CString::new(format!("{}-{}", backing_name, process::id()))
+        let name = CString::new(format!("{}-{}", backing_name, std::process::id()))
             .unwrap();
 
         let fd = unsafe {
@@ -142,6 +141,16 @@ impl <A, T: Eq + std::hash::Hash> HostMemBacking<A, T> {
     pub fn add_region(&mut self, key: T, addr: A, len: usize) {
         self.regions.insert(key, HostMemRegion::new(addr, len));
     }
+
+    pub fn enable_region(&mut self, key: T, host_addr: usize) {
+        self.regions.get_mut(&key).unwrap()
+            .enable(self.fd, host_addr);
+    }
+    pub fn disable_region(&mut self, key: T) {
+        self.regions.get_mut(&key).unwrap()
+            .disable();
+    }
+
 }
 
 
