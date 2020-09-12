@@ -46,18 +46,15 @@ macro_rules! def_hostmem_read {
         #[bench]
         fn $func_name(b: &mut Bencher) {
             let mut mem = HostMemBacking::<&str>::new("test", SEQ_ACCESS_LEN);
-            mem.add_region("foo", SEQ_ACCESS_LEN);
-            mem.enable_region("foo", 0x1000_0000);
+            mem.add_region("foo", 0x1000_0000, SEQ_ACCESS_LEN, 0);
+            mem.map("foo");
 
             let width = std::mem::size_of::<$prim>();
             b.iter(|| {
                 let iter = SEQ_ACCESS_LEN / width;
                 for i in 0..iter {
-                    unsafe { 
-                        let _res = std::ptr::read_volatile::<$prim>(
-                            (0x1000_0000 + (i * width)) as *const $prim
-                        );
-                    }
+                    let addr = HostAddr((0x1000_0000 + (i * width)) as u32);
+                    let _res = unsafe { host_read::<$prim>(addr) };
                 }
             })
         }
@@ -69,18 +66,15 @@ macro_rules! def_hostmem_write {
         #[bench]
         fn $func_name(b: &mut Bencher) {
             let mut mem = HostMemBacking::<&str>::new("test", SEQ_ACCESS_LEN);
-            mem.add_region("foo", SEQ_ACCESS_LEN);
-            mem.enable_region("foo", 0x1000_0000);
+            mem.add_region("foo", 0x1000_0000, SEQ_ACCESS_LEN, 0);
+            mem.map("foo");
 
             let width = std::mem::size_of::<$prim>();
             b.iter(|| {
                 let iter = SEQ_ACCESS_LEN / width;
                 for i in 0..iter {
-                    unsafe { 
-                        let _res = std::ptr::write_volatile::<$prim>(
-                            (0x1000_0000 + (i * width)) as *mut $prim, $val
-                        );
-                    }
+                    let addr = HostAddr((0x1000_0000 + (i * width)) as u32);
+                    unsafe { host_write::<$prim>(addr, $val) };
                 }
             })
         }
@@ -90,26 +84,20 @@ macro_rules! def_hostmem_write {
 
 
 
-def_hostmem_read!(u8, seq_read_hostmem_u8);
-def_hostmem_read!(u16, seq_read_hostmem_u16);
-def_hostmem_read!(u32, seq_read_hostmem_u32);
-def_hostmem_read!(u64, seq_read_hostmem_u64);
-
 def_hostmem_write!(u8, seq_write_hostmem_u8, 0xde);
 def_hostmem_write!(u16, seq_write_hostmem_u16, 0xdead);
 def_hostmem_write!(u32, seq_write_hostmem_u32, 0xdead_cafe);
-def_hostmem_write!(u64, seq_write_hostmem_u64, 0xdead_cafe_dead_beef);
 
+def_hostmem_read!(u8, seq_read_hostmem_u8);
+def_hostmem_read!(u16, seq_read_hostmem_u16);
+def_hostmem_read!(u32, seq_read_hostmem_u32);
 
 
 def_bemem_read!(u8, seq_read_bemem_u8);
 def_bemem_read!(u16, seq_read_bemem_u16);
 def_bemem_read!(u32, seq_read_bemem_u32);
-def_bemem_read!(u64, seq_read_bemem_u64);
 
 def_bemem_write!(u8, seq_write_bemem_u8, 0xde);
 def_bemem_write!(u16, seq_write_bemem_u16, 0xdead);
 def_bemem_write!(u32, seq_write_bemem_u32, 0xdead_cafe);
-def_bemem_write!(u64, seq_write_bemem_u64, 0xdead_cafe_dead_beef);
-
 

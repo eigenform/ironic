@@ -48,7 +48,6 @@ pub unsafe trait AccessWidth {
 }
 
 /// Macro to make implementing AccessWidth a bit less verbose.
-#[macro_export]
 macro_rules! impl_accesswidth_for_type { 
     ($type:ident) => {
         unsafe impl AccessWidth for $type {
@@ -144,7 +143,6 @@ impl DmaMemory for BigEndianMemory {
     }
 }
 
-impl_accesswidth_for_type!(u64);
 impl_accesswidth_for_type!(u32);
 impl_accesswidth_for_type!(u16);
 impl_accesswidth_for_type!(u8);

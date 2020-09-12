@@ -1,0 +1,22 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+
+running 12 tests
+test seq_read_bemem_u16    ... bench:      15,037 ns/iter (+/- 246)
+test seq_read_bemem_u32    ... bench:       7,529 ns/iter (+/- 102)
+test seq_read_bemem_u8     ... bench:      30,274 ns/iter (+/- 1,181)
+test seq_read_hostmem_u16  ... bench:           0 ns/iter (+/- 0)
+test seq_read_hostmem_u32  ... bench:           0 ns/iter (+/- 0)
+test seq_read_hostmem_u8   ... bench:           0 ns/iter (+/- 0)
+test seq_write_bemem_u16   ... bench:      44,035 ns/iter (+/- 943)
+test seq_write_bemem_u32   ... bench:      14,414 ns/iter (+/- 486)
+test seq_write_bemem_u8    ... bench:      72,023 ns/iter (+/- 2,241)
+test seq_write_hostmem_u16 ... bench:      12,990 ns/iter (+/- 285)
+test seq_write_hostmem_u32 ... bench:       6,533 ns/iter (+/- 248)
+test seq_write_hostmem_u8  ... bench:      25,966 ns/iter (+/- 648)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 12 measured; 0 filtered out
+
