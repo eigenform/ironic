@@ -36,10 +36,10 @@ pub struct DevHandle { id: DevId, base: u32 }
 
 // Container for the state of the physical memory map.
 pub struct MyMap { 
-    foo: Arc<Mutex<BigEndianMemory>>,
-    bar: Arc<Mutex<BigEndianMemory>>,
-    baz: Arc<Mutex<BigEndianMemory>>,
-    mmio: Arc<Mutex<MyMmioDevice>>,
+    foo: Box<BigEndianMemory>,
+    bar: Box<BigEndianMemory>,
+    baz: Box<BigEndianMemory>,
+    mmio: Box<MyMmioDevice>,
     baz_enabled: bool,
 }
 impl PhysMemMap for MyMap {}
@@ -69,54 +69,54 @@ impl PhysMemDecode for MyMap {
     fn _read32(&mut self, hdl: DevHandle, addr: u32) -> u32 {
         let off = (addr - hdl.base) as usize;
         match hdl.id {
-            DevId::Mmio => self.mmio.lock().unwrap().read32(off),
-            DevId::Foo => self.foo.lock().unwrap().read::<u32>(off),
-            DevId::Bar => self.bar.lock().unwrap().read::<u32>(off),
-            DevId::Baz => self.baz.lock().unwrap().read::<u32>(off),
+            DevId::Mmio => self.mmio.read32(off),
+            DevId::Foo => self.foo.read::<u32>(off),
+            DevId::Bar => self.bar.read::<u32>(off),
+            DevId::Baz => self.baz.read::<u32>(off),
         }
     }
     fn _write32(&mut self, hdl: DevHandle, addr: u32, val: u32) {
         let off = (addr - hdl.base) as usize;
         match hdl.id {
-            DevId::Mmio => self.mmio.lock().unwrap().write32(off, val),
-            DevId::Foo => self.foo.lock().unwrap().write::<u32>(off, val),
-            DevId::Bar => self.bar.lock().unwrap().write::<u32>(off, val),
-            DevId::Baz => self.baz.lock().unwrap().write::<u32>(off, val),
+            DevId::Mmio => self.mmio.write32(off, val),
+            DevId::Foo => self.foo.write::<u32>(off, val),
+            DevId::Bar => self.bar.write::<u32>(off, val),
+            DevId::Baz => self.baz.write::<u32>(off, val),
         }
     }
     fn _read16(&mut self, hdl: DevHandle, addr: u32) -> u16 {
         let off = (addr - hdl.base) as usize;
         match hdl.id {
-            DevId::Foo => self.foo.lock().unwrap().read::<u16>(off),
-            DevId::Bar => self.bar.lock().unwrap().read::<u16>(off),
-            DevId::Baz => self.baz.lock().unwrap().read::<u16>(off),
+            DevId::Foo => self.foo.read::<u16>(off),
+            DevId::Bar => self.bar.read::<u16>(off),
+            DevId::Baz => self.baz.read::<u16>(off),
             _ => panic!(),
         }
     }
     fn _write16(&mut self, hdl: DevHandle, addr: u32, val: u16) {
         let off = (addr - hdl.base) as usize;
         match hdl.id {
-            DevId::Foo => self.foo.lock().unwrap().write::<u16>(off, val),
-            DevId::Bar => self.bar.lock().unwrap().write::<u16>(off, val),
-            DevId::Baz => self.baz.lock().unwrap().write::<u16>(off, val),
+            DevId::Foo => self.foo.write::<u16>(off, val),
+            DevId::Bar => self.bar.write::<u16>(off, val),
+            DevId::Baz => self.baz.write::<u16>(off, val),
             _ => panic!(),
         }
     }
     fn _read8(&mut self, hdl: DevHandle, addr: u32) -> u8 {
         let off = (addr - hdl.base) as usize;
         match hdl.id {
-            DevId::Foo => self.foo.lock().unwrap().read::<u8>(off),
-            DevId::Bar => self.bar.lock().unwrap().read::<u8>(off),
-            DevId::Baz => self.baz.lock().unwrap().read::<u8>(off),
+            DevId::Foo => self.foo.read::<u8>(off),
+            DevId::Bar => self.bar.read::<u8>(off),
+            DevId::Baz => self.baz.read::<u8>(off),
             _ => panic!(),
         }
     }
     fn _write8(&mut self, hdl: DevHandle, addr: u32, val: u8) {
         let off = (addr - hdl.base) as usize;
         match hdl.id {
-            DevId::Foo => self.foo.lock().unwrap().write::<u8>(off, val),
-            DevId::Bar => self.bar.lock().unwrap().write::<u8>(off, val),
-            DevId::Baz => self.baz.lock().unwrap().write::<u8>(off, val),
+            DevId::Foo => self.foo.write::<u8>(off, val),
+            DevId::Bar => self.bar.write::<u8>(off, val),
+            DevId::Baz => self.baz.write::<u8>(off, val),
             _ => panic!(),
         }
     }
@@ -126,10 +126,10 @@ impl PhysMemDecode for MyMap {
 #[test]
 fn make_physmap() {
     let mut physmap = MyMap { 
-        foo: Arc::new(Mutex::new(BigEndianMemory::new(0x1000, None))),
-        bar: Arc::new(Mutex::new(BigEndianMemory::new(0x1000, None))),
-        baz: Arc::new(Mutex::new(BigEndianMemory::new(0x1000, None))),
-        mmio: Arc::new(Mutex::new(MyMmioDevice::default())),
+        foo: Box::new(BigEndianMemory::new(0x1000, None)),
+        bar: Box::new(BigEndianMemory::new(0x1000, None)),
+        baz: Box::new(BigEndianMemory::new(0x1000, None)),
+        mmio: Box::new(MyMmioDevice::default()),
         baz_enabled: false,
     };
 
