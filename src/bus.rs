@@ -3,9 +3,8 @@
 use std::mem;
 use core::slice;
 use std::convert::TryInto;
-use std::sync::{Arc,Mutex};
 
-/// Marker for the supported access widths on an emulated bus.
+/// Helper functions implemented on numeric primitives.
 pub unsafe trait AccessWidth: Sized {
     fn from_be_bytes(data: &[u8]) -> Self;
     fn from_le_bytes(data: &[u8]) -> Self;
@@ -105,13 +104,17 @@ pub enum AccessType {
 /// provide an additional layer of indirection which specifies which accesses
 /// are supported for each particular memory device.
 ///
-/// An example of a physical memory map implementation:
+/// ## Example: A physical memory map with four devices
+/// Here's an example of a physical memory map implementation which has four
+/// memory devices:
+///
 /// ```
 /// use std::sync::{Arc,Mutex};
 /// use std::convert::TryInto;
 /// use ironic::mem::back::*;
 /// use ironic::bus::*;
 ///
+/// // A mock MMIO device.
 /// #[derive(Default)]
 /// pub struct MyMmioDevice {
 ///     register_a: u32,
@@ -126,20 +129,29 @@ pub enum AccessType {
 ///             _ => panic!("No register at offset {:x}", off),
 ///         }
 ///     }
+///     fn write32(&mut self, off: usize, val: u32) {
+///         match off {
+///             0 => self.register_a = val,
+///             4 => self.register_b = val,
+///             _ => panic!("No register at offset {:x}", off),
+///         }
+///     }
 /// }
 ///
+/// // Container for the state of the physical memory map.
 /// pub struct MyMap { 
 ///     foo: Arc<Mutex<BigEndianMemory>>,
 ///     bar: Arc<Mutex<BigEndianMemory>>,
 ///     baz: Arc<Mutex<BigEndianMemory>>,
 ///     mmio: Arc<Mutex<MyMmioDevice>>,
-///
 ///     baz_enabled: bool,
 /// }
 ///
+/// // A unique identifier for each memory device.
 /// #[derive(Debug, Clone, Copy)]
 /// pub enum DevId { Foo, Bar, Mmio, Baz }
 ///
+/// // A handle used to dispatch a memory access. 
 /// #[derive(Debug, Clone, Copy)]
 /// pub struct DevHandle { id: DevId, base: u32 }
 ///
@@ -147,6 +159,7 @@ pub enum AccessType {
 ///     type Addr = u32;
 ///     type Handle = DevHandle;
 ///
+///     // Convert a physical address into a handle.
 ///     fn decode_phys_addr(&self, addr: &Self::Addr) -> Option<Self::Handle> {
 ///         match addr { 
 ///             0x1000_0000..=0x1fff_ffff => 
@@ -163,35 +176,70 @@ pub enum AccessType {
 ///         }
 ///     }
 ///
-///     fn disp_read32(&mut self, dev: DevHandle, addr: u32) -> u32 {
-///         match dev.id {
-///             DevId::Mmio => self.mmio.lock().unwrap().read32((addr - dev.base) as usize),
-///             DevId::Foo => self.foo.lock().unwrap().read32((addr - dev.base) as usize),
+///     // Use a handle to dispatch a 32-bit read.
+///     fn disp_read32(&mut self, hdl: DevHandle, addr: u32) -> u32 {
+///         let off = (addr - hdl.base) as usize;
+///         match hdl.id {
+///             DevId::Mmio => self.mmio.lock().unwrap().read32(off),
+///             DevId::Foo => self.foo.lock().unwrap().read32(off),
+///             DevId::Bar => self.bar.lock().unwrap().read32(off),
+///             DevId::Baz => self.baz.lock().unwrap().read32(off),
 ///             _ => panic!(),
 ///         }
 ///     }
-///     fn disp_write32(&mut self, dev: DevHandle, addr: u32, val: u32) {
-///         match dev.id {
+///
+///     // Use a handle to dispatch a 32-bit write.
+///     fn disp_write32(&mut self, hdl: DevHandle, addr: u32, val: u32) {
+///         let off = (addr - hdl.base) as usize;
+///         match hdl.id {
+///             DevId::Mmio => self.mmio.lock().unwrap().write32(off, val),
+///             DevId::Foo => self.foo.lock().unwrap().write32(off, val),
+///             DevId::Bar => self.bar.lock().unwrap().write32(off, val),
+///             DevId::Baz => self.baz.lock().unwrap().write32(off, val),
 ///             _ => panic!(),
 ///         }
 ///     }
-///     fn disp_read16(&mut self, dev: DevHandle, addr: u32) -> u16 {
-///         match dev.id {
+///
+///     // Use a handle to dispatch a 16-bit read.
+///     fn disp_read16(&mut self, hdl: DevHandle, addr: u32) -> u16 {
+///         let off = (addr - hdl.base) as usize;
+///         match hdl.id {
+///             DevId::Foo => self.foo.lock().unwrap().read16(off),
+///             DevId::Bar => self.bar.lock().unwrap().read16(off),
+///             DevId::Baz => self.baz.lock().unwrap().read16(off),
 ///             _ => panic!(),
 ///         }
 ///     }
-///     fn disp_write16(&mut self, dev: DevHandle, addr: u32, val: u16) {
-///         match dev.id {
+///
+///     // Use a handle to dispatch a 16-bit write.
+///     fn disp_write16(&mut self, hdl: DevHandle, addr: u32, val: u16) {
+///         let off = (addr - hdl.base) as usize;
+///         match hdl.id {
+///             DevId::Foo => self.foo.lock().unwrap().write16(off, val),
+///             DevId::Bar => self.bar.lock().unwrap().write16(off, val),
+///             DevId::Baz => self.baz.lock().unwrap().write16(off, val),
 ///             _ => panic!(),
 ///         }
 ///     }
-///     fn disp_read8(&mut self, dev: DevHandle, addr: u32) -> u8 {
-///         match dev.id {
+///
+///     // Use a handle to dispatch a 8-bit read.
+///     fn disp_read8(&mut self, hdl: DevHandle, addr: u32) -> u8 {
+///         let off = (addr - hdl.base) as usize;
+///         match hdl.id {
+///             DevId::Foo => self.foo.lock().unwrap().read8(off),
+///             DevId::Bar => self.bar.lock().unwrap().read8(off),
+///             DevId::Baz => self.baz.lock().unwrap().read8(off),
 ///             _ => panic!(),
 ///         }
 ///     }
-///     fn disp_write8(&mut self, dev: DevHandle, addr: u32, val: u8) {
-///         match dev.id {
+///
+///     // Use a handle to dispatch a 8-bit write.
+///     fn disp_write8(&mut self, hdl: DevHandle, addr: u32, val: u8) {
+///         let off = (addr - hdl.base) as usize;
+///         match hdl.id {
+///             DevId::Foo => self.foo.lock().unwrap().write8(off, val),
+///             DevId::Bar => self.bar.lock().unwrap().write8(off, val),
+///             DevId::Baz => self.baz.lock().unwrap().write8(off, val),
 ///             _ => panic!(),
 ///         }
 ///     }
@@ -205,6 +253,9 @@ pub enum AccessType {
 ///     baz_enabled: false,
 /// };
 ///
+/// physmap.write32(0xc000_0004, 0xdeadcafe);
+/// assert_eq!(0xdeadcafe, physmap.read32(0xc000_0004));
+///
 ///
 /// ```
 
@@ -214,25 +265,23 @@ pub trait PhysMemMap {
     /// A type representing a reference to a memory device.
     type Handle;
 
-    /// Return handle to the memory device responsible for servicing some 
-    /// particular type of memory accesses at the provided physical address.
+    /// Decode a physical address into a handle, used to dispatch an access
+    /// to the appropriate memory device.
     fn decode_phys_addr(&self, addr: &Self::Addr) -> Option<Self::Handle>;
 
     /// Dispatches a 32-bit read to some memory device.
-    fn disp_read32(&mut self, dev: Self::Handle, addr: Self::Addr) -> u32;
-    /// Dispatches a 32-bit write to some memory device.
-    fn disp_write32(&mut self, dev: Self::Handle, addr: Self::Addr, val: u32);
-
+    fn disp_read32(&mut self, hdl: Self::Handle, addr: Self::Addr) -> u32;
     /// Dispatches a 16-bit read to some memory device.
-    fn disp_read16(&mut self, dev: Self::Handle, addr: Self::Addr) -> u16;
-    /// Dispatches a 16-bit write to some memory device.
-    fn disp_write16(&mut self, dev: Self::Handle, addr: Self::Addr, val: u16);
-
+    fn disp_read16(&mut self, hdl: Self::Handle, addr: Self::Addr) -> u16;
     /// Dispatches a 8-bit read to some memory device.
-    fn disp_read8(&mut self, dev: Self::Handle, addr: Self::Addr) -> u8;
-    /// Dispatches a 8-bit write to some memory device.
-    fn disp_write8(&mut self, dev: Self::Handle, addr: Self::Addr, val: u8);
+    fn disp_read8(&mut self, hdl: Self::Handle, addr: Self::Addr) -> u8;
 
+    /// Dispatches a 32-bit write to some memory device.
+    fn disp_write32(&mut self, hdl: Self::Handle, addr: Self::Addr, val: u32);
+    /// Dispatches a 16-bit write to some memory device.
+    fn disp_write16(&mut self, hdl: Self::Handle, addr: Self::Addr, val: u16);
+    /// Dispatches a 8-bit write to some memory device.
+    fn disp_write8(&mut self, hdl: Self::Handle, addr: Self::Addr, val: u8);
 
     fn read32(&mut self, addr: Self::Addr) -> u32 {
         self.disp_read32(self.decode_phys_addr(&addr).unwrap(), addr)
@@ -252,7 +301,6 @@ pub trait PhysMemMap {
     fn write8(&mut self, addr: Self::Addr, val: u8) {
         self.disp_write8(self.decode_phys_addr(&addr).unwrap(), addr, val)
     }
-
 }
 
 
