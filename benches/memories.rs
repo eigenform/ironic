@@ -1,20 +1,26 @@
 #![feature(test)]
 extern crate test;
+use std::sync::{Arc, Mutex};
 use test::Bencher;
-use std::sync::{Arc,Mutex};
 
 use ironic::bus::*;
 use ironic::mem::back::BigEndianMemory;
 
 #[derive(Debug, Clone, Copy)]
-pub enum DevId { BeMemBox, BeMemLock }
+pub enum DevId {
+    BeMemBox,
+    BeMemLock,
+}
 
 #[derive(Debug, Clone, Copy)]
-pub struct DevHandle { id: DevId, base: u32 }
+pub struct DevHandle {
+    id: DevId,
+    base: u32,
+}
 
-pub struct MyMap { 
-    foo_box:    Box<BigEndianMemory>,
-    foo_lock:   Arc<Mutex<BigEndianMemory>>,
+pub struct MyMap {
+    foo_box: Box<BigEndianMemory>,
+    foo_lock: Arc<Mutex<BigEndianMemory>>,
 }
 impl PhysMemMap for MyMap {}
 
@@ -23,11 +29,15 @@ impl PhysMemDecode for MyMap {
     type Handle = DevHandle;
 
     fn decode_phys_addr(&self, addr: &Self::Addr) -> Option<Self::Handle> {
-        match addr { 
-            0x1000_0000..=0x1001_0000 => 
-                Some(DevHandle { id: DevId::BeMemBox, base: 0x1000_0000 }),
-            0x2000_0000..=0x2001_0000 => 
-                Some(DevHandle { id: DevId::BeMemLock, base: 0x2000_0000 }),
+        match addr {
+            0x1000_0000..=0x1001_0000 => Some(DevHandle {
+                id: DevId::BeMemBox,
+                base: 0x1000_0000,
+            }),
+            0x2000_0000..=0x2001_0000 => Some(DevHandle {
+                id: DevId::BeMemLock,
+                base: 0x2000_0000,
+            }),
             _ => return None,
         }
     }
@@ -47,18 +57,28 @@ impl PhysMemDecode for MyMap {
         }
     }
 
-    fn _read16(&mut self, _hdl: DevHandle, _addr: u32) -> u16 { panic!(); }
-    fn _write16(&mut self, _hdl: DevHandle, _addr: u32, _val: u16) { panic!(); }
-    fn _read8(&mut self, _hdl: DevHandle, _addr: u32) -> u8 { panic!(); }
-    fn _write8(&mut self, _hdl: DevHandle, _addr: u32, _val: u8) { panic!(); }
+    fn _read16(&mut self, _hdl: DevHandle, _addr: u32) -> u16 {
+        panic!();
+    }
+    fn _write16(&mut self, _hdl: DevHandle, _addr: u32, _val: u16) {
+        panic!();
+    }
+    fn _read8(&mut self, _hdl: DevHandle, _addr: u32) -> u8 {
+        panic!();
+    }
+    fn _write8(&mut self, _hdl: DevHandle, _addr: u32, _val: u8) {
+        panic!();
+    }
 }
 
-macro_rules! make_physmap { () => {
-    MyMap {
-        foo_box:    Box::new(BigEndianMemory::new(0x10_000, None)),
-        foo_lock:   Arc::new(Mutex::new(BigEndianMemory::new(0x10_000, None))),
-    }
-}}
+macro_rules! make_physmap {
+    () => {
+        MyMap {
+            foo_box: Box::new(BigEndianMemory::new(0x10_000, None)),
+            foo_lock: Arc::new(Mutex::new(BigEndianMemory::new(0x10_000, None))),
+        }
+    };
+}
 
 #[bench]
 fn bemem_boxed(b: &mut Bencher) {

@@ -1,6 +1,6 @@
-use std::sync::{Arc,Mutex};
-use ironic::mem::back::BigEndianMemory;
 use ironic::bus::*;
+use ironic::mem::back::BigEndianMemory;
+use std::sync::{Arc, Mutex};
 
 // A mock MMIO device.
 #[derive(Default)]
@@ -27,15 +27,22 @@ impl MyMmioDevice {
 
 // A unique identifier for each memory device.
 #[derive(Debug, Clone, Copy)]
-pub enum DevId { Foo, Bar, Mmio, Baz }
+pub enum DevId {
+    Foo,
+    Bar,
+    Mmio,
+    Baz,
+}
 
-// A handle used to dispatch a memory access. 
+// A handle used to dispatch a memory access.
 #[derive(Debug, Clone, Copy)]
-pub struct DevHandle { id: DevId, base: u32 }
-
+pub struct DevHandle {
+    id: DevId,
+    base: u32,
+}
 
 // Container for the state of the physical memory map.
-pub struct MyMap { 
+pub struct MyMap {
     foo: Box<BigEndianMemory>,
     bar: Box<BigEndianMemory>,
     baz: Box<BigEndianMemory>,
@@ -51,17 +58,28 @@ impl PhysMemDecode for MyMap {
 
     // Convert a physical address into a handle.
     fn decode_phys_addr(&self, addr: &Self::Addr) -> Option<Self::Handle> {
-        match addr { 
-            0x1000_0000..=0x1fff_ffff => 
-                if self.baz_enabled { 
-                    Some(DevHandle { id: DevId::Baz, base: 0x1000_0000 })
-                } else { 
-                    Some(DevHandle { id: DevId::Foo, base: 0x1000_0000 })
-                },
-            0x2000_0000..=0x3fff_ffff => 
-                Some(DevHandle { id: DevId::Bar, base: 0x2000_0000 }),
-            0xc000_0000..=0xc000_ffff => 
-                Some(DevHandle { id: DevId::Mmio, base: 0xc000_0000 }),
+        match addr {
+            0x1000_0000..=0x1fff_ffff => {
+                if self.baz_enabled {
+                    Some(DevHandle {
+                        id: DevId::Baz,
+                        base: 0x1000_0000,
+                    })
+                } else {
+                    Some(DevHandle {
+                        id: DevId::Foo,
+                        base: 0x1000_0000,
+                    })
+                }
+            }
+            0x2000_0000..=0x3fff_ffff => Some(DevHandle {
+                id: DevId::Bar,
+                base: 0x2000_0000,
+            }),
+            0xc000_0000..=0xc000_ffff => Some(DevHandle {
+                id: DevId::Mmio,
+                base: 0xc000_0000,
+            }),
             _ => return None,
         }
     }
@@ -122,10 +140,9 @@ impl PhysMemDecode for MyMap {
     }
 }
 
-
 #[test]
 fn make_physmap() {
-    let mut physmap = MyMap { 
+    let mut physmap = MyMap {
         foo: Box::new(BigEndianMemory::new(0x1000, None)),
         bar: Box::new(BigEndianMemory::new(0x1000, None)),
         baz: Box::new(BigEndianMemory::new(0x1000, None)),
@@ -136,4 +153,3 @@ fn make_physmap() {
     physmap.write32(0xc000_0004, 0xdeadcafe);
     assert_eq!(0xdeadcafe, physmap.read32(0xc000_0004));
 }
-

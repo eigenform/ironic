@@ -1,8 +1,8 @@
 //! Abstractions for dealing with the guest's physical address space.
 
-use std::mem;
 use core::slice;
 use std::convert::TryInto;
+use std::mem;
 
 /// Helper functions implemented on numeric primitives.
 pub unsafe trait AccessWidth: Sized {
@@ -12,26 +12,28 @@ pub unsafe trait AccessWidth: Sized {
     fn as_le(self) -> Self;
 
     #[inline]
-    fn as_ptr(&self) -> *const Self { self as *const Self }
+    fn as_ptr(&self) -> *const Self {
+        self as *const Self
+    }
 
     #[inline]
-    fn as_mut(&mut self) -> *mut Self { self as *mut Self }
+    fn as_mut(&mut self) -> *mut Self {
+        self as *mut Self
+    }
 
     #[inline]
     unsafe fn as_bytes(&self) -> &[u8] {
-        slice::from_raw_parts(self.as_ptr() as *const u8, 
-            mem::size_of_val(self))
+        slice::from_raw_parts(self.as_ptr() as *const u8, mem::size_of_val(self))
     }
 
     #[inline]
     unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
-        slice::from_raw_parts_mut(self.as_mut() as *mut u8, 
-            mem::size_of_val(self))
+        slice::from_raw_parts_mut(self.as_mut() as *mut u8, mem::size_of_val(self))
     }
 }
 
 /// Macro to make implementing AccessWidth a bit less verbose.
-macro_rules! impl_accesswidth { 
+macro_rules! impl_accesswidth {
     ($type:ident) => {
         unsafe impl AccessWidth for $type {
             #[inline]
@@ -43,17 +45,20 @@ macro_rules! impl_accesswidth {
                 Self::from_le_bytes(data.try_into().unwrap())
             }
             #[inline]
-            fn as_be(self) -> Self { Self::to_be(self) }
+            fn as_be(self) -> Self {
+                Self::to_be(self)
+            }
             #[inline]
-            fn as_le(self) -> Self { Self::to_le(self) }
+            fn as_le(self) -> Self {
+                Self::to_le(self)
+            }
         }
-    }
+    };
 }
 
 impl_accesswidth!(u32);
 impl_accesswidth!(u16);
 impl_accesswidth!(u8);
-
 
 /// Interface for decoding physical addresses into some abstract handle/token
 /// for a particular memory device.
@@ -89,7 +94,7 @@ pub trait PhysMemDecode {
 /// This trait marks some type responsible for resolving physical addresses.
 /// A type implementing [PhysMemMap] must necessarily implement [PhysMemDecode].
 
-pub trait PhysMemMap: PhysMemDecode { 
+pub trait PhysMemMap: PhysMemDecode {
     fn read32(&mut self, addr: Self::Addr) -> u32 {
         self._read32(self.decode_phys_addr(&addr).unwrap(), addr)
     }
@@ -109,6 +114,3 @@ pub trait PhysMemMap: PhysMemDecode {
         self._write8(self.decode_phys_addr(&addr).unwrap(), addr, val)
     }
 }
-
-
-
