@@ -1,5 +1,6 @@
-pub mod bus;
+
 pub mod cpu;
+pub mod bus;
 pub mod mem;
 
 //#cfg(test)]

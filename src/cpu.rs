@@ -1,5 +1,8 @@
+
 pub mod armv5;
 
+
+/// Implemented on some enumerated type representing an instruction.
 pub trait Instruction {
     /// Type representing a numeric representation of an instruction.
     type Opcd;
@@ -8,6 +11,7 @@ pub trait Instruction {
     fn decode(opcd: Self::Opcd) -> Self;
 }
 
+/// Implemented on some type contained in a lookup table.
 pub trait InstLutEntry {
     /// Type representing an instruction.
     type Inst: Instruction;
@@ -16,6 +20,7 @@ pub trait InstLutEntry {
     fn from_inst(inst: Self::Inst) -> Self;
 }
 
+/// Implemented on some container for a lookup table.
 pub trait InstLut {
     /// The number of entries in the lookup table.
     const LUT_SIZE: usize;

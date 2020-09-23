@@ -1,0 +1,292 @@
+//! Implementation of an instruction decoder.
+
+use crate::cpu::*;
+
+/// Enumerated type describing different kinds of ARM instruction encodings.
+pub enum ArmInst {
+    SubSpReg, AddSpReg, 
+
+    SbcReg, OrrReg, BicReg, AddReg, RscReg, EorReg, MvnReg, AdcReg,
+    SubReg, MovReg, AndReg, RsbReg, CmpReg, TstReg, CmnReg, TeqReg,
+
+    MovImm, AdcImm, RsbImm, OrrImm, BicImm, MvnImm, AndImm, RscImm, 
+    EorImm, SbcImm, MovImmAlt, CmnImm, CmpImm, TstImm, TeqImm,
+
+    AndRegShiftReg, AdcRegShiftReg, MovRegShiftReg, OrrRegShiftReg,
+    EorRegShiftReg, RscRegShiftReg, MvnRegShiftReg, SbcRegShiftReg,
+    AddRegShiftReg, BicRegShiftReg, RsbRegShiftReg, SubRegShiftReg,
+    TeqRegShiftReg, CmnRegShiftReg, TstRegShiftReg, CmpRegShiftReg,
+
+    StrdReg, StrhReg, StrReg, StrbReg, 
+    StrImm, StrbImm, StrdImm, StrhImm, 
+
+    LdrReg, LdrbReg, LdrsbReg, LdrshReg, LdrdReg, LdrhReg, 
+
+    Stm, StmRegUser, Stmda, Ldmda, Ldmib, Ldmdb, Ldm, Stmdb, Stmib,
+    LdrbtAlt, StrbtAlt, LdrtAlt, StrtAlt, Ldrbt, Strbt, Ldrt, Strt, Stc, 
+
+    Smull, Umlal, Smlal, Umull, Smlalbb, Smlabb, Smulbb,
+    Mul, Mla, Smulwb, Smlawb, Qdadd, Qsub, Qadd, Qdsub,
+
+    // NOTE: All of these pairs share the same LUT index, meaning: you'll have
+    // to disambiguate somewhere in the actual implementation.
+
+    LdcLit, LdcImm,
+    MsrReg, MsrRegBanked, 
+    Mrs, MrsRegBanked, 
+    PldReg, PldImm,
+    LdrsbLit, LdrsbImm, 
+    LdrshLit, LdrshImm, 
+    LdrhLit, LdrhImm,
+    LdrdLit, LdrdImm, 
+    AddSpImm, AddImm, 
+    SubSpImm, SubImm, 
+    LdmRegUser, LdmRegException,
+    LdrLit, LdrImm, 
+    LdrbLit, LdrbImm, 
+    B, BlImmAlt, 
+
+    Svc, Clz, PldLit, MsrImm, Mrc, Mcr, Mcrr, Mrrc,
+    BlImm, Bx, Bxj, Bkpt, BlxReg,
+    Undefined,
+}
+
+/// Decoder implementation.
+impl Instruction for ArmInst {
+    type Opcd = u32;
+    fn decode(opcd: u32) -> Self {
+        use ArmInst::*;
+        match opcd & 0x0e5fff00 {
+            0x0c1f5e00 => return LdcLit,
+            _ => {}
+        }
+        match opcd & 0xff3f0000 {
+            0xf51f0000 => return PldLit,
+            _ => {}
+        }
+        match opcd & 0x0e5f00f0 {
+            0x004f00d0 => return LdrdLit,
+            0x005f00b0 => return LdrhLit,
+            0x005f00f0 => return LdrshLit,
+            0x005f00d0 => return LdrsbLit,
+            _ => {}
+        }
+        match opcd & 0x0e50ff00 {
+            0x0c005e00 => return Stc,
+            0x0c105e00 => return LdcImm,
+            _ => {}
+        }
+        match opcd & 0x0fef0010 {
+            0x004d0000 => return SubSpReg,
+            0x008d0000 => return AddSpReg,
+            _ => {}
+        }
+        match opcd & 0x0ff000f0 {
+            0x01400050 => return Qdadd,
+            0x01200050 => return Qsub,
+            0x01000050 => return Qadd,
+            0x01600050 => return Qdsub,
+            0x01200010 => return Bx,
+            0x01600010 => return Clz,
+            0x01200020 => return Bxj,
+            0x01200070 => return Bkpt,
+            0x01200030 => return BlxReg,
+            _ => {}
+        }
+        match opcd & 0x0fb002f0 {
+            0x01200000 => return MsrReg,
+            0x01000200 => return MrsRegBanked,
+            0x01200200 => return MsrRegBanked,
+            0x01000000 => return Mrs,
+            _ => {}
+        }
+        match opcd & 0x0fe000f0 {
+            0x00c00090 => return Smull,
+            0x00a00090 => return Umlal,
+            0x00e00090 => return Smlal,
+            0x00800090 => return Umull,
+            0x00000090 => return Mul,
+            0x00200090 => return Mla,
+            _ => {}
+        }
+        match opcd & 0x0fef0000 {
+            0x028d0000 => return AddSpImm,
+            0x024d0000 => return SubSpImm,
+            _ => {}
+        }
+        match opcd & 0xff300010 {
+            0xf7100000 => return PldReg,
+            _ => {}
+        }
+        match opcd & 0x0ff00e00 {
+            0x0c400e00 => return Mcrr,
+            0x0c500e00 => return Mrrc,
+            _ => {}
+        }
+        match opcd & 0x0ff000b0 {
+            0x012000a0 => return Smulwb,
+            0x01200080 => return Smlawb,
+            _ => {}
+        }
+        match opcd & 0x0ff00090 {
+            0x01400080 => return Smlalbb,
+            0x01300010 => return TeqRegShiftReg,
+            0x01700010 => return CmnRegShiftReg,
+            0x01100010 => return TstRegShiftReg,
+            0x01500010 => return CmpRegShiftReg,
+            0x01000080 => return Smlabb,
+            0x01600080 => return Smulbb,
+            _ => {}
+        }
+        match opcd & 0xff300000 {
+            0xf5100000 => return PldImm,
+            _ => {}
+        }
+        match opcd & 0x0e5000f0 {
+            0x005000d0 => return LdrsbImm,
+            0x000000f0 => return StrdReg,
+            0x004000b0 => return StrhImm,
+            0x001000d0 => return LdrsbReg,
+            0x005000f0 => return LdrshImm,
+            0x001000f0 => return LdrshReg,
+            0x004000f0 => return StrdImm,
+            0x005000b0 => return LdrhImm,
+            0x000000d0 => return LdrdReg,
+            0x001000b0 => return LdrhReg,
+            0x004000d0 => return LdrdImm,
+            0x000000b0 => return StrhReg,
+            _ => {}
+        }
+        match opcd & 0x0fe00090 {
+            0x00000010 => return AndRegShiftReg,
+            0x00a00010 => return AdcRegShiftReg,
+            0x01a00010 => return MovRegShiftReg,
+            0x01800010 => return OrrRegShiftReg,
+            0x00200010 => return EorRegShiftReg,
+            0x00e00010 => return RscRegShiftReg,
+            0x01e00010 => return MvnRegShiftReg,
+            0x00c00010 => return SbcRegShiftReg,
+            0x00800010 => return AddRegShiftReg,
+            0x01c00010 => return BicRegShiftReg,
+            0x00600010 => return RsbRegShiftReg,
+            0x00400010 => return SubRegShiftReg,
+            _ => {}
+        }
+        match opcd & 0x0ff00010 {
+            0x01500000 => return CmpReg,
+            0x01100000 => return TstReg,
+            0x01700000 => return CmnReg,
+            0x01300000 => return TeqReg,
+            _ => {}
+        }
+        match opcd & 0x0e5f0000 {
+            0x045f0000 => return LdrbLit,
+            0x041f0000 => return LdrLit,
+            _ => {}
+        }
+        match opcd & 0x0f100e10 {
+            0x0e100e10 => return Mrc,
+            0x0e000e10 => return Mcr,
+            _ => {}
+        }
+        match opcd & 0x0ff00000 {
+            0x03000000 => return MovImmAlt,
+            0x03700000 => return CmnImm,
+            0x03500000 => return CmpImm,
+            0x03100000 => return TstImm,
+            0x03300000 => return TeqImm,
+            _ => {}
+        }
+        match opcd & 0x0f700010 {
+            0x06700000 => return LdrbtAlt,
+            0x06600000 => return StrbtAlt,
+            0x06300000 => return LdrtAlt,
+            0x06200000 => return StrtAlt,
+            _ => {}
+        }
+        match opcd & 0x0fe00010 {
+            0x00c00000 => return SbcReg,
+            0x01800000 => return OrrReg,
+            0x01c00000 => return BicReg,
+            0x00800000 => return AddReg,
+            0x00e00000 => return RscReg,
+            0x00200000 => return EorReg,
+            0x01e00000 => return MvnReg,
+            0x00a00000 => return AdcReg,
+            0x00400000 => return SubReg,
+            0x01a00000 => return MovReg,
+            0x00000000 => return AndReg,
+            0x00600000 => return RsbReg,
+            _ => {}
+        }
+        match opcd & 0x0fe00000 {
+            0x03a00000 => return MovImm,
+            0x02800000 => return AddImm,
+            0x02a00000 => return AdcImm,
+            0x02600000 => return RsbImm,
+            0x03800000 => return OrrImm,
+            0x03c00000 => return BicImm,
+            0x02400000 => return SubImm,
+            0x03e00000 => return MvnImm,
+            0x02000000 => return AndImm,
+            0x02e00000 => return RscImm,
+            0x02200000 => return EorImm,
+            0x02c00000 => return SbcImm,
+            _ => {}
+        }
+        match opcd & 0x0f700000 {
+            0x04700000 => return Ldrbt,
+            0x04600000 => return Strbt,
+            0x04300000 => return Ldrt,
+            0x04200000 => return Strt,
+            _ => {}
+        }
+        match opcd & 0x0fd00000 {
+            0x08800000 => return Stm,
+            0x08000000 => return Stmda,
+            0x08100000 => return Ldmda,
+            0x09900000 => return Ldmib,
+            0x09100000 => return Ldmdb,
+            0x08900000 => return Ldm,
+            0x09000000 => return Stmdb,
+            0x09800000 => return Stmib,
+            _ => {}
+        }
+        match opcd & 0x0fb00000 {
+            0x03200000 => return MsrImm,
+            _ => {}
+        }
+        match opcd & 0xfe000000 {
+            0xfa000000 => return BlImmAlt,
+            _ => {}
+        }
+        match opcd & 0x0e500010 {
+            0x06100000 => return LdrReg,
+            0x06400000 => return StrbReg,
+            0x06500000 => return LdrbReg,
+            0x06000000 => return StrReg,
+            _ => {}
+        }
+        match opcd & 0x0e508000 {
+            0x08500000 => return LdmRegUser,
+            0x08508000 => return LdmRegException,
+            _ => {}
+        }
+        match opcd & 0x0e500000 {
+            0x04000000 => return StrImm,
+            0x04400000 => return StrbImm,
+            0x04500000 => return LdrbImm,
+            0x08400000 => return StmRegUser,
+            0x04100000 => return LdrImm,
+            _ => {}
+        }
+        match opcd & 0x0f000000 {
+            0x0f000000 => return Svc,
+            0x0a000000 => return B,
+            0x0b000000 => return BlImm,
+            _ => {}
+        }
+        Undefined
+    }
+}
+
