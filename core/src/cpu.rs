@@ -44,6 +44,6 @@ pub trait InstLut {
     fn idx_to_opcd(idx: Self::Index) -> <Self::Instr as Instruction>::Opcd;
 
     /// Lookup an entry in the table during runtime.
-    fn lookup(&self, idx: Self::Index) -> Self::Entry;
+    fn lookup(&self, opcd: <Self::Instr as Instruction>::Opcd) -> Self::Entry;
 }
 

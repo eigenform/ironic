@@ -34,3 +34,4 @@ pub fn log(dbg: &Arc<RwLock<Debugger>>, lvl: LogLevel, s: &str) {
     let mut debugger = dbg.write().unwrap();
     debugger.console_buf.push(LogEntry{ lvl, data: s.to_string()});
 }
+

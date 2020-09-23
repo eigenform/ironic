@@ -2,6 +2,7 @@
 
 
 /// Top-level container for register state.
+#[derive(Copy, Clone)]
 pub struct RegisterFile {
     pub pc: u32,
     pub r: [u32; 15],
@@ -98,6 +99,7 @@ impl From<u32> for Mode {
 }
 
 /// Program status register.
+#[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct Psr(u32);
 impl Psr {

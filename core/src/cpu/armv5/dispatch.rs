@@ -6,7 +6,7 @@ use crate::cpu::armv5::decode::*;
 
 /// A function pointer to an ARM instruction implementation.
 #[derive(Clone, Copy)]
-pub struct ArmFn(pub fn(&mut Cpu, u32));
+pub struct ArmFn(pub fn(&mut Cpu, u32) -> DispatchRes);
 
 /// Implementing [InstLutEntry] maps each instruction to a function.
 impl InstLutEntry for ArmFn {
@@ -28,8 +28,8 @@ impl InstLut for ArmLut {
     type Instr = ArmInst;
     type Index = usize;
 
-    fn lookup(&self, idx: usize) -> ArmFn { 
-        self.data[idx] 
+    fn lookup(&self, opcd: u32) -> ArmFn { 
+        self.data[Self::opcd_to_idx(opcd)] 
     }
 
     fn idx_to_opcd(idx: usize) -> u32 {

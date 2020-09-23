@@ -3,6 +3,7 @@
 use crate::cpu::*;
 
 /// Enumerated type describing different kinds of ARM instruction encodings.
+#[derive(Debug)]
 pub enum ArmInst {
     SubSpReg, AddSpReg, 
 

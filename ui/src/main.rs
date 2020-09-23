@@ -14,11 +14,14 @@ use ironic_core::cpu::armv5::*;
 
 /// The UI thread loop.
 pub fn ui_thread_loop(ui: &mut Ui, dbg: Arc<RwLock<Debugger>>, _run: &mut bool) {
-    let console = Window::new(im_str!("Console Output"))
-        .size([400.0, 750.0], Condition::FirstUseEver);
-
     let cpu_ctx = Window::new(im_str!("CPU state"))
-        .size([200.0, 350.0], Condition::FirstUseEver);
+        .position([5.0, 5.0], Condition::Always)
+        .size([200.0, 350.0], Condition::Always);
+
+    let console = Window::new(im_str!("Console Output"))
+        .position([5.0, 360.0], Condition::Always)
+        .size([1095.0, 465.0], Condition::Always);
+
 
     console.build(ui, || {
         for entry in dbg.read().unwrap().console_buf.iter() {
@@ -26,7 +29,10 @@ pub fn ui_thread_loop(ui: &mut Ui, dbg: Arc<RwLock<Debugger>>, _run: &mut bool) 
                 "[{:?}] {}", entry.lvl, entry.data
             ));
         }
-        ui.separator();
+
+        if ui.scroll_y() >= ui.scroll_max_y() {
+            ui.set_scroll_here_y_with_ratio(1.0);
+        }
     });
 
     cpu_ctx.build(ui, || {
@@ -63,10 +69,15 @@ pub fn emu_thread_loop(dbg: Arc<RwLock<Debugger>>) {
         "/tmp/boot0.bin"
     );
 
+    // Just single-step a few times for now.
     for _i in 0..20 {
-        thread::sleep(Duration::from_secs(1));
-        log(&cpu.dbg, LogLevel::Emu, "hello, world!");
+        let res = cpu.step(&mut topology);
+        match res {
+            CpuRes::EmuThreadHalt => break,
+            _ => {},
+        }
     }
+    log(&cpu.dbg, LogLevel::Emu, "Emulation thread halted");
 }
 
 

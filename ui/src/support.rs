@@ -83,6 +83,10 @@ pub fn init(title: &str) -> System {
     ]);
 
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+    let style = imgui.style_mut();
+    style.window_rounding = 1.0;
+    style.scrollbar_rounding = 1.0;
+    style.frame_rounding = 1.0;
 
     let renderer = Renderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
 
