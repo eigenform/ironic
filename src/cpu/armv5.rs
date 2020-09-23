@@ -1,5 +1,6 @@
 
 pub mod register;
+pub mod coproc;
 pub mod dispatch;
 pub mod decode;
 pub mod func;
