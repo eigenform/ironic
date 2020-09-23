@@ -66,13 +66,13 @@ impl_accesswidth!(u8);
 /// These are used by the interface exposed by [PhysMemMap].
 pub trait PhysMemDecode {
     /// A type representing a physical address on the guest machine.
-    type Addr;
+    type Addr: Copy;
     /// A type representing a reference to a memory device.
     type Handle;
 
     /// Decode a physical address into a handle, used to dispatch an access
     /// to the appropriate memory device. Called by [PhysMemMap].
-    fn decode_phys_addr(&self, addr: &Self::Addr) -> Option<Self::Handle>;
+    fn decode_phys_addr(&self, addr: Self::Addr) -> Option<Self::Handle>;
 
     /// Dispatches a 32-bit read to some memory device.
     fn _read32(&mut self, hdl: Self::Handle, addr: Self::Addr) -> u32;
@@ -96,21 +96,21 @@ pub trait PhysMemDecode {
 
 pub trait PhysMemMap: PhysMemDecode {
     fn read32(&mut self, addr: Self::Addr) -> u32 {
-        self._read32(self.decode_phys_addr(&addr).unwrap(), addr)
+        self._read32(self.decode_phys_addr(addr).unwrap(), addr)
     }
     fn write32(&mut self, addr: Self::Addr, val: u32) {
-        self._write32(self.decode_phys_addr(&addr).unwrap(), addr, val)
+        self._write32(self.decode_phys_addr(addr).unwrap(), addr, val)
     }
     fn read16(&mut self, addr: Self::Addr) -> u16 {
-        self._read16(self.decode_phys_addr(&addr).unwrap(), addr)
+        self._read16(self.decode_phys_addr(addr).unwrap(), addr)
     }
     fn write16(&mut self, addr: Self::Addr, val: u16) {
-        self._write16(self.decode_phys_addr(&addr).unwrap(), addr, val)
+        self._write16(self.decode_phys_addr(addr).unwrap(), addr, val)
     }
     fn read8(&mut self, addr: Self::Addr) -> u8 {
-        self._read8(self.decode_phys_addr(&addr).unwrap(), addr)
+        self._read8(self.decode_phys_addr(addr).unwrap(), addr)
     }
     fn write8(&mut self, addr: Self::Addr, val: u8) {
-        self._write8(self.decode_phys_addr(&addr).unwrap(), addr, val)
+        self._write8(self.decode_phys_addr(addr).unwrap(), addr, val)
     }
 }

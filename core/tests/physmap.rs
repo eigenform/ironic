@@ -57,7 +57,7 @@ impl PhysMemDecode for MyMap {
     type Handle = DevHandle;
 
     // Convert a physical address into a handle.
-    fn decode_phys_addr(&self, addr: &Self::Addr) -> Option<Self::Handle> {
+    fn decode_phys_addr(&self, addr: Self::Addr) -> Option<Self::Handle> {
         match addr {
             0x1000_0000..=0x1fff_ffff => {
                 if self.baz_enabled {

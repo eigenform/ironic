@@ -1,2 +1,6 @@
-/target
 Cargo.lock
+/target
+/core/target
+/core/Cargo.lock
+/ui/target
+/ui/Cargo.lock
