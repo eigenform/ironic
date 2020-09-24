@@ -1,10 +1,11 @@
 
-pub mod reg;
+pub mod bits;
 pub mod coproc;
 pub mod dispatch;
 pub mod decode;
 pub mod func;
-pub mod bits;
+pub mod reg;
+pub mod mmu;
 
 use std::sync::{Arc,RwLock};
 
@@ -42,15 +43,17 @@ pub struct Cpu {
     pub reg: reg::RegisterFile,
     pub p15: coproc::SystemControl,
     pub lut: dispatch::Lut,
+    pub mmu: mmu::Mmu,
     pub dbg: Arc<RwLock<Debugger>>,
 }
 impl Cpu {
-    pub fn new(dbg: Arc<RwLock<Debugger>>) -> Self { 
+    pub fn new(dbg: Arc<RwLock<Debugger>>, bus: Arc<RwLock<Topology>>) -> Self { 
         let cpu = Cpu {
             reg: reg::RegisterFile::new(),
             p15: coproc::SystemControl::new(),
             lut: dispatch::Lut::new(),
-            dbg,
+            mmu: mmu::Mmu::new(bus),
+            dbg
         };
         log(&cpu.dbg, LogLevel::Cpu, "CPU instantiated");
         cpu
@@ -72,33 +75,47 @@ impl Cpu {
 /// being fetched from memory."
 
 impl Cpu {
-    pub fn get_fetch_pc(&self) -> u32 {
+    /// Read the program counter (from the context of the fetch stage).
+    pub fn read_fetch_pc(&self) -> u32 {
         if self.reg.cpsr.thumb() {
             self.reg.pc.wrapping_sub(4)
         } else { 
             self.reg.pc.wrapping_sub(8)
         }
     }
-    pub fn get_exec_pc(&self) -> u32 {
-        if self.reg.cpsr.thumb() {
-            self.reg.pc.wrapping_add(4)
-        } else {
-            self.reg.pc.wrapping_add(8)
-        }
+
+    /// Read the program counter (from the context of the execute stage).
+    pub fn read_exec_pc(&self) -> u32 { 
+        self.reg.pc 
     }
+
+    /// Write the program counter (from the context of the execute stage).
+    pub fn write_exec_pc(&mut self, val: u32) {
+        let new_pc = if self.reg.cpsr.thumb() {
+            val.wrapping_add(4)
+        } else {
+            val.wrapping_add(8)
+        };
+        self.reg.cpsr.set_thumb((new_pc & 1) != 0);
+        self.reg.pc = new_pc;
+    }
+
+    /// Increment the program counter.
     pub fn increment_pc(&mut self) {
         if self.reg.cpsr.thumb() {
-            self.reg.pc.wrapping_add(2);
+            self.reg.pc = self.reg.pc.wrapping_add(2);
         } else {
-            self.reg.pc.wrapping_add(4);
+            self.reg.pc = self.reg.pc.wrapping_add(4);
         }
     }
 }
 
+
 impl Cpu {
-    pub fn step(&mut self, top: &mut Topology) -> CpuRes {
+    pub fn step(&mut self) -> CpuRes {
         // Fetch an instruction from memory.
-        let opcd = top.read32(self.get_fetch_pc());
+        let opcd = self.mmu.read32(self.read_fetch_pc());
+        println!("{:08x}", opcd);
 
         // Decode/dispatch an instruction.
         let disp_res = if self.reg.cond_pass(opcd) {
@@ -107,6 +124,11 @@ impl Cpu {
         } else {
             DispatchRes::CondFailed
         };
+
+        log(&self.dbg, LogLevel::Cpu, &format!(
+            "{:08x}: Dispatched {:08x} ({:?})", 
+            self.read_fetch_pc(), opcd, ArmInst::decode(opcd)
+        ));
 
         let cpu_res = match disp_res {
             DispatchRes::RetireOk | DispatchRes::CondFailed => {
@@ -117,7 +139,7 @@ impl Cpu {
             DispatchRes::FatalErr => {
                 log(&self.dbg, LogLevel::Cpu, &format!(
                     "Fatal error after dispatching {:?} at {:08x}",
-                    ArmInst::decode(opcd), self.get_fetch_pc()
+                    ArmInst::decode(opcd), self.read_fetch_pc()
                 ));
                 CpuRes::HaltEmulation
             },

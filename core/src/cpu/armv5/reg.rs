@@ -1,5 +1,6 @@
 //! Implementation of the register file.
 
+use std::ops::{Index, IndexMut};
 
 /// Top-level container for register state.
 #[derive(Copy, Clone)]
@@ -41,6 +42,28 @@ impl RegisterFile {
         }
     }
 }
+
+impl Index<u32> for RegisterFile {
+    type Output = u32;
+    fn index(&self, index: u32) -> &u32 {
+        match index {
+            0..=14 => &self.r[index as usize],
+            _ => panic!("Invalid index {} into register file", index),
+        }
+    }
+}
+impl IndexMut<u32> for RegisterFile {
+    fn index_mut(&mut self, index: u32) -> &mut u32 {
+        match index {
+            0..=14 => &mut self.r[index as usize],
+            _ => panic!("Invalid index {} into register file", index),
+        }
+    }
+}
+
+
+
+
 
 /// Condition field used when decoding instructions.
 #[derive(Debug, PartialEq, Eq)]

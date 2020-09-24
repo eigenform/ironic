@@ -63,15 +63,15 @@ pub fn ui_thread_loop(ui: &mut Ui, dbg: Arc<RwLock<Debugger>>, _run: &mut bool) 
 
 /// Top-level emulator thread loop.
 pub fn emu_thread_loop(dbg: Arc<RwLock<Debugger>>) {
-    let mut cpu = Cpu::new(dbg.clone());
-    let mut topology = Topology::new(
+    let topology = Arc::new(RwLock::new(Topology::new(
         dbg.clone(), 
         "./boot0.bin"
-    );
+    )));
+    let mut cpu = Cpu::new(dbg.clone(), topology.clone());
 
     // Just single-step a few times for now.
     for _i in 0..20 {
-        let res = cpu.step(&mut topology);
+        let res = cpu.step();
         match res {
             CpuRes::HaltEmulation => break,
             _ => {},
