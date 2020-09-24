@@ -73,7 +73,7 @@ pub fn emu_thread_loop(dbg: Arc<RwLock<Debugger>>) {
     for _i in 0..20 {
         let res = cpu.step(&mut topology);
         match res {
-            CpuRes::EmuThreadHalt => break,
+            CpuRes::HaltEmulation => break,
             _ => {},
         }
     }

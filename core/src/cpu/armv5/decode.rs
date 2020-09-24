@@ -32,6 +32,8 @@ pub enum ArmInst {
     // NOTE: All of these pairs share the same LUT index, meaning: you'll have
     // to disambiguate somewhere in the actual implementation.
 
+    LdrLit, LdrImm, 
+
     LdcLit, LdcImm,
     MsrReg, MsrRegBanked, 
     Mrs, MrsRegBanked, 
@@ -43,7 +45,6 @@ pub enum ArmInst {
     AddSpImm, AddImm, 
     SubSpImm, SubImm, 
     LdmRegUser, LdmRegException,
-    LdrLit, LdrImm, 
     LdrbLit, LdrbImm, 
     B, BlImmAlt, 
 

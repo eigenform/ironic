@@ -11,10 +11,14 @@ pub struct RegisterFile {
 impl RegisterFile {
     pub fn new() -> Self {
         RegisterFile {
-            pc: 0xffff_0000,
+            pc: 0xffff_0000 + 8,
             r: [0; 15],
             cpsr: Psr(0x0000_00d3),
         }
+    }
+
+    pub fn cond_pass(&self, opcd: u32) -> bool {
+        self.is_cond_satisfied(Cond::from((opcd & 0xf000_0000) >> 28))
     }
 
     fn is_cond_satisfied(&self, cond: Cond) -> bool {
@@ -48,7 +52,7 @@ pub enum Cond {
     HI = 0b1000, LS = 0b1001,
     GE = 0b1010, LT = 0b1011,
     GT = 0b1100, LE = 0b1101,
-    AL = 0b1111,
+    AL = 0b1110,
 }
 impl From<u32> for Cond {
     fn from(x: u32) -> Self {
@@ -61,7 +65,7 @@ impl From<u32> for Cond {
             0b1000 => HI, 0b1001 => LS,
             0b1010 => GE, 0b1011 => LT,
             0b1100 => GT, 0b1101 => LE,
-            0b1111 => AL,
+            0b1110 => AL,
             _ => panic!("Invalid condition bits {:08x}", x),
         }
     }

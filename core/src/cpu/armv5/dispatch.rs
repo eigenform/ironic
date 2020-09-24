@@ -12,7 +12,10 @@ pub struct ArmFn(pub fn(&mut Cpu, u32) -> DispatchRes);
 impl InstLutEntry for ArmFn {
     type Inst = ArmInst;
     fn from_inst(inst: ArmInst) -> Self {
+        use ArmInst::*;
         match inst {
+            LdrLit |
+            LdrImm => ArmFn(func::ldr_imm_or_lit),
             _ => ArmFn(func::unimpl_instr),
         }
     }
