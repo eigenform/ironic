@@ -66,7 +66,7 @@ pub fn emu_thread_loop(dbg: Arc<RwLock<Debugger>>) {
     let mut cpu = Cpu::new(dbg.clone());
     let mut topology = Topology::new(
         dbg.clone(), 
-        "/tmp/boot0.bin"
+        "./boot0.bin"
     );
 
     // Just single-step a few times for now.

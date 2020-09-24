@@ -1,4 +1,6 @@
 
+
+/// ['LdcLit']
 #[repr(transparent)]
 pub struct LdcLitBits(pub u32);
 impl LdcLitBits {
@@ -14,6 +16,7 @@ impl LdcLitBits {
     pub fn imm8(&self) -> u32 { (self.0 & 0x000000ff) >> 0 }
 }
 
+/// ['PldLit']
 #[repr(transparent)]
 pub struct PldLitBits(pub u32);
 impl PldLitBits {
@@ -23,6 +26,7 @@ impl PldLitBits {
     pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
 }
 
+/// ['LdrdLit']
 #[repr(transparent)]
 pub struct LdrdLitBits(pub u32);
 impl LdrdLitBits {
@@ -38,6 +42,7 @@ impl LdrdLitBits {
     pub fn imm4l(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['LdrhLit', 'LdrshLit', 'LdrsbLit']
 #[repr(transparent)]
 pub struct LdrhLitBits(pub u32);
 impl LdrhLitBits {
@@ -57,47 +62,10 @@ impl LdrhLitBits {
     pub fn imm4l(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['Stc', 'LdcImm']
 #[repr(transparent)]
-pub struct LdrshLitBits(pub u32);
-impl LdrshLitBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm4h(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn imm4l(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrsbLitBits(pub u32);
-impl LdrsbLitBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm4h(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn imm4l(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct StcBits(pub u32);
-impl StcBits {
+pub struct LsCoprocBits(pub u32);
+impl LsCoprocBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -112,26 +80,10 @@ impl StcBits {
     pub fn imm8(&self) -> u32 { (self.0 & 0x000000ff) >> 0 }
 }
 
+/// ['SubSpReg', 'AddSpReg', 'MvnReg', 'MovReg']
 #[repr(transparent)]
-pub struct LdcImmBits(pub u32);
-impl LdcImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn imm8(&self) -> u32 { (self.0 & 0x000000ff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct SubSpRegBits(pub u32);
-impl SubSpRegBits {
+pub struct MovSpRegBits(pub u32);
+impl MovSpRegBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -146,26 +98,10 @@ impl SubSpRegBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['Qdadd', 'Qsub', 'Qadd', 'Qdsub']
 #[repr(transparent)]
-pub struct AddSpRegBits(pub u32);
-impl AddSpRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct QdaddBits(pub u32);
-impl QdaddBits {
+pub struct QBits(pub u32);
+impl QBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -176,45 +112,7 @@ impl QdaddBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct QsubBits(pub u32);
-impl QsubBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct QaddBits(pub u32);
-impl QaddBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct QdsubBits(pub u32);
-impl QdsubBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
+/// ['Bx', 'Bxj', 'BlxReg']
 #[repr(transparent)]
 pub struct BxBits(pub u32);
 impl BxBits {
@@ -224,6 +122,7 @@ impl BxBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['Clz']
 #[repr(transparent)]
 pub struct ClzBits(pub u32);
 impl ClzBits {
@@ -235,15 +134,7 @@ impl ClzBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct BxjBits(pub u32);
-impl BxjBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
+/// ['Bkpt']
 #[repr(transparent)]
 pub struct BkptBits(pub u32);
 impl BkptBits {
@@ -255,15 +146,7 @@ impl BkptBits {
     pub fn imm4(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct BlxRegBits(pub u32);
-impl BlxRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
+/// ['MsrReg']
 #[repr(transparent)]
 pub struct MsrRegBits(pub u32);
 impl MsrRegBits {
@@ -277,6 +160,7 @@ impl MsrRegBits {
     pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['MrsRegBanked']
 #[repr(transparent)]
 pub struct MrsRegBankedBits(pub u32);
 impl MrsRegBankedBits {
@@ -292,6 +176,7 @@ impl MrsRegBankedBits {
     pub fn m(&self) -> bool { (self.0 & 0x00000100) != 0 }
 }
 
+/// ['MsrRegBanked']
 #[repr(transparent)]
 pub struct MsrRegBankedBits(pub u32);
 impl MsrRegBankedBits {
@@ -307,6 +192,7 @@ impl MsrRegBankedBits {
     pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['Mrs']
 #[repr(transparent)]
 pub struct MrsBits(pub u32);
 impl MrsBits {
@@ -318,9 +204,10 @@ impl MrsBits {
     pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
 }
 
+/// ['Smull', 'Umlal', 'Smlal', 'Umull']
 #[repr(transparent)]
-pub struct SmullBits(pub u32);
-impl SmullBits {
+pub struct SignedMlBits(pub u32);
+impl SignedMlBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -335,57 +222,7 @@ impl SmullBits {
     pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct UmlalBits(pub u32);
-impl UmlalBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rdhi(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rdlo(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct SmlalBits(pub u32);
-impl SmlalBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rdhi(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rdlo(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct UmullBits(pub u32);
-impl UmullBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rdhi(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rdlo(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
+/// ['Mul']
 #[repr(transparent)]
 pub struct MulBits(pub u32);
 impl MulBits {
@@ -401,6 +238,7 @@ impl MulBits {
     pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['Mla']
 #[repr(transparent)]
 pub struct MlaBits(pub u32);
 impl MlaBits {
@@ -418,9 +256,10 @@ impl MlaBits {
     pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['AddSpImm', 'SubSpImm', 'MovImm', 'MvnImm']
 #[repr(transparent)]
-pub struct AddSpImmBits(pub u32);
-impl AddSpImmBits {
+pub struct MovSpImmBits(pub u32);
+impl MovSpImmBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -431,19 +270,7 @@ impl AddSpImmBits {
     pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct SubSpImmBits(pub u32);
-impl SubSpImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
+/// ['PldReg']
 #[repr(transparent)]
 pub struct PldRegBits(pub u32);
 impl PldRegBits {
@@ -461,9 +288,10 @@ impl PldRegBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['Mcrr', 'Mrrc']
 #[repr(transparent)]
-pub struct McrrBits(pub u32);
-impl McrrBits {
+pub struct MoveCoprocDoubleBits(pub u32);
+impl MoveCoprocDoubleBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -478,23 +306,7 @@ impl McrrBits {
     pub fn crm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct MrrcBits(pub u32);
-impl MrrcBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rt2(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn coproc(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn opc1(&self) -> u32 { (self.0 & 0x000000f0) >> 4 }
-    #[inline(always)]
-    pub fn crm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
+/// ['Smulwb']
 #[repr(transparent)]
 pub struct SmulwbBits(pub u32);
 impl SmulwbBits {
@@ -510,6 +322,7 @@ impl SmulwbBits {
     pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['Smlawb']
 #[repr(transparent)]
 pub struct SmlawbBits(pub u32);
 impl SmlawbBits {
@@ -527,9 +340,10 @@ impl SmlawbBits {
     pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['Smlalbb']
 #[repr(transparent)]
-pub struct SmlalbbBits(pub u32);
-impl SmlalbbBits {
+pub struct SmalbbBits(pub u32);
+impl SmalbbBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -546,9 +360,10 @@ impl SmlalbbBits {
     pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['TeqRegShiftReg', 'CmnRegShiftReg', 'TstRegShiftReg', 'CmpRegShiftReg']
 #[repr(transparent)]
-pub struct TeqRegShiftRegBits(pub u32);
-impl TeqRegShiftRegBits {
+pub struct DpTestRsrBits(pub u32);
+impl DpTestRsrBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -561,51 +376,7 @@ impl TeqRegShiftRegBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct CmnRegShiftRegBits(pub u32);
-impl CmnRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct TstRegShiftRegBits(pub u32);
-impl TstRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct CmpRegShiftRegBits(pub u32);
-impl CmpRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
+/// ['Smlabb']
 #[repr(transparent)]
 pub struct SmlabbBits(pub u32);
 impl SmlabbBits {
@@ -625,6 +396,7 @@ impl SmlabbBits {
     pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['Smulbb']
 #[repr(transparent)]
 pub struct SmulbbBits(pub u32);
 impl SmulbbBits {
@@ -642,6 +414,7 @@ impl SmulbbBits {
     pub fn rn(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['PldImm']
 #[repr(transparent)]
 pub struct PldImmBits(pub u32);
 impl PldImmBits {
@@ -655,9 +428,10 @@ impl PldImmBits {
     pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
 }
 
+/// ['LdrsbImm', 'StrhImm', 'LdrshImm', 'StrdImm', 'LdrhImm', 'LdrdImm']
 #[repr(transparent)]
-pub struct LdrsbImmBits(pub u32);
-impl LdrsbImmBits {
+pub struct LsSignedImmBits(pub u32);
+impl LsSignedImmBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -676,9 +450,10 @@ impl LdrsbImmBits {
     pub fn imm4l(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['StrdReg', 'LdrsbReg', 'LdrshReg', 'LdrdReg', 'LdrhReg', 'StrhReg']
 #[repr(transparent)]
-pub struct StrdRegBits(pub u32);
-impl StrdRegBits {
+pub struct LsSignedRegBits(pub u32);
+impl LsSignedRegBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -695,209 +470,10 @@ impl StrdRegBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['AndRegShiftReg', 'AdcRegShiftReg', 'OrrRegShiftReg', 'EorRegShiftReg', 'RscRegShiftReg', 'SbcRegShiftReg', 'AddRegShiftReg', 'BicRegShiftReg', 'RsbRegShiftReg', 'SubRegShiftReg']
 #[repr(transparent)]
-pub struct StrhImmBits(pub u32);
-impl StrhImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm4h(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn imm4l(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrsbRegBits(pub u32);
-impl LdrsbRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrshImmBits(pub u32);
-impl LdrshImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm4h(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn imm4l(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrshRegBits(pub u32);
-impl LdrshRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct StrdImmBits(pub u32);
-impl StrdImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm4h(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn imm4l(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrhImmBits(pub u32);
-impl LdrhImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm4h(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn imm4l(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrdRegBits(pub u32);
-impl LdrdRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrhRegBits(pub u32);
-impl LdrhRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrdImmBits(pub u32);
-impl LdrdImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm4h(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn imm4l(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct StrhRegBits(pub u32);
-impl StrhRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct AndRegShiftRegBits(pub u32);
-impl AndRegShiftRegBits {
+pub struct DpRsrBits(pub u32);
+impl DpRsrBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -914,28 +490,10 @@ impl AndRegShiftRegBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['MovRegShiftReg', 'MvnRegShiftReg']
 #[repr(transparent)]
-pub struct AdcRegShiftRegBits(pub u32);
-impl AdcRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct MovRegShiftRegBits(pub u32);
-impl MovRegShiftRegBits {
+pub struct MovRsrBits(pub u32);
+impl MovRsrBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -950,178 +508,10 @@ impl MovRegShiftRegBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['CmpReg', 'TstReg', 'CmnReg', 'TeqReg']
 #[repr(transparent)]
-pub struct OrrRegShiftRegBits(pub u32);
-impl OrrRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct EorRegShiftRegBits(pub u32);
-impl EorRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct RscRegShiftRegBits(pub u32);
-impl RscRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct MvnRegShiftRegBits(pub u32);
-impl MvnRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct SbcRegShiftRegBits(pub u32);
-impl SbcRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct AddRegShiftRegBits(pub u32);
-impl AddRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct BicRegShiftRegBits(pub u32);
-impl BicRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct RsbRegShiftRegBits(pub u32);
-impl RsbRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct SubRegShiftRegBits(pub u32);
-impl SubRegShiftRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn rs(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct CmpRegBits(pub u32);
-impl CmpRegBits {
+pub struct DpTestRegBits(pub u32);
+impl DpTestRegBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -1134,68 +524,7 @@ impl CmpRegBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct TstRegBits(pub u32);
-impl TstRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct CmnRegBits(pub u32);
-impl CmnRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct TeqRegBits(pub u32);
-impl TeqRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrbLitBits(pub u32);
-impl LdrbLitBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
+/// ['LdrbLit', 'LdrLit']
 #[repr(transparent)]
 pub struct LdrLitBits(pub u32);
 impl LdrLitBits {
@@ -1213,9 +542,10 @@ impl LdrLitBits {
     pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
 }
 
+/// ['Mrc', 'Mcr']
 #[repr(transparent)]
-pub struct MrcBits(pub u32);
-impl MrcBits {
+pub struct MoveCoprocBits(pub u32);
+impl MoveCoprocBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -1232,25 +562,7 @@ impl MrcBits {
     pub fn crm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct McrBits(pub u32);
-impl McrBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn opc1(&self) -> u32 { (self.0 & 0x00e00000) >> 21 }
-    #[inline(always)]
-    pub fn crn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn coproc(&self) -> u32 { (self.0 & 0x00000f00) >> 8 }
-    #[inline(always)]
-    pub fn opc2(&self) -> u32 { (self.0 & 0x000000e0) >> 5 }
-    #[inline(always)]
-    pub fn crm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
+/// ['MovImmAlt']
 #[repr(transparent)]
 pub struct MovImmAltBits(pub u32);
 impl MovImmAltBits {
@@ -1264,9 +576,10 @@ impl MovImmAltBits {
     pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
 }
 
+/// ['CmnImm', 'CmpImm', 'TstImm', 'TeqImm']
 #[repr(transparent)]
-pub struct CmnImmBits(pub u32);
-impl CmnImmBits {
+pub struct DpTestImmBits(pub u32);
+impl DpTestImmBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -1275,42 +588,10 @@ impl CmnImmBits {
     pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
 }
 
+/// ['LdrbtAlt', 'StrbtAlt', 'LdrtAlt', 'StrtAlt']
 #[repr(transparent)]
-pub struct CmpImmBits(pub u32);
-impl CmpImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct TstImmBits(pub u32);
-impl TstImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct TeqImmBits(pub u32);
-impl TeqImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrbtAltBits(pub u32);
-impl LdrbtAltBits {
+pub struct LsTransAltBits(pub u32);
+impl LsTransAltBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -1327,66 +608,10 @@ impl LdrbtAltBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['SbcReg', 'OrrReg', 'BicReg', 'AddReg', 'RscReg', 'EorReg', 'AdcReg', 'SubReg', 'AndReg', 'RsbReg']
 #[repr(transparent)]
-pub struct StrbtAltBits(pub u32);
-impl StrbtAltBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrtAltBits(pub u32);
-impl LdrtAltBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct StrtAltBits(pub u32);
-impl StrtAltBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct SbcRegBits(pub u32);
-impl SbcRegBits {
+pub struct DpRegBits(pub u32);
+impl DpRegBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -1403,227 +628,10 @@ impl SbcRegBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
+/// ['AddImm', 'AdcImm', 'RsbImm', 'OrrImm', 'BicImm', 'SubImm', 'AndImm', 'RscImm', 'EorImm', 'SbcImm']
 #[repr(transparent)]
-pub struct OrrRegBits(pub u32);
-impl OrrRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct BicRegBits(pub u32);
-impl BicRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct AddRegBits(pub u32);
-impl AddRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct RscRegBits(pub u32);
-impl RscRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct EorRegBits(pub u32);
-impl EorRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct MvnRegBits(pub u32);
-impl MvnRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct AdcRegBits(pub u32);
-impl AdcRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct SubRegBits(pub u32);
-impl SubRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct MovRegBits(pub u32);
-impl MovRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct AndRegBits(pub u32);
-impl AndRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct RsbRegBits(pub u32);
-impl RsbRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct MovImmBits(pub u32);
-impl MovImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct AddImmBits(pub u32);
-impl AddImmBits {
+pub struct DpImmBits(pub u32);
+impl DpImmBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -1636,157 +644,10 @@ impl AddImmBits {
     pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
 }
 
+/// ['Ldrbt', 'Strbt', 'Ldrt', 'Strt']
 #[repr(transparent)]
-pub struct AdcImmBits(pub u32);
-impl AdcImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct RsbImmBits(pub u32);
-impl RsbImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct OrrImmBits(pub u32);
-impl OrrImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct BicImmBits(pub u32);
-impl BicImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct SubImmBits(pub u32);
-impl SubImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct MvnImmBits(pub u32);
-impl MvnImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct AndImmBits(pub u32);
-impl AndImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct RscImmBits(pub u32);
-impl RscImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct EorImmBits(pub u32);
-impl EorImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct SbcImmBits(pub u32);
-impl SbcImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn s(&self) -> bool { (self.0 & 0x00100000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rd(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrbtBits(pub u32);
-impl LdrbtBits {
+pub struct LsTransBits(pub u32);
+impl LsTransBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -1799,54 +660,10 @@ impl LdrbtBits {
     pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
 }
 
+/// ['Stm', 'Stmda', 'Ldmda', 'Ldmib', 'Ldmdb', 'Ldm', 'Stmdb', 'Stmib']
 #[repr(transparent)]
-pub struct StrbtBits(pub u32);
-impl StrbtBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrtBits(pub u32);
-impl LdrtBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct StrtBits(pub u32);
-impl StrtBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct StmBits(pub u32);
-impl StmBits {
+pub struct LsMultiBits(pub u32);
+impl LsMultiBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -1857,97 +674,7 @@ impl StmBits {
     pub fn register_list(&self) -> u32 { (self.0 & 0x0000ffff) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct StmdaBits(pub u32);
-impl StmdaBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn register_list(&self) -> u32 { (self.0 & 0x0000ffff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdmdaBits(pub u32);
-impl LdmdaBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn register_list(&self) -> u32 { (self.0 & 0x0000ffff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdmibBits(pub u32);
-impl LdmibBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn register_list(&self) -> u32 { (self.0 & 0x0000ffff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdmdbBits(pub u32);
-impl LdmdbBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn register_list(&self) -> u32 { (self.0 & 0x0000ffff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdmBits(pub u32);
-impl LdmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn register_list(&self) -> u32 { (self.0 & 0x0000ffff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct StmdbBits(pub u32);
-impl StmdbBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn register_list(&self) -> u32 { (self.0 & 0x0000ffff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct StmibBits(pub u32);
-impl StmibBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn register_list(&self) -> u32 { (self.0 & 0x0000ffff) >> 0 }
-}
-
+/// ['MsrImm']
 #[repr(transparent)]
 pub struct MsrImmBits(pub u32);
 impl MsrImmBits {
@@ -1961,6 +688,7 @@ impl MsrImmBits {
     pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
 }
 
+/// ['BlImmAlt']
 #[repr(transparent)]
 pub struct BlImmAltBits(pub u32);
 impl BlImmAltBits {
@@ -1972,9 +700,10 @@ impl BlImmAltBits {
     pub fn imm24(&self) -> u32 { (self.0 & 0x00ffffff) >> 0 }
 }
 
+/// ['LdrReg', 'StrbReg', 'LdrbReg', 'StrReg']
 #[repr(transparent)]
-pub struct LdrRegBits(pub u32);
-impl LdrRegBits {
+pub struct LsRegBits(pub u32);
+impl LsRegBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -1995,75 +724,7 @@ impl LdrRegBits {
     pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct StrbRegBits(pub u32);
-impl StrbRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrbRegBits(pub u32);
-impl LdrbRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct StrRegBits(pub u32);
-impl StrRegBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm5(&self) -> u32 { (self.0 & 0x00000f80) >> 7 }
-    #[inline(always)]
-    pub fn stype(&self) -> u32 { (self.0 & 0x00000060) >> 5 }
-    #[inline(always)]
-    pub fn rm(&self) -> u32 { (self.0 & 0x0000000f) >> 0 }
-}
-
+/// ['LdmRegUser']
 #[repr(transparent)]
 pub struct LdmRegUserBits(pub u32);
 impl LdmRegUserBits {
@@ -2079,9 +740,10 @@ impl LdmRegUserBits {
     pub fn register_list(&self) -> u32 { (self.0 & 0x00007fff) >> 0 }
 }
 
+/// ['LdmRegExcep']
 #[repr(transparent)]
-pub struct LdmRegExcepBits(pub u32);
-impl LdmRegExcepBits {
+pub struct LdmRegExecpBits(pub u32);
+impl LdmRegExecpBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -2096,9 +758,10 @@ impl LdmRegExcepBits {
     pub fn register_list(&self) -> u32 { (self.0 & 0x00007fff) >> 0 }
 }
 
+/// ['StrImm', 'StrbImm', 'LdrbImm', 'LdrImm']
 #[repr(transparent)]
-pub struct StrImmBits(pub u32);
-impl StrImmBits {
+pub struct LsImmBits(pub u32);
+impl LsImmBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]
@@ -2115,44 +778,7 @@ impl StrImmBits {
     pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
 }
 
-#[repr(transparent)]
-pub struct StrbImmBits(pub u32);
-impl StrbImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct LdrbImmBits(pub u32);
-impl LdrbImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
+/// ['StmRegUser']
 #[repr(transparent)]
 pub struct StmRegUserBits(pub u32);
 impl StmRegUserBits {
@@ -2168,46 +794,10 @@ impl StmRegUserBits {
     pub fn register_list(&self) -> u32 { (self.0 & 0x0000ffff) >> 0 }
 }
 
+/// ['Svc', 'B', 'BlImm']
 #[repr(transparent)]
-pub struct LdrImmBits(pub u32);
-impl LdrImmBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn p(&self) -> bool { (self.0 & 0x01000000) != 0 }
-    #[inline(always)]
-    pub fn u(&self) -> bool { (self.0 & 0x00800000) != 0 }
-    #[inline(always)]
-    pub fn w(&self) -> bool { (self.0 & 0x00200000) != 0 }
-    #[inline(always)]
-    pub fn rn(&self) -> u32 { (self.0 & 0x000f0000) >> 16 }
-    #[inline(always)]
-    pub fn rt(&self) -> u32 { (self.0 & 0x0000f000) >> 12 }
-    #[inline(always)]
-    pub fn imm12(&self) -> u32 { (self.0 & 0x00000fff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct SvcBits(pub u32);
-impl SvcBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn imm24(&self) -> u32 { (self.0 & 0x00ffffff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct BBits(pub u32);
-impl BBits {
-    #[inline(always)]
-    pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
-    #[inline(always)]
-    pub fn imm24(&self) -> u32 { (self.0 & 0x00ffffff) >> 0 }
-}
-
-#[repr(transparent)]
-pub struct BlImmBits(pub u32);
-impl BlImmBits {
+pub struct BranchBits(pub u32);
+impl BranchBits {
     #[inline(always)]
     pub fn cond(&self) -> u32 { (self.0 & 0xf0000000) >> 28 }
     #[inline(always)]

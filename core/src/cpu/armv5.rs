@@ -72,11 +72,18 @@ impl Cpu {
 /// being fetched from memory."
 
 impl Cpu {
-    pub fn fetch_pc(&self) -> u32 {
+    pub fn get_fetch_pc(&self) -> u32 {
         if self.reg.cpsr.thumb() {
             self.reg.pc.wrapping_sub(4)
         } else { 
             self.reg.pc.wrapping_sub(8)
+        }
+    }
+    pub fn get_exec_pc(&self) -> u32 {
+        if self.reg.cpsr.thumb() {
+            self.reg.pc.wrapping_add(4)
+        } else {
+            self.reg.pc.wrapping_add(8)
         }
     }
     pub fn increment_pc(&mut self) {
@@ -91,8 +98,7 @@ impl Cpu {
 impl Cpu {
     pub fn step(&mut self, top: &mut Topology) -> CpuRes {
         // Fetch an instruction from memory.
-        println!("{:08x}", self.fetch_pc());
-        let opcd = top.read32(self.fetch_pc());
+        let opcd = top.read32(self.get_fetch_pc());
 
         // Decode/dispatch an instruction.
         let disp_res = if self.reg.cond_pass(opcd) {
@@ -111,7 +117,7 @@ impl Cpu {
             DispatchRes::FatalErr => {
                 log(&self.dbg, LogLevel::Cpu, &format!(
                     "Fatal error after dispatching {:?} at {:08x}",
-                    ArmInst::decode(opcd), self.fetch_pc()
+                    ArmInst::decode(opcd), self.get_fetch_pc()
                 ));
                 CpuRes::HaltEmulation
             },
