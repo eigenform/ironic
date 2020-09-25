@@ -28,6 +28,7 @@ impl InstLutEntry for ArmFn {
             BlImm               => ArmFn(cfn!(func::bl_imm)),
             B                   => ArmFn(cfn!(func::b)),
             MovImm              => ArmFn(cfn!(func::mov_imm)),
+            MovReg              => ArmFn(cfn!(func::mov_reg)),
             _ => ArmFn(func::unimpl_instr),
         }
     }

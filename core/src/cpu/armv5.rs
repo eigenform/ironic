@@ -6,6 +6,7 @@ pub mod decode;
 pub mod func;
 pub mod reg;
 pub mod mmu;
+pub mod alu;
 
 use std::sync::{Arc,RwLock};
 
