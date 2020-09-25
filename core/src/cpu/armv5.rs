@@ -1,12 +1,13 @@
 
 pub mod bits;
-pub mod coproc;
+
 pub mod dispatch;
 pub mod decode;
-pub mod func;
+pub mod interp;
+
+pub mod coproc;
 pub mod reg;
 pub mod mmu;
-pub mod alu;
 
 use std::sync::{Arc,RwLock};
 

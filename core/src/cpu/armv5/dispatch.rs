@@ -4,6 +4,11 @@ use crate::cpu::*;
 use crate::cpu::armv5::*;
 use crate::cpu::armv5::decode::*;
 
+use crate::cpu::armv5::interp;
+use crate::cpu::armv5::interp::branch;
+use crate::cpu::armv5::interp::loadstore;
+use crate::cpu::armv5::interp::dataproc;
+
 /// A function pointer to an ARM instruction implementation.
 #[derive(Clone, Copy)]
 pub struct ArmFn(pub fn(&mut Cpu, u32) -> DispatchRes);
@@ -23,13 +28,13 @@ impl InstLutEntry for ArmFn {
         }}}
 
         match inst {
-            LdrLit | LdrImm     => ArmFn(func::ldr_imm_or_lit),
+            LdrLit | LdrImm     => ArmFn(loadstore::ldr_imm_or_lit),
 
-            BlImm               => ArmFn(cfn!(func::bl_imm)),
-            B                   => ArmFn(cfn!(func::b)),
-            MovImm              => ArmFn(cfn!(func::mov_imm)),
-            MovReg              => ArmFn(cfn!(func::mov_reg)),
-            _ => ArmFn(func::unimpl_instr),
+            BlImm               => ArmFn(cfn!(branch::bl_imm)),
+            B                   => ArmFn(cfn!(branch::b)),
+            MovImm              => ArmFn(cfn!(dataproc::mov_imm)),
+            MovReg              => ArmFn(cfn!(dataproc::mov_reg)),
+            _ => ArmFn(interp::unimpl_instr),
         }
     }
 }
@@ -75,7 +80,7 @@ pub struct Lut {
 impl Lut {
     pub fn new() -> Self {
         Lut {
-            arm: ArmLut::create_lut(ArmFn(func::unimpl_instr)),
+            arm: ArmLut::create_lut(ArmFn(interp::unimpl_instr)),
         }
     }
 }
