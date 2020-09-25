@@ -115,7 +115,6 @@ impl Cpu {
     pub fn step(&mut self) -> CpuRes {
         // Fetch an instruction from memory.
         let opcd = self.mmu.read32(self.read_fetch_pc());
-        println!("{:08x}", opcd);
 
         // Decode/dispatch an instruction.
         let disp_res = if self.reg.cond_pass(opcd) {

@@ -13,9 +13,19 @@ impl InstLutEntry for ArmFn {
     type Inst = ArmInst;
     fn from_inst(inst: ArmInst) -> Self {
         use ArmInst::*;
+        use std::mem::transmute;
+
+        // We use this to coerce the borrow checker into taking pointers to
+        // functions which take a newtype wrapping a u32 (for bitfields).
+        macro_rules! cfn { ($func:expr) => { unsafe {
+            transmute::<*const fn(), fn(&mut Cpu, u32) -> DispatchRes>
+                ($func as *const fn())
+        }}}
+
         match inst {
-            LdrLit |
-            LdrImm => ArmFn(func::ldr_imm_or_lit),
+            LdrLit | LdrImm => ArmFn(func::ldr_imm_or_lit),
+
+            MovImm => ArmFn(cfn!(func::mov_imm)),
             _ => ArmFn(func::unimpl_instr),
         }
     }
