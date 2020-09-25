@@ -2,6 +2,8 @@
 
 use std::ops::{Index, IndexMut};
 
+pub enum Reg { Lr, Sp, Ip, }
+
 /// Top-level container for register state.
 #[derive(Copy, Clone)]
 pub struct RegisterFile {
@@ -60,6 +62,27 @@ impl IndexMut<u32> for RegisterFile {
         }
     }
 }
+impl Index<Reg> for RegisterFile {
+    type Output = u32;
+    fn index(&self, index: Reg) -> &u32 {
+        match index {
+            Reg::Ip => &self.r[12],
+            Reg::Sp => &self.r[13],
+            Reg::Lr => &self.r[14],
+        }
+    }
+}
+impl IndexMut<Reg> for RegisterFile {
+    fn index_mut(&mut self, index: Reg) -> &mut u32 {
+        match index {
+            Reg::Ip => &mut self.r[12],
+            Reg::Sp => &mut self.r[13],
+            Reg::Lr => &mut self.r[14],
+        }
+    }
+}
+
+
 
 
 

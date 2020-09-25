@@ -4,6 +4,7 @@ use crate::cpu::*;
 use crate::cpu::armv5::*;
 use crate::cpu::armv5::decode::*;
 use crate::cpu::armv5::bits::*;
+use crate::cpu::armv5::reg::Reg;
 
 
 /// Unimplemented instruction handler.
@@ -62,6 +63,21 @@ fn compute_imm(imm12: u32, c_in: bool) -> u32 {
     let (res, _) = shift_and_carry(val, ShiftType::Ror, shift_imm * 2, c_in);
     res
 }
+pub fn mov_imm(cpu: &mut Cpu, op: MovSpImmBits) -> DispatchRes {
+    if op.rd() == 15 {
+        return DispatchRes::FatalErr;
+    }
+
+    let (res, carry) = compute_imm_carry(op.imm12(), cpu.reg.cpsr.c());
+    cpu.reg[op.rd()] = res;
+    if op.s() {
+        cpu.reg.cpsr.set_n((res & 0x8000_0000) != 0);
+        cpu.reg.cpsr.set_z(res == 0);
+        cpu.reg.cpsr.set_c(carry);
+    }
+    DispatchRes::RetireOk
+}
+
 
 
 
@@ -103,18 +119,25 @@ pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     DispatchRes::FatalErr
 }
 
-
-pub fn mov_imm(cpu: &mut Cpu, op: MovSpImmBits) -> DispatchRes {
-    if op.rd() == 15 {
-        return DispatchRes::FatalErr;
+pub fn sign_extend(x: u32, bits: i32) -> i32 {
+    if ((x as i32 >> (bits - 1)) & 1) != 0 { 
+        x as i32 | !0 << bits 
+    } else { 
+        x as i32 
     }
-
-    let (res, carry) = compute_imm_carry(op.imm12(), cpu.reg.cpsr.c());
-    cpu.reg[op.rd()] = res;
-    if op.s() {
-        cpu.reg.cpsr.set_n((res & 0x8000_0000) != 0);
-        cpu.reg.cpsr.set_z(res == 0);
-        cpu.reg.cpsr.set_c(carry);
-    }
-    DispatchRes::RetireOk
 }
+pub fn bl_imm(cpu: &mut Cpu, op: BranchBits) -> DispatchRes {
+    cpu.reg[Reg::Lr] = cpu.read_exec_pc().wrapping_sub(4);
+    let offset = sign_extend(op.imm24(), 24) * 4;
+    let target = (cpu.read_exec_pc() as i32).wrapping_add(offset) as u32;
+    cpu.write_exec_pc(target);
+    DispatchRes::RetireBranch
+}
+pub fn b(cpu: &mut Cpu, op: BranchBits) -> DispatchRes {
+    let offset = sign_extend(op.imm24(), 24) * 4;
+    let target = (cpu.read_exec_pc() as i32).wrapping_add(offset) as u32;
+    cpu.write_exec_pc(target);
+    DispatchRes::RetireBranch
+}
+
+

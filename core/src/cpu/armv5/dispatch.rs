@@ -23,9 +23,11 @@ impl InstLutEntry for ArmFn {
         }}}
 
         match inst {
-            LdrLit | LdrImm => ArmFn(func::ldr_imm_or_lit),
+            LdrLit | LdrImm     => ArmFn(func::ldr_imm_or_lit),
 
-            MovImm => ArmFn(cfn!(func::mov_imm)),
+            BlImm               => ArmFn(cfn!(func::bl_imm)),
+            B                   => ArmFn(cfn!(func::b)),
+            MovImm              => ArmFn(cfn!(func::mov_imm)),
             _ => ArmFn(func::unimpl_instr),
         }
     }
