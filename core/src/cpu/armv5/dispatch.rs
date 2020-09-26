@@ -29,11 +29,16 @@ impl InstLutEntry for ArmFn {
 
         match inst {
             LdrLit | LdrImm     => ArmFn(loadstore::ldr_imm_or_lit),
+            SubImm | SubSpImm   => ArmFn(cfn!(dataproc::sub_imm)),
 
+            StrImm              => ArmFn(cfn!(loadstore::str_imm)),
+
+            Stmdb               => ArmFn(cfn!(loadstore::stmdb)),
             BlImm               => ArmFn(cfn!(branch::bl_imm)),
             B                   => ArmFn(cfn!(branch::b)),
             MovImm              => ArmFn(cfn!(dataproc::mov_imm)),
             MovReg              => ArmFn(cfn!(dataproc::mov_reg)),
+            AddImm              => ArmFn(cfn!(dataproc::add_imm)),
             _ => ArmFn(interp::unimpl_instr),
         }
     }

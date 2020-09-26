@@ -24,7 +24,7 @@ impl Debugger {
 
 
 #[derive(Debug)]
-pub enum LogLevel { Cpu, Emu }
+pub enum LogLevel { Cpu, Emu, Bus }
 pub struct LogEntry { 
     pub lvl: LogLevel, 
     pub data: String 

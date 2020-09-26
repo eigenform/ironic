@@ -16,10 +16,10 @@ use ironic_core::cpu::armv5::*;
 pub fn ui_thread_loop(ui: &mut Ui, dbg: Arc<RwLock<Debugger>>, _run: &mut bool) {
     let cpu_ctx = Window::new(im_str!("CPU state"))
         .position([5.0, 5.0], Condition::Always)
-        .size([200.0, 350.0], Condition::Always);
+        .size([500.0, 500.0], Condition::Always);
 
     let console = Window::new(im_str!("Console Output"))
-        .position([5.0, 360.0], Condition::Always)
+        .position([5.0, 510.0], Condition::Always)
         .size([1095.0, 465.0], Condition::Always);
 
 
@@ -38,7 +38,7 @@ pub fn ui_thread_loop(ui: &mut Ui, dbg: Arc<RwLock<Debugger>>, _run: &mut bool) 
     cpu_ctx.build(ui, || {
         let d = dbg.read().unwrap();
         ui.columns(2, im_str!("Registers"), true);
-        ui.set_current_column_width(100.0);
+        ui.set_current_column_width(200.0);
         ui.text(format!("pc= {:08x}", d.reg.pc));
         ui.text(format!("ip= {:08x}", d.reg.r[12]));
         ui.text(format!("sp= {:08x}", d.reg.r[13]));

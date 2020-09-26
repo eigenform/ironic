@@ -51,7 +51,7 @@ pub fn init(title: &str) -> System {
     let context = glutin::ContextBuilder::new().with_vsync(true);
     let builder = WindowBuilder::new()
         .with_title(title.to_owned())
-        .with_inner_size(glutin::dpi::LogicalSize::new(1024f64, 768f64));
+        .with_inner_size(glutin::dpi::LogicalSize::new(1024f64, 960f64));
     let display =
         Display::new(builder, context, &event_loop).expect("Failed to initialize display");
 
@@ -72,9 +72,11 @@ pub fn init(title: &str) -> System {
     }
 
     let hidpi_factor = platform.hidpi_factor();
-    let font_size = (13.0 * hidpi_factor) as f32;
+    let font_size = (22.0 * hidpi_factor) as f32;
     imgui.fonts().add_font(&[
-        FontSource::DefaultFontData {
+        FontSource::TtfData {
+            data: include_bytes!("../resource/Hack-Regular.ttf"),
+            size_pixels: font_size,
             config: Some(FontConfig {
                 size_pixels: font_size,
                 ..FontConfig::default()

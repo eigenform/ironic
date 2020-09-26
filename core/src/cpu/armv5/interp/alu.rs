@@ -126,7 +126,7 @@ pub fn ror_reg(rm: u32, simm: u32, c_in: bool) -> (u32, bool) {
 
 /// Rotate an immediate by a some immediate.
 pub fn rot_by_imm(imm12: u32, c_in: bool) -> (u32, bool) {
-    let (simm, imm8) = ((imm12 & 0xf00) >> 12, imm12 & 0xff);
+    let (simm, imm8) = ((imm12 & 0xf00) >> 8, imm12 & 0xff);
     let val = imm8.rotate_right(simm * 2);
     let c_out = if simm == 0 { 
         c_in 
@@ -160,7 +160,6 @@ pub fn shift_by_reg(rm: u32, sop: u32, rs: u32, c_in: bool) -> (u32, bool) {
 
 /// Dispatch some barrel shifter operation.
 pub fn barrel_shift(args: ShiftArgs) -> (u32, bool) {
-    use ShiftType::*;
     match args {
         ShiftArgs::Imm { imm12, c_in } => 
             rot_by_imm(imm12, c_in),
@@ -173,28 +172,4 @@ pub fn barrel_shift(args: ShiftArgs) -> (u32, bool) {
     }
 }
 
-
-
-
-pub fn shift_and_carry(val: u32, stype: ShiftType, shift_imm: u32, c_in: bool) 
-    -> (u32, bool) {
-    if shift_imm == 0 { 
-        return (val, c_in); 
-    }
-
-    let res = match stype {
-        ShiftType::Lsl => val << shift_imm,
-        ShiftType::Lsr => val >> shift_imm,
-        ShiftType::Asr => ((val as i32) >> shift_imm) as u32,
-        ShiftType::Ror => val.rotate_right(shift_imm),
-    };
-    let c_out = (1 << (shift_imm - 1) & res) != 0;
-    (res, c_out)
-}
-
-
-pub fn compute_imm_carry(imm12: u32, c_in: bool) -> (u32, bool) {
-    let (shift_imm, val) = ((imm12 & 0xf00) >> 12, imm12 & 0xff);
-    shift_and_carry(val, ShiftType::Ror, shift_imm * 2, c_in)
-}
 

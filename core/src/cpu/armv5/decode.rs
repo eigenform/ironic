@@ -43,10 +43,11 @@ pub enum ArmInst {
     LdrhLit, LdrhImm,
     LdrdLit, LdrdImm, 
     AddSpImm, AddImm, 
-    SubSpImm, SubImm, 
     LdmRegUser, LdmRegException,
     LdrbLit, LdrbImm, 
     B, BlImmAlt, 
+
+    SubSpImm, SubImm, 
 
     Svc, Clz, PldLit, MsrImm, Mrc, Mcr, Mcrr, Mrrc,
     BlImm, Bx, Bxj, Bkpt, BlxReg,
