@@ -1,8 +1,10 @@
 //! Implementation of a physical memory map.
 
 use std::sync::{Arc,RwLock};
+
 use crate::bus::*;
-use crate::mem::back::*;
+use crate::hlwd::*;
+use crate::mem::*;
 use crate::dbg::*;
 
 // Sizes of physical memory devices.
@@ -73,6 +75,7 @@ pub enum PhysMemDevice {
     Sram1,
     Mem1,
     Mem2,
+    Hlwd,
 }
 
 /// A handle used to dispatch a physical memory access.
@@ -91,6 +94,7 @@ pub struct Topology {
     pub sram0: Box<BigEndianMemory>,
     pub sram1: Box<BigEndianMemory>,
 
+    pub hlwd: Box<Hollywood>,
     pub sram_mirror: bool,
     pub mrom_mapped: bool,
 }
@@ -100,6 +104,7 @@ impl Topology {
             mrom: Box::new(BigEndianMemory::new(0x0000_2000, Some(rom))),
             sram0: Box::new(BigEndianMemory::new(0x0001_0000, None)),
             sram1: Box::new(BigEndianMemory::new(0x0000_8000, None)),
+            hlwd: Box::new(Hollywood::new()),
             sram_mirror: false,
             mrom_mapped: true,
             dbg,
@@ -161,6 +166,16 @@ impl Topology {
             }
         }
     }
+
+    #[inline(always)]
+    fn resolve_hlwd(&self, addr: u32) -> Option<PhysMemHandle> {
+        use PhysMemDevice::*;
+        match addr {
+            HLWD_BASE..=HLWD_TAIL => 
+                Some(PhysMemHandle{ id: Hlwd, base: HLWD_BASE }),
+            _ => None,
+        }
+    }
 }
 
 
@@ -182,6 +197,8 @@ impl PhysMemDecode for Topology {
             0xfffe  | 
             0xffff  => self.resolve_sram(addr),
 
+            0x0d80  => self.resolve_hlwd(addr),
+
             0x0000..=0x017f => 
                 Some(PhysMemHandle { id: Mem1, base: MEM1_BASE }),
             0x1000..=0x13ff => 
@@ -201,6 +218,7 @@ impl PhysMemDecode for Topology {
             MaskRom => self.mrom.read::<u32>(off),
             Sram0 => self.sram0.read::<u32>(off),
             Sram1 => self.sram1.read::<u32>(off),
+            Hlwd => self.hlwd.read_handler(off),
             _ => panic!("32-bit reads are unimplemented on {:?}", handle.id),
         }
     }
@@ -231,6 +249,7 @@ impl PhysMemDecode for Topology {
         match handle.id {
             Sram0 => self.sram0.write::<u32>(off, val),
             Sram1 => self.sram1.write::<u32>(off, val),
+            Hlwd => self.hlwd.write_handler(off, val),
             _ => panic!("32-bit writes are unimplemented on {:?}", handle.id),
         }
     }

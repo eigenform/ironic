@@ -118,6 +118,11 @@ impl Cpu {
         // Fetch an instruction from memory.
         let opcd = self.mmu.read32(self.read_fetch_pc());
 
+        log(&self.dbg, LogLevel::Cpu, &format!(
+            "{:08x}: Dispatching {:08x} ({:?})", 
+            self.read_fetch_pc(), opcd, ArmInst::decode(opcd)
+        ));
+
         // Decode/dispatch an instruction.
         let disp_res = if self.reg.cond_pass(opcd) {
             let func = self.lut.arm.lookup(opcd);
@@ -125,11 +130,6 @@ impl Cpu {
         } else {
             DispatchRes::CondFailed
         };
-
-        log(&self.dbg, LogLevel::Cpu, &format!(
-            "{:08x}: Dispatched {:08x} ({:?})", 
-            self.read_fetch_pc(), opcd, ArmInst::decode(opcd)
-        ));
 
         let cpu_res = match disp_res {
             DispatchRes::RetireOk | DispatchRes::CondFailed => {

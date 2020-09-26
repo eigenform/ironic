@@ -4,24 +4,19 @@ use imgui::*;
 
 use std::thread;
 use std::sync::{Arc, RwLock};
-use std::time::Duration;
 
 use ironic_core::dbg::{Debugger, LogLevel, log};
-use ironic_core::mem::back::BigEndianMemory;
 use ironic_core::topo::*;
 use ironic_core::cpu::armv5::*;
-
 
 /// The UI thread loop.
 pub fn ui_thread_loop(ui: &mut Ui, dbg: Arc<RwLock<Debugger>>, _run: &mut bool) {
     let cpu_ctx = Window::new(im_str!("CPU state"))
         .position([5.0, 5.0], Condition::Always)
         .size([500.0, 500.0], Condition::Always);
-
     let console = Window::new(im_str!("Console Output"))
         .position([5.0, 510.0], Condition::Always)
         .size([1095.0, 465.0], Condition::Always);
-
 
     console.build(ui, || {
         for entry in dbg.read().unwrap().console_buf.iter() {
@@ -29,7 +24,6 @@ pub fn ui_thread_loop(ui: &mut Ui, dbg: Arc<RwLock<Debugger>>, _run: &mut bool) 
                 "[{:?}] {}", entry.lvl, entry.data
             ));
         }
-
         if ui.scroll_y() >= ui.scroll_max_y() {
             ui.set_scroll_here_y_with_ratio(1.0);
         }
@@ -56,10 +50,7 @@ pub fn ui_thread_loop(ui: &mut Ui, dbg: Arc<RwLock<Debugger>>, _run: &mut bool) 
         ui.text(format!("r10={:08x}", d.reg.r[10]));
         ui.text(format!("r11={:08x}", d.reg.r[11]));
     });
-
 }
-
-
 
 /// Top-level emulator thread loop.
 pub fn emu_thread_loop(dbg: Arc<RwLock<Debugger>>) {
@@ -70,7 +61,7 @@ pub fn emu_thread_loop(dbg: Arc<RwLock<Debugger>>) {
     let mut cpu = Cpu::new(dbg.clone(), topology.clone());
 
     // Just single-step a few times for now.
-    for _i in 0..20 {
+    for _i in 0..40 {
         let res = cpu.step();
         match res {
             CpuRes::HaltEmulation => break,
@@ -79,11 +70,6 @@ pub fn emu_thread_loop(dbg: Arc<RwLock<Debugger>>) {
     }
     log(&cpu.dbg, LogLevel::Emu, "Emulation thread halted");
 }
-
-
-
-
-
 
 fn main() {
     let debugger = Arc::new(RwLock::new(Debugger::new()));
