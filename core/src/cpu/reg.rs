@@ -5,7 +5,7 @@ use std::ops::{Index, IndexMut};
 pub enum Reg { Lr, Sp, Ip, }
 
 /// Top-level container for register state.
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct RegisterFile {
     pub pc: u32,
     pub r: [u32; 15],
@@ -149,7 +149,7 @@ impl From<u32> for Mode {
 }
 
 /// Program status register.
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
 pub struct Psr(u32);
 impl Psr {

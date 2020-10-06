@@ -2,6 +2,13 @@
 use std::sync::{Arc,RwLock};
 use crate::cpu;
 
+
+#[derive(Debug)]
+pub enum ControlMessage {
+    AddBreakpoint(u32),
+    Step(usize),
+}
+
 #[derive(Debug, PartialEq)]
 pub enum CpuState {
     Running,
@@ -10,8 +17,10 @@ pub enum CpuState {
 
 /// Container for runtime debugging state.
 pub struct Debugger {
-    pub cpu_state: CpuState,
 
+    pub cpu_msg: Option<ControlMessage>,
+
+    /// Buffer for memory window.
     pub mem_window: Vec<u8>,
 
     /// Buffer for log entries.
@@ -24,10 +33,10 @@ pub struct Debugger {
 impl Debugger {
     pub fn new() -> Self {
         Debugger {
-            cpu_state: CpuState::Halted,
             mem_window: Vec::new(),
             console_buf: Vec::new(),
             reg: cpu::reg::RegisterFile::new(),
+            cpu_msg: None,
         }
     }
 }

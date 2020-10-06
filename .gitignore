@@ -4,4 +4,6 @@ Cargo.lock
 /core/Cargo.lock
 /ui/target
 /ui/Cargo.lock
+/tui/target
+/tui/Cargo.lock
 *.bin

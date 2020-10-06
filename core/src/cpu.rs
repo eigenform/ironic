@@ -18,7 +18,7 @@ use crate::cpu::dispatch::*;
 
 use decode::ArmInst;
 
-/// Result after exiting emulated CPU execution.
+/// Result after exiting the emulated CPU.
 pub enum CpuRes {
     /// Some unrecoverable error occured and we need to stop emulation.
     HaltEmulation,
@@ -40,8 +40,8 @@ pub struct Cpu {
     /// The CPU's memory management unit
     pub mmu: mmu::Mmu,
 
+    /// Some shared state with the UI thread.
     pub dbg: Arc<RwLock<Debugger>>,
-    pub state: CpuState,
 }
 impl Cpu {
     pub fn new(dbg: Arc<RwLock<Debugger>>, bus: Arc<RwLock<Bus>>) -> Self { 
@@ -50,7 +50,6 @@ impl Cpu {
             p15: coproc::SystemControl::new(),
             lut: dispatch::Lut::new(),
             mmu: mmu::Mmu::new(bus),
-            state: CpuState::Halted,
             dbg
         };
         log(&cpu.dbg, LogLevel::Cpu, "CPU instantiated");
@@ -117,6 +116,9 @@ impl Cpu {
             "{:08x}: Dispatching {:08x} ({:?})", 
             self.read_fetch_pc(), opcd, ArmInst::decode(opcd)
         ));
+
+        println!("{:08x}: {:x?}", self.read_fetch_pc(), 
+            self.reg);
 
         // Decode/dispatch an instruction.
         let disp_res = if self.reg.cond_pass(opcd) {
