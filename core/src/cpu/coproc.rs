@@ -80,7 +80,6 @@ impl CacheControlFunc {
 #[repr(transparent)]
 pub struct ConfigRegister(u32);
 impl ConfigRegister {
-    #[inline]
     fn set_bit(&mut self, idx: usize, val: bool) {
         self.0 = (self.0 & !(1 << idx)) | (val as u32) << idx
     }

@@ -1,14 +1,14 @@
 
 
-use crate::topo::*;
 use crate::bus::*;
+use crate::bus::prim::*;
 use std::sync::{Arc, RwLock};
 
 pub struct Mmu {
-    pub bus: Arc<RwLock<Topology>>,
+    pub bus: Arc<RwLock<Bus>>,
 }
 impl Mmu {
-    pub fn new(bus: Arc<RwLock<Topology>>) -> Self {
+    pub fn new(bus: Arc<RwLock<Bus>>) -> Self {
         Mmu { bus }
     }
 }

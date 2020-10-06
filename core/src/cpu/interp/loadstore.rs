@@ -1,11 +1,12 @@
-use crate::dbg::*;
-use crate::cpu::armv5::*;
-use crate::cpu::armv5::decode::*;
-use crate::cpu::armv5::bits::*;
-use crate::cpu::armv5::reg::*;
+use crate::cpu::*;
+use crate::cpu::decode::*;
+use crate::cpu::dispatch::*;
+use crate::cpu::bits::*;
+use crate::cpu::interp::alu::*;
 
-pub fn amode_imm(rn: u32, imm12: u32, u: bool, p: bool, w: bool) -> (u32, u32) {
-    let res = if u { rn.wrapping_add(imm12) } else { rn.wrapping_sub(imm12) };
+
+pub fn do_amode(rn: u32, imm: u32, u: bool, p: bool, w: bool) -> (u32, u32) {
+    let res = if u { rn.wrapping_add(imm) } else { rn.wrapping_sub(imm) };
     match (p, w) {
         (false, false)  => (rn, res),
         (true, false)   => (res, rn),
@@ -14,6 +15,9 @@ pub fn amode_imm(rn: u32, imm12: u32, u: bool, p: bool, w: bool) -> (u32, u32) {
     }
 }
 
+
+// Example of a temporary solution to aliased LUT indicies.
+// I don't exactly know what I'm going to do, but this is fine for now.
 pub fn ldr_imm_or_lit(cpu: &mut Cpu, op: u32) -> DispatchRes {
     use ArmInst::*;
     match ArmInst::decode(op) {
@@ -47,19 +51,51 @@ pub fn ldr_lit(cpu: &mut Cpu, op: LdrLitBits) -> DispatchRes {
 }
 
 pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
-    DispatchRes::FatalErr
+    let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
+        op.imm12(), op.u(), op.p(), op.w()
+    );
+    cpu.reg[op.rn()] = wb_addr;
+    cpu.reg[op.rt()] = cpu.mmu.read32(addr);
+    DispatchRes::RetireOk
+}
+
+pub fn ldr_reg(cpu: &mut Cpu, op: LsRegBits) -> DispatchRes {
+    let (offset, _) = barrel_shift(ShiftArgs::Reg { rm: op.rm(), 
+        stype: op.stype(), imm5: op.imm5(), c_in: cpu.reg.cpsr.c()
+    });
+
+    let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
+        offset, op.u(), op.p(), op.w()
+    );
+    let val = cpu.mmu.read32(addr);
+
+    cpu.reg[op.rn()] = wb_addr;
+    if op.rt() == 15 {
+        cpu.write_exec_pc(val);
+        DispatchRes::RetireBranch
+    } else {
+        cpu.reg[op.rt()] = val;
+        DispatchRes::RetireOk
+    }
 }
 
 
 pub fn str_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
-    let (addr, wb_addr) = amode_imm(cpu.reg[op.rn()], 
+    let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
         op.imm12(), op.u(), op.p(), op.w()
     );
     cpu.reg[op.rn()] = wb_addr;
     cpu.mmu.write32(addr, cpu.reg[op.rt()]);
     DispatchRes::RetireOk
 }
-
+pub fn strb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
+    let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
+        op.imm12(), op.u(), op.p(), op.w()
+    );
+    cpu.reg[op.rn()] = wb_addr;
+    cpu.mmu.write8(addr, cpu.reg[op.rt()] as u8);
+    DispatchRes::RetireOk
+}
 
 
 pub fn stmdb(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {

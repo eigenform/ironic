@@ -1,8 +1,8 @@
 
 use crate::dbg::*;
 use crate::cpu::*;
-use crate::cpu::armv5::*;
-use crate::cpu::armv5::decode::*;
+use crate::cpu::decode::*;
+use crate::cpu::dispatch::*;
 
 pub mod alu;
 pub mod loadstore;

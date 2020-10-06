@@ -1,5 +1,6 @@
-use ironic::bus::*;
-use ironic::mem::back::BigEndianMemory;
+
+use ironic_core::bus::*;
+use ironic_core::mem::*;
 use std::sync::{Arc, Mutex};
 
 // A mock MMIO device.

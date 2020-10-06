@@ -1,10 +1,8 @@
 
 use crate::cpu::*;
-use crate::dbg::*;
-use crate::cpu::armv5::*;
-use crate::cpu::armv5::bits::*;
-use crate::cpu::armv5::reg::*;
-
+use crate::cpu::bits::*;
+use crate::cpu::reg::*;
+use crate::cpu::dispatch::*;
 
 
 pub fn sign_extend(x: u32, bits: i32) -> i32 {
@@ -25,6 +23,12 @@ pub fn b(cpu: &mut Cpu, op: BranchBits) -> DispatchRes {
     let offset = sign_extend(op.imm24(), 24) * 4;
     let target = (cpu.read_exec_pc() as i32).wrapping_add(offset) as u32;
     cpu.write_exec_pc(target);
+    DispatchRes::RetireBranch
+}
+pub fn bx(cpu: &mut Cpu, op: BxBits) -> DispatchRes {
+    let rm = cpu.reg[op.rm()];
+    cpu.reg.cpsr.set_thumb(rm & 1 != 0);
+    cpu.write_exec_pc(rm & 0xffff_fffe);
     DispatchRes::RetireBranch
 }
 

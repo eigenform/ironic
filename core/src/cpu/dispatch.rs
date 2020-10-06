@@ -1,13 +1,27 @@
 //! Types used for dispatching instructions.
 
-use crate::cpu::*;
-use crate::cpu::armv5::*;
-use crate::cpu::armv5::decode::*;
+use crate::cpu::lut::*;
+use crate::cpu::decode::*;
 
-use crate::cpu::armv5::interp;
-use crate::cpu::armv5::interp::branch;
-use crate::cpu::armv5::interp::loadstore;
-use crate::cpu::armv5::interp::dataproc;
+use crate::cpu::*;
+use crate::cpu::interp;
+use crate::cpu::interp::branch;
+use crate::cpu::interp::loadstore;
+use crate::cpu::interp::dataproc;
+
+/// Result of dispatching an instruction.
+#[derive(Debug)]
+pub enum DispatchRes {
+    /// There was some fatal error dispatching the instruction.
+    FatalErr,
+    /// This instruction was not executed because the condition failed.
+    CondFailed,
+    /// This instruction retired and resulted in a branch.
+    RetireBranch,
+    /// This instruction retired and the PC should be incremented.
+    RetireOk,
+}
+
 
 /// A function pointer to an ARM instruction implementation.
 #[derive(Clone, Copy)]
@@ -28,17 +42,32 @@ impl InstLutEntry for ArmFn {
         }}}
 
         match inst {
-            LdrLit | LdrImm     => ArmFn(loadstore::ldr_imm_or_lit),
-            SubImm | SubSpImm   => ArmFn(cfn!(dataproc::sub_imm)),
+            LdrLit | LdrImm => ArmFn(loadstore::ldr_imm_or_lit),
+            SubSpImm | SubImm => ArmFn(cfn!(dataproc::sub_imm)),
 
-            StrImm              => ArmFn(cfn!(loadstore::str_imm)),
+            LdrReg      => ArmFn(cfn!(loadstore::ldr_reg)),
 
-            Stmdb               => ArmFn(cfn!(loadstore::stmdb)),
-            BlImm               => ArmFn(cfn!(branch::bl_imm)),
-            B                   => ArmFn(cfn!(branch::b)),
-            MovImm              => ArmFn(cfn!(dataproc::mov_imm)),
-            MovReg              => ArmFn(cfn!(dataproc::mov_reg)),
-            AddImm              => ArmFn(cfn!(dataproc::add_imm)),
+            StrImm      => ArmFn(cfn!(loadstore::str_imm)),
+            StrbImm     => ArmFn(cfn!(loadstore::strb_imm)),
+            Stmdb       => ArmFn(cfn!(loadstore::stmdb)),
+
+            B           => ArmFn(cfn!(branch::b)),
+            Bx          => ArmFn(cfn!(branch::bx)),
+            BlImm       => ArmFn(cfn!(branch::bl_imm)),
+
+            MovImm      => ArmFn(cfn!(dataproc::mov_imm)),
+            MovReg      => ArmFn(cfn!(dataproc::mov_reg)),
+            AddImm      => ArmFn(cfn!(dataproc::add_imm)),
+            AddReg      => ArmFn(cfn!(dataproc::add_reg)),
+            OrrImm      => ArmFn(cfn!(dataproc::orr_imm)),
+            OrrReg      => ArmFn(cfn!(dataproc::orr_reg)),
+            EorReg      => ArmFn(cfn!(dataproc::eor_reg)),
+            AndImm      => ArmFn(cfn!(dataproc::and_imm)),
+            CmnImm      => ArmFn(cfn!(dataproc::cmn_imm)),
+            CmpImm      => ArmFn(cfn!(dataproc::cmp_imm)),
+            CmpReg      => ArmFn(cfn!(dataproc::cmp_reg)),
+            TstReg      => ArmFn(cfn!(dataproc::tst_reg)),
+            BicImm      => ArmFn(cfn!(dataproc::bic_imm)),
             _ => ArmFn(interp::unimpl_instr),
         }
     }

@@ -1,116 +1,87 @@
-//! Abstractions for dealing with the guest's physical address space.
+//! ## Overview
+//! Implementing a bus is "interesting" because we can have some "fun" 
+//! reasoning about how to design something performant and semantically 
+//! somewhat like the thing we're trying to model.
+//!
+//! For us, a bus has the following requirements:
+//!
+//! 1. The layout of the physical memory map might change at runtime depending 
+//!    on the state of some registers, so when a bus resolves a physical 
+//!    address, it must use a reference to read that state.
+//! 2. A [Cpu] must use a reference to perform memory accesses.
+//! 3. I/O devices must use a reference to perform DMA accesses.
+//!
+//! In hardware, memory accesses are signals passed between asynchronous
+//! systems. This begs some reflection on what it means to "pass a message" in 
+//! software:
+//!
+//! 1. Function calls can be regarded as a way of synchronously messaging
+//!    (in the sense that everything in a single thread of execution is 
+//!    effectively synchronous).
+//!
+//! 2. Access to shared memory is an inherently asynchronous way of messaging
+//!    between multiple threads of execution. In order to articulate necessary
+//!    dependencies between events, we rely on some operating system's API.
+//! 
+//! ## Current Implementation: Scheduling work for devices
+//! For now, we're single stepping an emulated CPU. This means that after each
+//! CPU cycle we have the opportunity to service any work pending on the 
+//! emulated bus.
+//!
+//! All of the references used to link system devices are currently wrapped in 
+//! [Arc] and [RwLock]. This is not strictly necessary right now, but I figure
+//! that locking will make it easier later if/when we decide to do some work
+//! in a thread seperate from the CPU emulation.
+//!
+//! ## Current Implementation: Dispatching memory accesses
+//! Right now there's a lot of code re-use when dispatching reads and writes.
+//! At some point it would be nice to make it more generic, but it seems
+//! difficult because we can't support accesses of all widths across all of 
+//! the target devices.
+//!
 
-use core::slice;
-use std::convert::TryInto;
-use std::mem;
+/// Abstractions for implementing a physical memory map.
+pub mod prim;
+/// Implements a decoder for physical addresses.
+pub mod decode;
+/// Implements read/write access dispatching to devices.
+pub mod dispatch;
+/// Interfaces for dealing with memory-mapped I/O devices.
+pub mod mmio;
+/// Functionality for scheduling/completing tasks on behalf of devices.
+pub mod task;
 
-/// Helper functions implemented on numeric primitives.
-pub unsafe trait AccessWidth: Sized {
-    fn from_be_bytes(data: &[u8]) -> Self;
-    fn from_le_bytes(data: &[u8]) -> Self;
-    fn as_be(self) -> Self;
-    fn as_le(self) -> Self;
 
-    #[inline]
-    fn as_ptr(&self) -> *const Self {
-        self as *const Self
-    }
+use std::sync::{Arc,RwLock};
 
-    #[inline]
-    fn as_mut(&mut self) -> *mut Self {
-        self as *mut Self
-    }
+use crate::topo;
+use crate::dbg;
 
-    #[inline]
-    unsafe fn as_bytes(&self) -> &[u8] {
-        slice::from_raw_parts(self.as_ptr() as *const u8, mem::size_of_val(self))
-    }
+use crate::bus::mmio::*;
+use crate::bus::task::*;
 
-    #[inline]
-    unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
-        slice::from_raw_parts_mut(self.as_mut() as *mut u8, mem::size_of_val(self))
-    }
+pub type DbgRef = Arc<RwLock<dbg::Debugger>>;
+pub type MemRef = Arc<RwLock<topo::SystemMemory>>;
+pub type DevRef = Arc<RwLock<topo::SystemDevice>>;
+
+/// Implementation of an emulated bus.
+pub struct Bus {
+    /// Reference to attached [Debugger].
+    pub dbg: DbgRef,
+    /// Reference to [SystemMemory].
+    pub mem: MemRef,
+    /// Reference to [SystemDevice].
+    pub dev: DevRef,
+
+    /// Queue for pending work on I/O devices.
+    pub tasks: Vec<BusTask>,
 }
-
-/// Macro to make implementing AccessWidth a bit less verbose.
-macro_rules! impl_accesswidth {
-    ($type:ident) => {
-        unsafe impl AccessWidth for $type {
-            #[inline]
-            fn from_be_bytes(data: &[u8]) -> Self {
-                Self::from_be_bytes(data.try_into().unwrap())
-            }
-            #[inline]
-            fn from_le_bytes(data: &[u8]) -> Self {
-                Self::from_le_bytes(data.try_into().unwrap())
-            }
-            #[inline]
-            fn as_be(self) -> Self {
-                Self::to_be(self)
-            }
-            #[inline]
-            fn as_le(self) -> Self {
-                Self::to_le(self)
-            }
+impl Bus {
+    pub fn new(dbg: DbgRef, mem: MemRef, dev: DevRef)-> Self {
+        Bus { 
+            dbg, mem, dev,
+            tasks: Vec::new(),
         }
-    };
-}
-
-impl_accesswidth!(u32);
-impl_accesswidth!(u16);
-impl_accesswidth!(u8);
-
-/// Interface for decoding physical addresses into some abstract handle/token
-/// for a particular memory device.
-///
-/// These are used by the interface exposed by [PhysMemMap].
-pub trait PhysMemDecode {
-    /// A type representing a physical address on the guest machine.
-    type Addr: Copy;
-    /// A type representing a reference to a memory device.
-    type Handle;
-
-    /// Decode a physical address into a handle, used to dispatch an access
-    /// to the appropriate memory device. Called by [PhysMemMap].
-    fn decode_phys_addr(&self, addr: Self::Addr) -> Option<Self::Handle>;
-
-    /// Dispatches a 32-bit read to some memory device.
-    fn _read32(&mut self, hdl: Self::Handle, addr: Self::Addr) -> u32;
-    /// Dispatches a 16-bit read to some memory device.
-    fn _read16(&mut self, hdl: Self::Handle, addr: Self::Addr) -> u16;
-    /// Dispatches a 8-bit read to some memory device.
-    fn _read8(&mut self, hdl: Self::Handle, addr: Self::Addr) -> u8;
-
-    /// Dispatches a 32-bit write to some memory device.
-    fn _write32(&mut self, hdl: Self::Handle, addr: Self::Addr, val: u32);
-    /// Dispatches a 16-bit write to some memory device.
-    fn _write16(&mut self, hdl: Self::Handle, addr: Self::Addr, val: u16);
-    /// Dispatches a 8-bit write to some memory device.
-    fn _write8(&mut self, hdl: Self::Handle, addr: Self::Addr, val: u8);
-}
-
-/// Top-level trait, providing read/write functions to physical memory.
-///
-/// This trait marks some type responsible for resolving physical addresses.
-/// A type implementing [PhysMemMap] must necessarily implement [PhysMemDecode].
-
-pub trait PhysMemMap: PhysMemDecode {
-    fn read32(&mut self, addr: Self::Addr) -> u32 {
-        self._read32(self.decode_phys_addr(addr).unwrap(), addr)
-    }
-    fn write32(&mut self, addr: Self::Addr, val: u32) {
-        self._write32(self.decode_phys_addr(addr).unwrap(), addr, val)
-    }
-    fn read16(&mut self, addr: Self::Addr) -> u16 {
-        self._read16(self.decode_phys_addr(addr).unwrap(), addr)
-    }
-    fn write16(&mut self, addr: Self::Addr, val: u16) {
-        self._write16(self.decode_phys_addr(addr).unwrap(), addr, val)
-    }
-    fn read8(&mut self, addr: Self::Addr) -> u8 {
-        self._read8(self.decode_phys_addr(addr).unwrap(), addr)
-    }
-    fn write8(&mut self, addr: Self::Addr, val: u8) {
-        self._write8(self.decode_phys_addr(addr).unwrap(), addr, val)
     }
 }
+
