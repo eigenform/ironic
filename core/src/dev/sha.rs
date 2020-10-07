@@ -6,9 +6,17 @@ use crate::bus::prim::*;
 use crate::bus::mmio::*;
 use crate::bus::task::*;
 use std::sync::{Arc, RwLock};
+use std::convert::TryInto;
 
-pub enum ShaCommand {
-    ComputeHash,
+pub struct ShaCommand {
+    len: u32,
+}
+impl From<u32> for ShaCommand {
+    fn from(x: u32) -> ShaCommand {
+        ShaCommand { 
+            len: (((x & 0x0000_0fff) + 1) * 0x40),
+        }
+    }
 }
 
 /// Representing the SHA interface.
@@ -77,7 +85,18 @@ impl MmioDevice for ShaInterface {
 
 impl Bus {
     pub fn handle_task_sha(&mut self, val: u32) {
-        panic!("SHA task handler unimplemented");
+        let local_ref = self.dev.clone();
+        let mut dev = local_ref.write().unwrap();
+        let sha = &mut dev.sha;
+
+        let cmd = ShaCommand::from(val);
+        let mut sha_buf = vec![0u8; cmd.len as usize];
+        self.dma_read(sha.src, &mut sha_buf);
+        sha.state.update(&sha_buf);
+        sha.src += cmd.len;
+
+        // Mark the command as completed
+        sha.ctrl &= 0x7fff_ffff;
     }
 }
 

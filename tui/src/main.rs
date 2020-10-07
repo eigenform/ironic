@@ -20,7 +20,7 @@ fn main() {
     let mut cpu = Cpu::new(dbg.clone(), bus.clone());
     let mut reg_fd = File::create("/tmp/ironic.log").unwrap();
 
-    for i in 0..800 {
+    for i in 0..10000 {
         // Make a copy of the registers, normalize PC.
         let mut regs = cpu.reg;
         regs.pc -= 8;
@@ -37,11 +37,14 @@ fn main() {
         // Single step the CPU
         let res = cpu.step();
         match res {
-            CpuRes::HaltEmulation => break,
+            CpuRes::HaltEmulation => {
+                println!("Halted after {} steps", i);
+                break;
+            },
             CpuRes::StepOk => {
                 bus.write().unwrap().step();
             },
         }
-
     }
+
 }

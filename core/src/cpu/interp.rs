@@ -15,6 +15,8 @@ pub fn unimpl_instr(cpu: &mut Cpu, op: u32) -> DispatchRes {
         "Couldn't dispatch instruction {:08x} ({:?})", 
         op, ArmInst::decode(op)
     ));
+    println!("Couldn't dispatch instruction {:08x} ({:?})",
+        op, ArmInst::decode(op));
     DispatchRes::FatalErr
 }
 

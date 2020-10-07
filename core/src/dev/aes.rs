@@ -1,6 +1,13 @@
 
 use std::collections::VecDeque;
 
+extern crate aes;
+extern crate block_modes;
+use aes::Aes128;
+use block_modes::{BlockMode, Cbc};
+use block_modes::block_padding::NoPadding;
+type Aes128Cbc = Cbc<Aes128, NoPadding>;
+
 use crate::bus::*;
 use crate::bus::prim::*;
 use crate::bus::mmio::*;
@@ -28,7 +35,6 @@ impl From<u32> for AesCommand {
         }
     }
 }
-
 
 
 pub struct AesInterface {
@@ -105,7 +111,51 @@ impl MmioDevice for AesInterface {
 
 impl Bus {
     pub fn handle_task_aes(&mut self, val: u32) {
-        panic!("AES task handler unimplemented")
+        let local_ref = self.dev.clone();
+        let mut dev = local_ref.write().unwrap();
+        let aes = &mut dev.aes;
+
+        let cmd = AesCommand::from(val);
+
+        // Read data from the source address
+        let mut aes_inbuf = vec![0u8; cmd.len];
+        let mut next_iv_buffer = vec![0u8; 0x10];
+        self.dma_read(aes.src, &mut aes_inbuf);
+        next_iv_buffer.copy_from_slice(&aes_inbuf[(cmd.len - 0x10)..]);
+
+        // If this command is just a DMA transfer without invoking the
+        // AES engine, just write to the destination address
+        if !cmd.use_aes {
+            self.dma_write(aes.dst, &aes_inbuf);
+            return;
+        }
+
+        // Build the right AES cipher for this request
+        let key = aes.key_fifo.as_slices().0;
+        let cipher = if cmd.chain_iv {
+            Aes128Cbc::new_var(&key, &aes.iv_buffer).unwrap()
+        } else {
+            let iv = aes.iv_fifo.as_slices().0;
+            Aes128Cbc::new_var(&key, &iv).unwrap()
+        };
+
+        // Decrypt/encrypt the data, then DMA write to memory
+        if cmd.decrypt {
+            cipher.decrypt(&mut aes_inbuf).unwrap().to_vec();
+            self.dma_write(aes.dst, &aes_inbuf);
+        } else {
+            panic!("AES encrypt unsupported");
+        }
+
+        // Update IV buffer with the last 16 bytes of data
+        aes.iv_buffer.copy_from_slice(&next_iv_buffer);
+
+        // Update the source/destination registers exposed over MMIO
+        aes.dst += cmd.len as u32;
+        aes.src += cmd.len as u32;
+
+        // Mark the command as completed
+        aes.ctrl &= 0x7fff_ffff;
     }
 }
 

@@ -59,7 +59,13 @@ impl Sha1State {
         }
 
         for t in 0..20 {
-            let temp = a.rotate_left(5) + ((b & c) | ((!b) & d)) + e + w[t] + K[0];
+            //let temp = a.rotate_left(5) + ((b & c) | ((!b) & d)) + e + w[t] + K[0];
+            let temp = a.rotate_left(5)
+                .wrapping_add((b & c) | ((!b) & d))
+                .wrapping_add(e)
+                .wrapping_add(w[t])
+                .wrapping_add(K[0]);
+
             e = d;
             d = c;
             c = b.rotate_left(30);
@@ -68,7 +74,13 @@ impl Sha1State {
         }
 
         for t in 20..40 {
-            let temp = a.rotate_left(5) + (b ^ c ^ d) + e + w[t] + K[1];
+            //let temp = a.rotate_left(5) + (b ^ c ^ d) + e + w[t] + K[1];
+            let temp = a.rotate_left(5)
+                .wrapping_add(b ^ c ^ d)
+                .wrapping_add(e)
+                .wrapping_add(w[t])
+                .wrapping_add(K[1]);
+
             e = d;
             d = c;
             c = b.rotate_left(30);
@@ -77,7 +89,13 @@ impl Sha1State {
         }
 
         for t in 40..60 {
-            let temp = a.rotate_left(5) + ((b & c) | (b & d) | (c & d)) + e + w[t] + K[2];
+            //let temp = a.rotate_left(5) + ((b & c) | (b & d) | (c & d)) + e + w[t] + K[2];
+            let temp = a.rotate_left(5)
+                .wrapping_add((b & c) | (b & d) | (c & d))
+                .wrapping_add(e)
+                .wrapping_add(w[t])
+                .wrapping_add(K[2]);
+
             e = d;
             d = c;
             c = b.rotate_left(30);
@@ -86,7 +104,12 @@ impl Sha1State {
         }
 
         for t in 60..80 {
-            let temp = a.rotate_left(5) + (b ^ c ^ d) + e + w[t] + K[3];
+            let temp = a.rotate_left(5)
+                .wrapping_add(b ^ c ^ d)
+                .wrapping_add(e)
+                .wrapping_add(w[t])
+                .wrapping_add(K[3]);
+
             e = d;
             d = c;
             c = b.rotate_left(30);
@@ -94,10 +117,16 @@ impl Sha1State {
             a = temp;
         }
 
-        self.digest[0] += a;
-        self.digest[1] += b;
-        self.digest[2] += c;
-        self.digest[3] += d;
-        self.digest[4] += e;
+        //self.digest[0] += a;
+        //self.digest[1] += b;
+        //self.digest[2] += c;
+        //self.digest[3] += d;
+        //self.digest[4] += e;
+        self.digest[0] = self.digest[0].wrapping_add(a);
+        self.digest[1] = self.digest[1].wrapping_add(b);
+        self.digest[2] = self.digest[2].wrapping_add(c);
+        self.digest[3] = self.digest[3].wrapping_add(d);
+        self.digest[4] = self.digest[4].wrapping_add(e);
+
     }
 }
