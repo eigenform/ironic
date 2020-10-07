@@ -5,18 +5,20 @@ use std::ops::{Index, IndexMut};
 pub enum Reg { Lr, Sp, Ip, }
 
 /// Top-level container for register state.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+#[repr(C)]
 pub struct RegisterFile {
-    pub pc: u32,
     pub r: [u32; 15],
+    pub pc: u32,
     pub cpsr: Psr,
 }
 impl RegisterFile {
     pub fn new() -> Self {
         RegisterFile {
-            pc: 0xffff_0000 + 8,
             r: [0; 15],
-            cpsr: Psr(0x0000_00d3),
+            pc: 0xffff_0000 + 8,
+            cpsr: Psr(0x4000_01d3),
+            //cpsr: Psr(0x0000_00d3),
         }
     }
 
@@ -149,9 +151,9 @@ impl From<u32> for Mode {
 }
 
 /// Program status register.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(transparent)]
-pub struct Psr(u32);
+pub struct Psr(pub u32);
 impl Psr {
     fn set_bit(&mut self, idx: usize, val: bool) {
         self.0 = (self.0 & !(1 << idx)) | (val as u32) << idx

@@ -60,7 +60,7 @@ pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
 }
 
 pub fn ldr_reg(cpu: &mut Cpu, op: LsRegBits) -> DispatchRes {
-    let (offset, _) = barrel_shift(ShiftArgs::Reg { rm: op.rm(), 
+    let (offset, _) = barrel_shift(ShiftArgs::Reg { rm: cpu.reg[op.rm()],
         stype: op.stype(), imm5: op.imm5(), c_in: cpu.reg.cpsr.c()
     });
 

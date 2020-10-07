@@ -207,14 +207,9 @@ pub fn calc_ecc(data: &mut [u8]) -> u32 {
         a1 |= (a[j][1] as u32) << j;
     }
 
-    println!("a0={:08x} a1={:08x}", a1, a0);
-    (a1 & 0x0000_ffff) << 16 | a0 & 0x0000_ffff
-    //let mut res = 0u32;
-    //res |= ((a0 & 0xff) << 24) as u32;
-    //res |= (((a0 >> 8) & 0xff) << 16) as u32;
-    //res |= ((a1 & 0xff) << 8) as u32;
-    //res |= ((a1 >> 8) & 0xff) as u32;
-    //res
+
+    (a0 & 0x0000_00ff) << 24 | (a0 & 0x0000_ff00) << 8 |
+    (a1 & 0x0000_00ff) << 8  | (a1 & 0x0000_ff00) >> 8
 }
 
 

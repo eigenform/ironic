@@ -117,8 +117,8 @@ impl Cpu {
             self.read_fetch_pc(), opcd, ArmInst::decode(opcd)
         ));
 
-        println!("{:08x}: {:x?}", self.read_fetch_pc(), 
-            self.reg);
+        //println!("{:08x}: {:x?}", self.read_fetch_pc(), 
+        //    self.reg);
 
         // Decode/dispatch an instruction.
         let disp_res = if self.reg.cond_pass(opcd) {

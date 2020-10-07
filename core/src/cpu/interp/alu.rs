@@ -1,5 +1,6 @@
 
 /// Barrel shifter opcodes.
+#[derive(Debug)]
 pub enum ShiftType { Lsl = 0b00, Lsr = 0b01, Asr = 0b10, Ror = 0b11 }
 impl From<u32> for ShiftType {
     fn from(x: u32) -> Self {
