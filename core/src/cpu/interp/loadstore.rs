@@ -15,32 +15,26 @@ pub fn do_amode(rn: u32, imm: u32, u: bool, p: bool, w: bool) -> (u32, u32) {
     }
 }
 
-
-// Example of a temporary solution to aliased LUT indicies.
-// I don't exactly know what I'm going to do, but this is fine for now.
-pub fn ldr_imm_or_lit(cpu: &mut Cpu, op: u32) -> DispatchRes {
-    use ArmInst::*;
-    match ArmInst::decode(op) {
-        LdrLit => return ldr_lit(cpu, LdrLitBits(op)),
-        LdrImm => return ldr_imm(cpu, LsImmBits(op)),
-        _ => unreachable!(),
+pub fn do_amode_lit(pc: u32, imm: u32, p: bool, u: bool) -> u32 {
+    match (p, u) {
+        (true, true) => pc.wrapping_add(imm),
+        (true, false) => pc.wrapping_sub(imm),
+        _ => pc
     }
 }
-pub fn ldr_lit(cpu: &mut Cpu, op: LdrLitBits) -> DispatchRes {
-    assert_eq!(op.w(), false);
 
-    let addr = cpu.read_exec_pc();
-    let target_addr = if op.p() { 
-        if op.u() { 
-            addr.wrapping_add(op.imm12()) 
-        } else { 
-            addr.wrapping_sub(op.imm12()) 
-        }
-    } else { 
-        addr 
+
+pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
+    let res = if op.rn() == 15 {
+        assert_eq!(op.w(), false);
+        let addr = do_amode_lit(cpu.read_exec_pc(), op.imm12(), op.p(), op.u());
+        cpu.mmu.read32(addr)
+    } else {
+        let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
+            op.imm12(), op.u(), op.p(), op.w());
+        cpu.reg[op.rn()] = wb_addr;
+        cpu.mmu.read32(addr)
     };
-    
-    let res = cpu.mmu.read32(target_addr);
     if op.rt() == 15 {
         cpu.write_exec_pc(res);
         DispatchRes::RetireBranch
@@ -48,15 +42,6 @@ pub fn ldr_lit(cpu: &mut Cpu, op: LdrLitBits) -> DispatchRes {
         cpu.reg[op.rt()] = res;
         DispatchRes::RetireOk
     }
-}
-
-pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
-    let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
-        op.imm12(), op.u(), op.p(), op.w()
-    );
-    cpu.reg[op.rn()] = wb_addr;
-    cpu.reg[op.rt()] = cpu.mmu.read32(addr);
-    DispatchRes::RetireOk
 }
 
 pub fn ldr_reg(cpu: &mut Cpu, op: LsRegBits) -> DispatchRes {

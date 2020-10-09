@@ -86,7 +86,7 @@ pub fn sub_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
 }
 
 
-pub fn mov_imm(cpu: &mut Cpu, op: MovSpImmBits) -> DispatchRes {
+pub fn mov_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
     if op.rd() == 15 {
         return DispatchRes::FatalErr;
     }
@@ -103,7 +103,7 @@ pub fn mov_imm(cpu: &mut Cpu, op: MovSpImmBits) -> DispatchRes {
     }
     DispatchRes::RetireOk
 }
-pub fn mov_reg(cpu: &mut Cpu, op: MovSpRegBits) -> DispatchRes {
+pub fn mov_reg(cpu: &mut Cpu, op: MovRegBits) -> DispatchRes {
     let (res, carry) = barrel_shift(ShiftArgs::Reg { rm: cpu.reg[op.rm()], 
         stype: op.stype(), imm5: op.imm5(), c_in: cpu.reg.cpsr.c()
     });

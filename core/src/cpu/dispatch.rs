@@ -8,6 +8,7 @@ use crate::cpu::interp;
 use crate::cpu::interp::branch;
 use crate::cpu::interp::loadstore;
 use crate::cpu::interp::dataproc;
+use crate::cpu::interp::coproc;
 
 /// Result of dispatching an instruction.
 #[derive(Debug)]
@@ -42,14 +43,17 @@ impl InstLutEntry for ArmFn {
         }}}
 
         match inst {
-            LdrLit | LdrImm => ArmFn(loadstore::ldr_imm_or_lit),
-            SubSpImm | SubImm => ArmFn(cfn!(dataproc::sub_imm)),
+            LdrImm      => ArmFn(cfn!(loadstore::ldr_imm)),
+            SubImm      => ArmFn(cfn!(dataproc::sub_imm)),
 
             LdrReg      => ArmFn(cfn!(loadstore::ldr_reg)),
 
             StrImm      => ArmFn(cfn!(loadstore::str_imm)),
             StrbImm     => ArmFn(cfn!(loadstore::strb_imm)),
             Stmdb       => ArmFn(cfn!(loadstore::stmdb)),
+
+            Mcr         => ArmFn(cfn!(coproc::mcr)),
+            Mrc         => ArmFn(cfn!(coproc::mrc)),
 
             B           => ArmFn(cfn!(branch::b)),
             Bx          => ArmFn(cfn!(branch::bx)),
@@ -68,7 +72,7 @@ impl InstLutEntry for ArmFn {
             CmpReg      => ArmFn(cfn!(dataproc::cmp_reg)),
             TstReg      => ArmFn(cfn!(dataproc::tst_reg)),
             BicImm      => ArmFn(cfn!(dataproc::bic_imm)),
-            _ => ArmFn(interp::unimpl_instr),
+            _           => ArmFn(interp::unimpl_instr),
         }
     }
 }

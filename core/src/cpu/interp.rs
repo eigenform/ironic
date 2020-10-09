@@ -8,6 +8,7 @@ pub mod alu;
 pub mod loadstore;
 pub mod dataproc;
 pub mod branch;
+pub mod coproc;
 
 /// Unimplemented instruction handler.
 pub fn unimpl_instr(cpu: &mut Cpu, op: u32) -> DispatchRes {
