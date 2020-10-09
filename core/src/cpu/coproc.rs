@@ -23,6 +23,10 @@ impl SystemControl {
         use SystemControlReg::*;
         match SystemControlReg::from(reg) {
             Config => self.cfg.0 = val,
+
+            // NOTE: I'm leaving these unimplemented for now.
+            CacheControl => { },
+
             _ => panic!("Unimpl p15 write to {:?}", SystemControlReg::from(reg)),
         }
     }

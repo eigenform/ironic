@@ -109,6 +109,10 @@ impl Cpu {
 
 impl Cpu {
     pub fn step(&mut self) -> CpuRes {
+        if self.reg.cpsr.thumb() { 
+            panic!("Thumb unimplemented");
+        }
+
         // Fetch an instruction from memory.
         let opcd = self.mmu.read32(self.read_fetch_pc());
 

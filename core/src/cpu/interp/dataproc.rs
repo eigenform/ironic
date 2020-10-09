@@ -42,7 +42,8 @@ pub fn add_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
 }
 
 pub fn add_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
-    let (val, carry) = barrel_shift(ShiftArgs::Reg { rm: cpu.reg[op.rm()], 
+    let rm = if op.rm() == 15 { cpu.read_exec_pc() } else { cpu.reg[op.rm()] };
+    let (val, carry) = barrel_shift(ShiftArgs::Reg { rm, 
         stype: op.stype(), imm5: op.imm5(), c_in: cpu.reg.cpsr.c()
     });
     let (res, n, z, c, v) = add_generic(cpu.reg[op.rn()], val);
