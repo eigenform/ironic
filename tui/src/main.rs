@@ -7,6 +7,7 @@ use ironic_core::topo::*;
 use std::sync::{Arc, RwLock};
 use std::fs::File;
 use std::io::Write;
+use std::time::Instant;
 
 fn main() {
     let dbg = Arc::new(RwLock::new(Debugger::new()));
@@ -20,7 +21,9 @@ fn main() {
     let mut cpu = Cpu::new(dbg.clone(), bus.clone());
     let mut reg_fd = File::create("/tmp/ironic.log").unwrap();
 
-    for i in 0..10000 {
+    let num_steps = 10_000;
+    let now = Instant::now();
+    for i in 0..num_steps {
         // Make a copy of the registers, normalize PC.
         let mut regs = cpu.reg;
         regs.pc -= 8;
@@ -46,5 +49,7 @@ fn main() {
             },
         }
     }
-
+    let dur = now.elapsed();
+    let mips = ((1f64 / dur.as_secs_f64()) * num_steps as f64) / 1_000_000f64;
+    println!("Running time: {:?} (~{:.4}Mips)", dur, mips);
 }
