@@ -12,21 +12,27 @@ use crate::bus::*;
 use crate::cpu::lut::*;
 
 use crate::cpu::exec::DispatchRes;
+
 use crate::cpu::exec::arm;
 use crate::cpu::exec::arm::decode::ArmInst;
-use crate::cpu::exec::arm::dispatch::{ArmFn, unimpl_instr};
+use crate::cpu::exec::arm::dispatch::ArmFn;
 
+use crate::cpu::exec::thumb;
+use crate::cpu::exec::thumb::decode::ThumbInst;
+use crate::cpu::exec::thumb::dispatch::ThumbFn;
 
 /// Container for lookup tables
 pub struct CpuLut {
+    /// Lookup table for ARM instructions.
     pub arm: arm::ArmLut,
-    //pub thumb: ThumbLut,
+    /// Lookup table for Thumb instructions.
+    pub thumb: thumb::ThumbLut,
 }
 impl CpuLut {
     pub fn new() -> Self {
         CpuLut {
-            arm: arm::ArmLut::create_lut(ArmFn(unimpl_instr)),
-            //thumb: ThumbLut::create_lut(ThumbFn(interp::unimpl_instr)),
+            arm: arm::ArmLut::create_lut(ArmFn(arm::dispatch::unimpl_instr)),
+            thumb: thumb::ThumbLut::create_lut(ThumbFn(thumb::dispatch::unimpl_instr)),
         }
     }
 }
@@ -117,32 +123,40 @@ impl Cpu {
             self.reg.pc = self.reg.pc.wrapping_add(4);
         }
     }
+
+    /// Decode and dispatch an ARM instruction.
+    pub fn exec_arm(&mut self) -> DispatchRes {
+        let opcd = self.mmu.read32(self.read_fetch_pc());
+        //println!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), format!(
+        //        "{:?}",ArmInst::decode(opcd)), self.reg);
+
+        if self.reg.cond_pass(opcd) {
+            let func = self.lut.arm.lookup(opcd);
+            func.0(self, opcd)
+        } else {
+            DispatchRes::CondFailed
+        }
+    }
+
+    /// Decode and dispatch a Thumb instruction.
+    pub fn exec_thumb(&mut self) -> DispatchRes {
+        let opcd = self.mmu.read16(self.read_fetch_pc());
+        //println!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), format!(
+        //        "{:?}", ThumbInst::decode(opcd)), self.reg);
+
+        let func = self.lut.thumb.lookup(opcd);
+        func.0(self, opcd)
+    }
+
 }
 
 
 impl Cpu {
     pub fn step(&mut self) -> CpuRes {
-        if self.reg.cpsr.thumb() { 
-            panic!("Thumb unimplemented");
-        }
-
-        // Fetch an instruction from memory.
-        let opcd = self.mmu.read32(self.read_fetch_pc());
-
-        log(&self.dbg, LogLevel::Cpu, &format!(
-            "{:08x}: Dispatching {:08x} ({:?})", 
-            self.read_fetch_pc(), opcd, ArmInst::decode(opcd)
-        ));
-
-        println!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), 
-            format!("{:?}",ArmInst::decode(opcd)), self.reg);
-
-        // Decode/dispatch an instruction.
-        let disp_res = if self.reg.cond_pass(opcd) {
-            let func = self.lut.arm.lookup(opcd);
-            func.0(self, opcd)
+        let disp_res = if self.reg.cpsr.thumb() {
+            self.exec_thumb()
         } else {
-            DispatchRes::CondFailed
+            self.exec_arm()
         };
 
         let cpu_res = match disp_res {
@@ -151,18 +165,12 @@ impl Cpu {
                 CpuRes::StepOk
             },
             DispatchRes::RetireBranch => CpuRes::StepOk,
-            DispatchRes::FatalErr => {
-                log(&self.dbg, LogLevel::Cpu, &format!(
-                    "Fatal error after dispatching {:?} at {:08x}",
-                    ArmInst::decode(opcd), self.read_fetch_pc()
-                ));
-                CpuRes::HaltEmulation
-            },
+            DispatchRes::FatalErr => CpuRes::HaltEmulation,
             _ => unreachable!(),
         };
 
         // Update the debugger's copy of the register file and return.
-        self.dbg.write().unwrap().reg = self.reg;
+        //self.dbg.write().unwrap().reg = self.reg;
         cpu_res
     }
 }

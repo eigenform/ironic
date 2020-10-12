@@ -11,10 +11,6 @@ pub mod branch;
 pub mod coproc;
 
 use crate::cpu::*;
-use crate::dbg::*;
-
-use crate::cpu::exec::arm::dispatch::*;
-use crate::cpu::exec::arm::decode::*;
 
 /// An ARMv5 lookup table.
 pub struct ArmLut { 
