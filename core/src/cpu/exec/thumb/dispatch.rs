@@ -27,7 +27,10 @@ impl InstLutEntry for ThumbFn {
         }}}
 
         match inst {
-            _       => ThumbFn(unimpl_instr),
+            Push        => ThumbFn(cfn!(loadstore::push)),
+            LdrLit      => ThumbFn(cfn!(loadstore::ldr_lit)),
+            MovReg      => ThumbFn(cfn!(dataproc::mov_reg)),
+            _           => ThumbFn(unimpl_instr),
         }
     }
 }

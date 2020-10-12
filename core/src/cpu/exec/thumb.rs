@@ -4,6 +4,9 @@ pub mod bits;
 pub mod decode;
 pub mod dispatch;
 
+pub mod loadstore;
+pub mod dataproc;
+
 use crate::cpu::*;
 use crate::cpu::exec::thumb::dispatch::*;
 use crate::cpu::exec::thumb::decode::*;

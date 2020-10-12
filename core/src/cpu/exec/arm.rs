@@ -4,7 +4,6 @@ pub mod bits;
 pub mod decode;
 pub mod dispatch;
 
-pub mod alu;
 pub mod loadstore;
 pub mod dataproc;
 pub mod branch;

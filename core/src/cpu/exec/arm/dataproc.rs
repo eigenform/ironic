@@ -1,8 +1,8 @@
 //! Data-processing instructions.
 
 use crate::cpu::*;
+use crate::cpu::alu::*;
 use crate::cpu::exec::arm::bits::*;
-use crate::cpu::exec::arm::alu::*;
 
 pub fn sub_generic(rn: u32, val: u32) -> (u32, bool, bool, bool, bool) {
     let res = rn.wrapping_sub(val);

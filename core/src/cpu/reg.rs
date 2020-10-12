@@ -64,6 +64,45 @@ impl IndexMut<u32> for RegisterFile {
         }
     }
 }
+
+impl Index<u16> for RegisterFile {
+    type Output = u32;
+    fn index(&self, index: u16) -> &u32 {
+        match index {
+            0..=14 => &self.r[index as usize],
+            _ => panic!("Invalid index {} into register file", index),
+        }
+    }
+}
+impl IndexMut<u16> for RegisterFile {
+    fn index_mut(&mut self, index: u16) -> &mut u32 {
+        match index {
+            0..=14 => &mut self.r[index as usize],
+            _ => panic!("Invalid index {} into register file", index),
+        }
+    }
+}
+
+//impl Index<i32> for RegisterFile {
+//    type Output = u32;
+//    fn index(&self, index: i32) -> &u32 {
+//        match index {
+//            0..=14 => &self.r[index as usize],
+//            _ => panic!("Invalid index {} into register file", index),
+//        }
+//    }
+//}
+//impl IndexMut<i32> for RegisterFile {
+//    fn index_mut(&mut self, index: i32) -> &mut u32 {
+//        match index {
+//            0..=14 => &mut self.r[index as usize],
+//            _ => panic!("Invalid index {} into register file", index),
+//        }
+//    }
+//}
+
+
+
 impl Index<Reg> for RegisterFile {
     type Output = u32;
     fn index(&self, index: Reg) -> &u32 {

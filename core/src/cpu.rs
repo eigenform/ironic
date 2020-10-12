@@ -4,6 +4,7 @@ pub mod reg;
 pub mod mmu;
 pub mod exec;
 pub mod lut;
+pub mod alu;
 
 use std::sync::{Arc,RwLock};
 
@@ -127,8 +128,8 @@ impl Cpu {
     /// Decode and dispatch an ARM instruction.
     pub fn exec_arm(&mut self) -> DispatchRes {
         let opcd = self.mmu.read32(self.read_fetch_pc());
-        //println!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), format!(
-        //        "{:?}",ArmInst::decode(opcd)), self.reg);
+        println!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), format!(
+                "{:?}",ArmInst::decode(opcd)), self.reg);
 
         if self.reg.cond_pass(opcd) {
             let func = self.lut.arm.lookup(opcd);
@@ -141,8 +142,8 @@ impl Cpu {
     /// Decode and dispatch a Thumb instruction.
     pub fn exec_thumb(&mut self) -> DispatchRes {
         let opcd = self.mmu.read16(self.read_fetch_pc());
-        //println!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), format!(
-        //        "{:?}", ThumbInst::decode(opcd)), self.reg);
+        println!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), format!(
+                "{:?}", ThumbInst::decode(opcd)), self.reg);
 
         let func = self.lut.thumb.lookup(opcd);
         func.0(self, opcd)

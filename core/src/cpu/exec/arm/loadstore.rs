@@ -1,8 +1,8 @@
 //! Load/store instructions.
 
 use crate::cpu::*;
+use crate::cpu::alu::*;
 use crate::cpu::exec::arm::bits::*;
-use crate::cpu::exec::arm::alu::*;
 
 pub fn do_amode(rn: u32, imm: u32, u: bool, p: bool, w: bool) -> (u32, u32) {
     let res = if u { rn.wrapping_add(imm) } else { rn.wrapping_sub(imm) };
@@ -94,7 +94,7 @@ pub fn stmdb(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
             let val = if i == 15 {
                 cpu.read_exec_pc()
             } else {
-                cpu.reg[i]
+                cpu.reg[i as u32]
             };
             cpu.mmu.write32(addr, val);
             addr += 4;
