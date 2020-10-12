@@ -30,6 +30,8 @@ impl InstLutEntry for ThumbFn {
             Push        => ThumbFn(cfn!(loadstore::push)),
             LdrLit      => ThumbFn(cfn!(loadstore::ldr_lit)),
             MovReg      => ThumbFn(cfn!(dataproc::mov_reg)),
+            MovImm      => ThumbFn(cfn!(dataproc::mov_imm)),
+            AddRegAlt   => ThumbFn(cfn!(dataproc::add_reg_alt)),
             _           => ThumbFn(unimpl_instr),
         }
     }

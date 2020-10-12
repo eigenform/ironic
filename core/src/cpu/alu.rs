@@ -1,5 +1,24 @@
 //! Helpers for implementing ALU operations.
 
+
+pub fn sub_generic(rn: u32, val: u32) -> (u32, bool, bool, bool, bool) {
+    let res = rn.wrapping_sub(val);
+    let n = (res & 0x8000_0000) != 0;
+    let z = res == 0;
+    let c = rn.checked_sub(val).is_some();
+    let v = (rn as i32).checked_sub(val as i32).is_none();
+    (res, n, z, c, v)
+}
+pub fn add_generic(rn: u32, val: u32) -> (u32, bool, bool, bool, bool) {
+    let res = rn.wrapping_add(val);
+    let n = (res & 0x8000_0000) != 0;
+    let z = res == 0;
+    let c = rn.checked_add(val).is_none();
+    let v = (rn as i32).checked_add(val as i32).is_none();
+    (res, n, z, c, v)
+}
+
+
 /// Barrel shifter opcodes.
 #[derive(Debug)]
 pub enum ShiftType { Lsl = 0b00, Lsr = 0b01, Asr = 0b10, Ror = 0b11 }
