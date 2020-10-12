@@ -1,6 +1,5 @@
 
 use std::collections::VecDeque;
-use crate::bus::Bus;
 use crate::bus::mmio::MmioDevice;
 
 /// Implemented on the bus for a specific I/O device; used to handle a task.

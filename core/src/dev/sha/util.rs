@@ -38,7 +38,7 @@ impl Sha1State {
 
     // I wonder if this would perform better if you unrolled everything?
     fn process_message(&mut self) {
-        let k = K;
+        //let k = K;
         let mut a = self.digest[0];
         let mut b = self.digest[1];
         let mut c = self.digest[2];

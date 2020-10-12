@@ -1,6 +1,6 @@
-//! Implementation of an instruction decoder.
+//! Implementation of an ARM instruction decoder.
 
-use crate::cpu::*;
+use crate::cpu::lut::*;
 
 /// Enumerated type describing different kinds of ARM instruction encodings.
 #[derive(Debug)]

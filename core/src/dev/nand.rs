@@ -68,16 +68,16 @@ impl NandInterface {
             unk: 0,
         }
     }
-    /// Reset the state of the NAND interface.
-    fn reset(&mut self) {
-        self.ctrl = 0;
-        self.cfg = 0;
-        self.addr1 = 0;
-        self.addr2 = 0;
-        self.databuf = 0;
-        self.eccbuf = 0;
-        self.unk = 0;
-    }
+    ///// Reset the state of the NAND interface.
+    //fn reset(&mut self) {
+    //    self.ctrl = 0;
+    //    self.cfg = 0;
+    //    self.addr1 = 0;
+    //    self.addr2 = 0;
+    //    self.databuf = 0;
+    //    self.eccbuf = 0;
+    //    self.unk = 0;
+    //}
 }
 
 impl MmioDevice for NandInterface {
@@ -132,7 +132,7 @@ impl Bus {
                 let irq_req     = cmd & 0x4000_0000 != 0;
                 let ecc_flag    = cmd & 0x0000_1000 != 0;
                 let read_flag   = cmd & 0x0000_2000 != 0;
-                let write_flag  = cmd & 0x0000_4000 != 0;
+                let _write_flag  = cmd & 0x0000_4000 != 0;
                 let data_len    = cmd & 0x0000_0fff;
 
                 assert!(read_flag);
@@ -164,8 +164,8 @@ impl Bus {
                 }
 
             },
-            NandCommand::Reset(x)  => {},
-            NandCommand::Ignore(x) => {},
+            NandCommand::Reset(_)  => {},
+            NandCommand::Ignore(_) => {},
             _ => panic!("Unhandled NAND command {:?}", cmd),
         }
 

@@ -63,7 +63,7 @@ impl Bus {
         );
 
         let off = addr.wrapping_sub(handle.base) as usize;
-        let resp = match handle.dev {
+        let _resp = match handle.dev {
             Device::Mem(dev) => self.do_mem_write(dev, off, msg),
             Device::Io(dev) => self.do_mmio_write(dev, off, msg),
         };
@@ -138,7 +138,7 @@ impl Bus {
         );
 
         let off = addr.wrapping_sub(handle.base) as usize;
-        let mut mem = self.mem.write().unwrap();
+        let mem = self.mem.write().unwrap();
         match handle.dev {
             Device::Mem(dev) => { match dev {
                 MaskRom => panic!("Bus error: DMA read on mask ROM"),

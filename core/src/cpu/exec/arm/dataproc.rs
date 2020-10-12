@@ -1,8 +1,8 @@
+//! Data-processing instructions.
 
 use crate::cpu::*;
-use crate::cpu::bits::*;
-use crate::cpu::dispatch::*;
-use crate::cpu::interp::alu::*;
+use crate::cpu::exec::arm::bits::*;
+use crate::cpu::exec::arm::alu::*;
 
 pub fn sub_generic(rn: u32, val: u32) -> (u32, bool, bool, bool, bool) {
     let res = rn.wrapping_sub(val);
@@ -43,7 +43,7 @@ pub fn add_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
 
 pub fn add_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
     let rm = if op.rm() == 15 { cpu.read_exec_pc() } else { cpu.reg[op.rm()] };
-    let (val, carry) = barrel_shift(ShiftArgs::Reg { rm, 
+    let (val, _) = barrel_shift(ShiftArgs::Reg { rm, 
         stype: op.stype(), imm5: op.imm5(), c_in: cpu.reg.cpsr.c()
     });
     let (res, n, z, c, v) = add_generic(cpu.reg[op.rn()], val);

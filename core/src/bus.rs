@@ -57,7 +57,6 @@ use std::sync::{Arc,RwLock};
 use crate::topo;
 use crate::dbg;
 
-use crate::bus::mmio::*;
 use crate::bus::task::*;
 
 pub type DbgRef = Arc<RwLock<dbg::Debugger>>;

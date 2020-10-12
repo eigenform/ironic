@@ -56,15 +56,15 @@ impl AesInterface {
             iv_buffer: [0; 0x10]
         }
     }
-    /// Reset the AES interface.
-    fn reset(&mut self) {
-        self.ctrl = 0;
-        self.src = 0;
-        self.dst = 0;
-        self.key_fifo.clear();
-        self.iv_fifo.clear();
-        self.iv_buffer = [0; 0x10];
-    }
+    ///// Reset the AES interface.
+    //fn reset(&mut self) {
+    //    self.ctrl = 0;
+    //    self.src = 0;
+    //    self.dst = 0;
+    //    self.key_fifo.clear();
+    //    self.iv_fifo.clear();
+    //    self.iv_buffer = [0; 0x10];
+    //}
 }
 
 impl MmioDevice for AesInterface {

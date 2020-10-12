@@ -1,3 +1,4 @@
+//! Wrapper types for representing ARM instructions as bitfields.
 
 /// ['Stc', 'LdcImm']
 #[repr(transparent)]

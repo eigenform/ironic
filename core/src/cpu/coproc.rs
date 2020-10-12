@@ -11,7 +11,7 @@ impl SystemControl {
         }
     }
     
-    pub fn read(&self, reg: u32, crm: u32, opcd2: u32) -> u32 {
+    pub fn read(&self, reg: u32, _crm: u32, _opcd2: u32) -> u32 {
         use SystemControlReg::*;
         match SystemControlReg::from(reg) {
             Config => self.cfg.0,
@@ -19,7 +19,7 @@ impl SystemControl {
         }
     }
 
-    pub fn write(&mut self, val: u32, reg: u32, crm: u32, opcd2: u32) {
+    pub fn write(&mut self, val: u32, reg: u32, _crm: u32, _opcd2: u32) {
         use SystemControlReg::*;
         match SystemControlReg::from(reg) {
             Config => self.cfg.0 = val,
@@ -69,17 +69,17 @@ pub enum CacheControlFunc {
     IcacheInvalidateGlobal,     // cr7, cr5, 0
     DcacheInvalidateGlobal      // cr7, cr6, 0
 }
-impl CacheControlFunc {
-    fn from_u32(crm: u32, opcd2: u32) -> Self {
-        use CacheControlFunc::*;
-        match (crm, opcd2) {
-            (5, 0) => IcacheInvalidateGlobal,
-            (6, 0) => DcacheInvalidateGlobal,
-            _ => panic!("Unimpl cache control function crm={}, opcd2={}", 
-                crm, opcd2),
-        }
-    }
-}
+//impl CacheControlFunc {
+//    fn from_u32(crm: u32, opcd2: u32) -> Self {
+//        use CacheControlFunc::*;
+//        match (crm, opcd2) {
+//            (5, 0) => IcacheInvalidateGlobal,
+//            (6, 0) => DcacheInvalidateGlobal,
+//            _ => panic!("Unimpl cache control function crm={}, opcd2={}", 
+//                crm, opcd2),
+//        }
+//    }
+//}
 
 #[repr(transparent)]
 pub struct ConfigRegister(u32);

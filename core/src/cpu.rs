@@ -2,11 +2,7 @@
 pub mod coproc;
 pub mod reg;
 pub mod mmu;
-
-pub mod interp;
-pub mod dispatch;
-pub mod decode;
-pub mod bits;
+pub mod exec;
 pub mod lut;
 
 use std::sync::{Arc,RwLock};
@@ -14,9 +10,26 @@ use std::sync::{Arc,RwLock};
 use crate::dbg::*;
 use crate::bus::*;
 use crate::cpu::lut::*;
-use crate::cpu::dispatch::*;
 
-use decode::ArmInst;
+use crate::cpu::exec::DispatchRes;
+use crate::cpu::exec::arm;
+use crate::cpu::exec::arm::decode::ArmInst;
+use crate::cpu::exec::arm::dispatch::{ArmFn, unimpl_instr};
+
+
+/// Container for lookup tables
+pub struct CpuLut {
+    pub arm: arm::ArmLut,
+    //pub thumb: ThumbLut,
+}
+impl CpuLut {
+    pub fn new() -> Self {
+        CpuLut {
+            arm: arm::ArmLut::create_lut(ArmFn(unimpl_instr)),
+            //thumb: ThumbLut::create_lut(ThumbFn(interp::unimpl_instr)),
+        }
+    }
+}
 
 /// Result after exiting the emulated CPU.
 pub enum CpuRes {
@@ -35,7 +48,7 @@ pub struct Cpu {
     pub p15: coproc::SystemControl,
 
     /// ARM/Thumb lookup tables (instruction decoding)
-    pub lut: dispatch::Lut,
+    pub lut: CpuLut,
 
     /// The CPU's memory management unit
     pub mmu: mmu::Mmu,
@@ -48,7 +61,7 @@ impl Cpu {
         let cpu = Cpu {
             reg: reg::RegisterFile::new(),
             p15: coproc::SystemControl::new(),
-            lut: dispatch::Lut::new(),
+            lut: CpuLut::new(),
             mmu: mmu::Mmu::new(bus),
             dbg
         };

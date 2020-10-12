@@ -1,7 +1,6 @@
-
+//! Implementation of a memory-management unit.
 
 use crate::bus::*;
-use crate::bus::prim::*;
 use std::sync::{Arc, RwLock};
 
 pub struct Mmu {

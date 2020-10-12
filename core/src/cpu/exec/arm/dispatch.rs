@@ -1,32 +1,23 @@
-//! Types used for dispatching instructions.
+//! Map from instructions to functions in the ARM lookup table.
 
 use crate::cpu::lut::*;
-use crate::cpu::decode::*;
-
-use crate::cpu::*;
-use crate::cpu::interp;
-use crate::cpu::interp::branch;
-use crate::cpu::interp::loadstore;
-use crate::cpu::interp::dataproc;
-use crate::cpu::interp::coproc;
-
-/// Result of dispatching an instruction.
-#[derive(Debug)]
-pub enum DispatchRes {
-    /// There was some fatal error dispatching the instruction.
-    FatalErr,
-    /// This instruction was not executed because the condition failed.
-    CondFailed,
-    /// This instruction retired and resulted in a branch.
-    RetireBranch,
-    /// This instruction retired and the PC should be incremented.
-    RetireOk,
-}
-
+use crate::cpu::exec::arm::*;
+use crate::cpu::exec::arm::decode::ArmInst;
 
 /// A function pointer to an ARM instruction implementation.
 #[derive(Clone, Copy)]
 pub struct ArmFn(pub fn(&mut Cpu, u32) -> DispatchRes);
+
+/// Unimplemented instruction handler.
+pub fn unimpl_instr(cpu: &mut Cpu, op: u32) -> DispatchRes {
+    log(&cpu.dbg, LogLevel::Cpu, &format!(
+        "Couldn't dispatch instruction {:08x} ({:?})", 
+        op, ArmInst::decode(op)
+    ));
+    println!("Couldn't dispatch instruction {:08x} ({:?})",
+        op, ArmInst::decode(op));
+    DispatchRes::FatalErr
+}
 
 /// Implementing [InstLutEntry] maps each instruction to a function.
 impl InstLutEntry for ArmFn {
@@ -72,55 +63,8 @@ impl InstLutEntry for ArmFn {
             CmpReg      => ArmFn(cfn!(dataproc::cmp_reg)),
             TstReg      => ArmFn(cfn!(dataproc::tst_reg)),
             BicImm      => ArmFn(cfn!(dataproc::bic_imm)),
-            _           => ArmFn(interp::unimpl_instr),
+            _           => ArmFn(unimpl_instr),
         }
     }
 }
-
-/// An ARMv5 lookup table.
-pub struct ArmLut { 
-    pub data: [ArmFn; 0x1000] 
-}
-impl InstLut for ArmLut {
-    const LUT_SIZE: usize = 0x1000;
-    type Entry = ArmFn;
-    type Instr = ArmInst;
-    type Index = usize;
-
-    fn lookup(&self, opcd: u32) -> ArmFn { 
-        self.data[Self::opcd_to_idx(opcd)] 
-    }
-
-    fn idx_to_opcd(idx: usize) -> u32 {
-        (((idx & 0x0ff0) << 16) | ((idx & 0x000f) << 4)) as u32
-    }
-
-    fn opcd_to_idx(opcd: u32) -> usize {
-        (((opcd >> 16) & 0x0ff0) | ((opcd >> 4) & 0x000f)) as usize
-    }
-
-    fn create_lut(default_entry: ArmFn) -> Self {
-        let mut lut = ArmLut {
-            data: [default_entry; 0x1000],
-        };
-        for i in 0..Self::LUT_SIZE {
-            let opcd = ArmLut::idx_to_opcd(i);
-            lut.data[i as usize] = ArmFn::from_inst(ArmInst::decode(opcd));
-        }
-        lut
-    }
-}
-
-/// Container for lookup tables
-pub struct Lut {
-    pub arm: ArmLut,
-}
-impl Lut {
-    pub fn new() -> Self {
-        Lut {
-            arm: ArmLut::create_lut(ArmFn(interp::unimpl_instr)),
-        }
-    }
-}
-
 

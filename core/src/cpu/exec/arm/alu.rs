@@ -1,3 +1,4 @@
+//! Helpers for implementing ALU operations.
 
 /// Barrel shifter opcodes.
 #[derive(Debug)]
@@ -41,7 +42,7 @@ pub fn lsl(rm: u32, simm: u32, c_in: bool) -> (u32, bool) {
 }
 
 /// Logical shift right by immediate.
-pub fn lsr_imm(rm: u32, simm: u32, c_in: bool) -> (u32, bool) {
+pub fn lsr_imm(rm: u32, simm: u32, _c_in: bool) -> (u32, bool) {
     if simm == 0 {
         (0, (rm & 0x8000_0000) != 0)
     } else {
@@ -66,7 +67,7 @@ pub fn lsr_reg(rm: u32, simm: u32, c_in: bool) -> (u32, bool) {
 }
 
 /// Arithmetic shift right by immediate.
-pub fn asr_imm(rm: u32, simm: u32, c_in: bool) -> (u32, bool) {
+pub fn asr_imm(rm: u32, simm: u32, _c_in: bool) -> (u32, bool) {
     if simm == 0 {
         if (rm & 0x8000_0000) == 0 {
             (0, false)

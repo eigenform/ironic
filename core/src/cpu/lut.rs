@@ -1,3 +1,4 @@
+//! Traits defining lookup table functionality.
 
 /// Implemented on some enumerated type representing an instruction.
 pub trait Instruction {

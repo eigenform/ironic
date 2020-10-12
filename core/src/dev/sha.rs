@@ -5,8 +5,6 @@ use crate::bus::*;
 use crate::bus::prim::*;
 use crate::bus::mmio::*;
 use crate::bus::task::*;
-use std::sync::{Arc, RwLock};
-use std::convert::TryInto;
 
 pub struct ShaCommand {
     len: u32,
@@ -35,16 +33,16 @@ impl ShaInterface {
             src: 0,
         }
     }
-    /// Reset the state of the SHA interface.
-    fn reset(&mut self) {
-        self.ctrl = 0;
-        self.src = 0;
-        self.state.digest[0] = 0;
-        self.state.digest[1] = 0;
-        self.state.digest[2] = 0;
-        self.state.digest[3] = 0;
-        self.state.digest[4] = 0;
-    }
+    ///// Reset the state of the SHA interface.
+    //fn reset(&mut self) {
+    //    self.ctrl = 0;
+    //    self.src = 0;
+    //    self.state.digest[0] = 0;
+    //    self.state.digest[1] = 0;
+    //    self.state.digest[2] = 0;
+    //    self.state.digest[3] = 0;
+    //    self.state.digest[4] = 0;
+    //}
 }
 
 impl MmioDevice for ShaInterface {
