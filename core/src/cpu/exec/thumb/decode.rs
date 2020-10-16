@@ -18,7 +18,12 @@ pub enum ThumbInst {
 
     Pop, Push, Mul,
     B, Bx, BlxReg, Svc, Bkpt, BAlt,
+
     Undefined,
+
+    // These are exceptional (added by hand) until I decide sort how these
+    // are decoded
+    BlPrefix, BlImmSuffix, BlxImmSuffix,
 }
 
 
@@ -75,6 +80,12 @@ impl Instruction for ThumbInst {
             _ => {},
         }
         match opcd & 0xf800 {
+            // Exceptional (added by hand)
+            0xf000 => return BlPrefix,
+            0xf800 => return BlImmSuffix,
+            0xe800 => return BlxImmSuffix,
+
+            0xe000 => return BAlt,
             0x2000 => return MovImm,
             0x3000 => return AddImmAlt,
             0xa800 => return AddSpImm,
@@ -85,7 +96,6 @@ impl Instruction for ThumbInst {
             0x6000 => return StrImm,
             0x9000 => return StrImmAlt,
             0x7000 => return StrbImm,
-            0xe000 => return BAlt,
             0x8800 => return LdrhImm,
             0x7800 => return LdrbImm,
             0xc800 => return Ldm,

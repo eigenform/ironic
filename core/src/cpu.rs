@@ -48,6 +48,10 @@ pub enum CpuRes {
 
 /// Container for an ARMv5-compatible CPU.
 pub struct Cpu {
+    /// NOTE: Hacky scratch register, for dealing with the fact that Thumb BL 
+    /// instructions are interpreted as a pair of 16-bit instructions
+    pub scratch: u32,
+
     /// The CPU's register file
     pub reg: reg::RegisterFile,
 
@@ -70,6 +74,7 @@ impl Cpu {
             p15: coproc::SystemControl::new(),
             lut: CpuLut::new(),
             mmu: mmu::Mmu::new(bus),
+            scratch: 0,
             dbg
         };
         log(&cpu.dbg, LogLevel::Cpu, "CPU instantiated");
@@ -144,11 +149,9 @@ impl Cpu {
         let opcd = self.mmu.read16(self.read_fetch_pc());
         println!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), format!(
                 "{:?}", ThumbInst::decode(opcd)), self.reg);
-
         let func = self.lut.thumb.lookup(opcd);
         func.0(self, opcd)
     }
-
 }
 
 

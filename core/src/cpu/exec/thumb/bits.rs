@@ -1,4 +1,13 @@
 
+/// Added by hand
+#[repr(transparent)]
+pub struct BlBits(pub u16);
+impl BlBits {
+    #[inline(always)]
+    pub fn imm11(&self) -> u16 { (self.0 & 0x07ff) >> 0 }
+}
+
+
 /// ['RsbImm']
 #[repr(transparent)]
 pub struct RsbImmBits(pub u16);

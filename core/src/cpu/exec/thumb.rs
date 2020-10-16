@@ -6,6 +6,7 @@ pub mod dispatch;
 
 pub mod loadstore;
 pub mod dataproc;
+pub mod branch;
 
 use crate::cpu::*;
 use crate::cpu::exec::thumb::dispatch::*;
