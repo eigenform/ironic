@@ -22,10 +22,34 @@ impl BusCtrlInterface {
     pub fn sram_mirror(&self) -> bool { (self.srnprot & 0x0000_0020) != 0 }
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct AhbInterface {
+    pub unk_10: u32,
+}
+impl MmioDevice for AhbInterface {
+    type Width = u32;
+    fn read(&mut self, off: usize) -> BusPacket {
+        let val = match off {
+            0x10 => self.unk_10,
+            _ => panic!("AHB read to undefined offset {:x}", off),
+        };
+        BusPacket::Word(val)
+    }
+    fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
+        match off {
+            0x10 => self.unk_10 = val,
+            _ => panic!("AHB write {:08x} to undefined offset {:x}", val, off),
+        }
+        None
+    }
+}
+
+
 /// Hollywood memory-mapped registers
 pub struct Hollywood {
     pub dbg: Arc<RwLock<Debugger>>,
     pub busctrl: BusCtrlInterface,
+    pub ahb: AhbInterface,
     pub otp: otp::OtpInterface,
     pub gpio: gpio::GpioInterface,
 }
@@ -35,6 +59,7 @@ impl Hollywood {
         Hollywood {
             dbg, 
             busctrl: BusCtrlInterface::default(),
+            ahb: AhbInterface::default(),
             otp: otp::OtpInterface::new(),
             gpio: gpio::GpioInterface::default(),
         }

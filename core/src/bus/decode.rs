@@ -25,7 +25,8 @@ impl Bus {
             0x0d03 => 
                 Some(DeviceHandle { dev: Device::Io(Sha), base: SHA_BASE }),
 
-            0x0d80 => self.resolve_hlwd(addr),
+            0x0d80 |
+            0x0d8b => self.resolve_hlwd(addr),
 
             0x0000..=0x017f => 
                 Some(DeviceHandle { dev: Device::Mem(Mem1), base: MEM1_BASE }),
@@ -61,7 +62,9 @@ impl Bus {
         use IoDevice::*;
         match addr {
             HLWD_BASE..=HLWD_TAIL => 
-                Some(DeviceHandle{ dev: Device::Io(Hlwd), base: HLWD_BASE }),
+                Some(DeviceHandle { dev: Device::Io(Hlwd), base: HLWD_BASE }),
+            AHB_BASE..=AHB_TAIL =>
+                Some(DeviceHandle { dev: Device::Io(Ahb), base: AHB_BASE }),
             _ => None,
         }
     }

@@ -38,6 +38,7 @@ impl Bus {
             (Word(val), Aes)  => dref.aes.write(off, val),
             (Word(val), Sha)  => dref.sha.write(off, val),
             (Word(val), Hlwd) => dref.hlwd.write(off, val),
+            (Word(val), Ahb)  => dref.hlwd.ahb.write(off, val),
             _ => panic!("Unsupported write {:?} for {:?} at {:x}", msg, dev, off),
         };
         if task.is_some() {
