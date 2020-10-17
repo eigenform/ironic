@@ -26,6 +26,7 @@ pub fn main() {
     let mut s0 = RegisterFile { r: [0; 15], pc: 0, cpsr: Psr(0) };
     let mut s1 = RegisterFile { r: [0; 15], pc: 0, cpsr: Psr(0) };
     let mut num_steps = 0;
+    let mut diffs = 0;
 
     loop { 
         let mut s0_slice = unsafe { to_mut_slice(&mut s0) };
@@ -33,11 +34,13 @@ pub fn main() {
         fd0.read_exact(&mut s0_slice).unwrap();
         fd1.read_exact(&mut s1_slice).unwrap();
 
-        println!("A: {:x?}", s0);
-        println!("B: {:x?}", s1);
+        println!("({}) A: {:x?}", num_steps, s0);
+        println!("({}) B: {:x?}", num_steps, s1);
         println!("");
 
         if s0 != s1 {
+            diffs += 1;
+            println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             println!("[!] State diverges at step {}", num_steps);
             if s0.pc != s1.pc {
                 println!("{:4} {:08x} {:08x}", "r15", s0.pc, s1.pc);
@@ -50,7 +53,9 @@ pub fn main() {
                     println!("r{} {:08x} {:08x}", i, s0.r[i], s1.r[i]); 
                 }
             }
-            break;
+            if diffs >= 30 {
+                break;
+            }
         }
         num_steps += 1;
     }

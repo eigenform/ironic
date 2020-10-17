@@ -53,6 +53,15 @@ pub fn ldr_imm(cpu: &mut Cpu, op: LoadStoreImmBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn ldr_imm_sp(cpu: &mut Cpu, op: LoadStoreAltBits) -> DispatchRes {
+    let imm = (op.imm8() << 2) as u32;
+    let addr = cpu.reg[Reg::Sp].wrapping_add(imm);
+    let res = cpu.mmu.read32(addr);
+    cpu.reg[op.rt()] = res;
+    DispatchRes::RetireOk
+}
+
+
 pub fn str_imm(cpu: &mut Cpu, op: LoadStoreImmBits) -> DispatchRes {
     let imm = (op.imm5() as u32) << 2;
     let addr = cpu.reg[op.rn()].wrapping_add(imm);

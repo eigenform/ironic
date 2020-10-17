@@ -26,7 +26,7 @@ impl RegisterFile {
         self.is_cond_satisfied(Cond::from((opcd & 0xf000_0000) >> 28))
     }
 
-    fn is_cond_satisfied(&self, cond: Cond) -> bool {
+    pub fn is_cond_satisfied(&self, cond: Cond) -> bool {
         use Cond::*;
         match cond {
             EQ => self.cpsr.z(), NE => !self.cpsr.z(),

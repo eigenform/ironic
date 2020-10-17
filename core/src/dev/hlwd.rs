@@ -50,6 +50,7 @@ impl MmioDevice for Hollywood {
             0x0dc..=0x0fc   => self.gpio.arm.read_handler(off - 0xdc),
             0x1ec           => self.otp.cmd,
             0x1f0           => self.otp.out,
+            0x214           => 0x0000_0000,
             _ => panic!("Unimplemented Hollywood read at {:x}", off),
         };
         log(&self.dbg, LogLevel::Hlwd, &format!(

@@ -1,5 +1,6 @@
 
 use crate::cpu::*;
+use crate::cpu::reg::Reg;
 use crate::cpu::alu::*;
 use crate::cpu::exec::thumb::bits::*;
 
@@ -39,6 +40,13 @@ pub fn mov_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
     cpu.reg[op.rd()] = val;
     cpu.reg.cpsr.set_n(val & 0x8000_0000 != 0);
     cpu.reg.cpsr.set_z(val == 0);
+    DispatchRes::RetireOk
+}
+
+pub fn add_sp_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
+    assert_ne!(op.rd(), 15);
+    let (alu_out, _,_,_,_) = add_generic(cpu.reg[Reg::Sp], op.imm8() as u32);
+    cpu.reg[op.rd()] = alu_out;
     DispatchRes::RetireOk
 }
 
@@ -82,3 +90,14 @@ pub fn orr_reg(cpu: &mut Cpu, op: BitwiseRegBits) -> DispatchRes {
     cpu.reg.cpsr.set_c(carry);
     DispatchRes::RetireOk
 }
+
+
+pub fn cmp_imm(cpu: &mut Cpu, op: CmpImmBits) -> DispatchRes {
+    let (_, n, z, c, v) = sub_generic(cpu.reg[op.rn()], op.imm8() as u32);
+    cpu.reg.cpsr.set_n(n);
+    cpu.reg.cpsr.set_z(z);
+    cpu.reg.cpsr.set_c(c);
+    cpu.reg.cpsr.set_v(v);
+    DispatchRes::RetireOk
+}
+

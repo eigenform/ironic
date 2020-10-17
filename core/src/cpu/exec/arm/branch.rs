@@ -12,10 +12,15 @@ pub fn sign_extend(x: u32, bits: i32) -> i32 {
     }
 }
 pub fn bl_imm(cpu: &mut Cpu, op: BranchBits) -> DispatchRes {
-    cpu.reg[Reg::Lr] = cpu.read_exec_pc().wrapping_sub(4);
     let offset = sign_extend(op.imm24(), 24) * 4;
-    let target = (cpu.read_exec_pc() as i32).wrapping_add(offset) as u32;
-    cpu.write_exec_pc(target);
+    let new_lr = cpu.read_fetch_pc().wrapping_add(4);
+    let dest_pc = (cpu.read_exec_pc() as i32).wrapping_add(offset) as u32;
+
+    println!("  lr={:08x}", new_lr);
+    println!("  dest_pc={:08x}", dest_pc);
+
+    cpu.reg[Reg::Lr] = new_lr;
+    cpu.write_exec_pc(dest_pc);
     DispatchRes::RetireBranch
 }
 pub fn b(cpu: &mut Cpu, op: BranchBits) -> DispatchRes {
@@ -25,9 +30,9 @@ pub fn b(cpu: &mut Cpu, op: BranchBits) -> DispatchRes {
     DispatchRes::RetireBranch
 }
 pub fn bx(cpu: &mut Cpu, op: BxBits) -> DispatchRes {
-    let rm = cpu.reg[op.rm()];
-    cpu.reg.cpsr.set_thumb(rm & 1 != 0);
-    cpu.write_exec_pc(rm & 0xffff_fffe);
+    let dest_pc = cpu.reg[op.rm()];
+    cpu.reg.cpsr.set_thumb(dest_pc & 1 != 0);
+    cpu.write_exec_pc(dest_pc & 0xffff_fffe);
     DispatchRes::RetireBranch
 }
 
