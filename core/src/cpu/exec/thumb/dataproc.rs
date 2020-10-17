@@ -45,8 +45,9 @@ pub fn mov_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
 
 pub fn add_sp_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
     assert_ne!(op.rd(), 15);
-    let (alu_out, _,_,_,_) = add_generic(cpu.reg[Reg::Sp], op.imm8() as u32);
-    cpu.reg[op.rd()] = alu_out;
+    let imm = (op.imm8() as u32) << 2;
+    let res = cpu.reg[Reg::Sp].wrapping_add(imm);
+    cpu.reg[op.rd()] = res;
     DispatchRes::RetireOk
 }
 
