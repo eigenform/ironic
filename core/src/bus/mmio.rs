@@ -50,7 +50,18 @@ impl Bus {
 
 
 impl Bus {
+
+    pub fn handle_step_hlwd(&mut self) {
+        let local_ref = self.dev.clone();
+        let mut dev = local_ref.write().unwrap();
+        let hlwd = &mut dev.hlwd;
+
+        hlwd.timer = hlwd.timer.wrapping_add(4);
+    }
+
     pub fn step(&mut self) {
+        self.handle_step_hlwd();
+
         if !self.tasks.is_empty() {
             log(&self.dbg, LogLevel::Bus, &format!(
                     "Completing {} tasks", self.tasks.len()));

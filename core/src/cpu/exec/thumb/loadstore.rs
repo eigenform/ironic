@@ -29,6 +29,40 @@ pub fn push(cpu: &mut Cpu, op: PushBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn pop(cpu: &mut Cpu, op: PopBits) -> DispatchRes {
+    let num_regs = if op.p() {
+        op.register_list().count_ones() + 1
+    } else {
+        op.register_list().count_ones()
+    };
+    let start_addr = cpu.reg[Reg::Sp];
+    let end_addr = start_addr + (4 * num_regs);
+    let mut addr = start_addr;
+    for i in 0..8 {
+        if (op.register_list() & (1 << i)) != 0 {
+            let val = cpu.mmu.read32(addr);
+            cpu.reg[i as u32] = val;
+            addr += 4;
+        }
+    }
+
+    let new_pc = if op.p() { 
+        let saved_lr = cpu.mmu.read32(addr);
+        addr += 4;
+        Some(saved_lr)
+    } else { 
+        None 
+    };
+    assert!(end_addr == addr);
+    cpu.reg[Reg::Sp] = end_addr;
+
+    if new_pc.is_some() {
+        panic!("  POP pc={:08x} is unimplmented", new_pc.unwrap());
+    } else {
+        DispatchRes::RetireOk
+    }
+}
+
 
 pub fn ldr_lit(cpu: &mut Cpu, op: LoadStoreAltBits) -> DispatchRes {
     let imm = (op.imm8() * 4) as u32;

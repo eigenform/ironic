@@ -32,9 +32,16 @@ pub fn bx(cpu: &mut Cpu, op: BxBits) -> DispatchRes {
     DispatchRes::RetireBranch
 }
 
+pub fn b_unconditional(cpu: &mut Cpu, op: BranchAltBits) -> DispatchRes {
+    let offset = sign_extend(op.imm11() as u32, 11) << 1;
+    let dest_pc = (cpu.read_exec_pc() as i32).wrapping_add(offset) as u32;
+    cpu.write_exec_pc(dest_pc);
+    DispatchRes::RetireBranch
+}
+
 pub fn b(cpu: &mut Cpu, op: BranchBits) -> DispatchRes {
     if cpu.reg.is_cond_satisfied(Cond::from(op.cond() as u32)) {
-        let offset = sign_extend((op.imm8() as u32), 8) << 1;
+        let offset = sign_extend(op.imm8() as u32, 8) << 1;
         //let offset = ((op.imm8() as u32) << 1) as i32;
         let dest_pc = (cpu.read_exec_pc() as i32).wrapping_add(offset) as u32;
         cpu.write_exec_pc(dest_pc);
