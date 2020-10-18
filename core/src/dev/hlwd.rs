@@ -55,8 +55,9 @@ pub struct Hollywood {
     pub ahb: AhbInterface,
     pub otp: otp::OtpInterface,
     pub gpio: gpio::GpioInterface,
-
     pub di: compat::DriveInterface,
+
+    pub resets: u32,
 }
 impl Hollywood {
     pub fn new(dbg: Arc<RwLock<Debugger>>) -> Self {
@@ -68,6 +69,8 @@ impl Hollywood {
             ahb: AhbInterface::default(),
             otp: otp::OtpInterface::new(),
             gpio: gpio::GpioInterface::default(),
+
+            resets: 0,
         }
     }
 }
@@ -81,6 +84,7 @@ impl MmioDevice for Hollywood {
             0x0dc..=0x0fc   => self.gpio.arm.read_handler(off - 0xdc),
             0x1ec           => self.otp.cmd,
             0x1f0           => self.otp.out,
+            0x194           => self.resets,
             0x214           => 0x0000_0000,
             _ => panic!("Unimplemented Hollywood read at {:x}", off),
         };
@@ -96,6 +100,7 @@ impl MmioDevice for Hollywood {
             0x060           => self.busctrl.srnprot = val,
             0x0c0..=0x0d8   => self.gpio.ppc.write_handler(off - 0xc0, val),
             0x0dc..=0x0fc   => self.gpio.arm.write_handler(off - 0xdc, val),
+            0x194           => self.resets = val,
             0x1ec           => self.otp.write_handler(val),
             _ => panic!("Unimplemented Hollywood write at {:x}", off),
         }

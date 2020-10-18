@@ -85,6 +85,21 @@ pub fn and_reg(cpu: &mut Cpu, op: BitwiseRegBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn tst_reg(cpu: &mut Cpu, op: CmpRegBits) -> DispatchRes {
+    let (val, carry) = barrel_shift(ShiftArgs::Reg {
+        rm: cpu.reg[op.rm()], 
+        stype: ShiftType::Lsl as u32,
+        imm5: 0,
+        c_in: cpu.reg.cpsr.c()
+    });
+
+    let res = cpu.reg[op.rn()] & val;
+    cpu.reg.cpsr.set_n(res & 0x8000_0000 != 0);
+    cpu.reg.cpsr.set_z(res == 0);
+    cpu.reg.cpsr.set_c(carry);
+    DispatchRes::RetireOk
+}
+
 pub fn orr_reg(cpu: &mut Cpu, op: BitwiseRegBits) -> DispatchRes {
     let rm = cpu.reg[op.rm()];
     let (val, carry) = barrel_shift(ShiftArgs::Reg { rm, 
@@ -109,3 +124,13 @@ pub fn cmp_imm(cpu: &mut Cpu, op: CmpImmBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn add_imm(cpu: &mut Cpu, op: AddSubImmBits) -> DispatchRes {
+    assert_ne!(op.rd(), 15);
+    let (alu_out, n, z, c, v) = add_generic(cpu.reg[op.rn()], op.imm3() as u32);
+    cpu.reg[op.rd()] = alu_out;
+    cpu.reg.cpsr.set_n(n);
+    cpu.reg.cpsr.set_z(z);
+    cpu.reg.cpsr.set_c(c);
+    cpu.reg.cpsr.set_v(v);
+    DispatchRes::RetireOk
+}

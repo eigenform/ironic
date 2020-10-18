@@ -35,10 +35,12 @@ impl InstLutEntry for ThumbFn {
 
             CmpImm      => ThumbFn(cfn!(dataproc::cmp_imm)),
             MovReg      => ThumbFn(cfn!(dataproc::mov_reg)),
+            TstReg      => ThumbFn(cfn!(dataproc::tst_reg)),
             MovRegAlt   => ThumbFn(cfn!(dataproc::mov_reg_alt)),
             MovImm      => ThumbFn(cfn!(dataproc::mov_imm)),
             AddRegAlt   => ThumbFn(cfn!(dataproc::add_reg_alt)),
             AddSpImm    => ThumbFn(cfn!(dataproc::add_sp_imm)),
+            AddImm      => ThumbFn(cfn!(dataproc::add_imm)),
             SubSpImm    => ThumbFn(cfn!(dataproc::sub_sp_imm)),
             AndReg      => ThumbFn(cfn!(dataproc::and_reg)),
             OrrReg      => ThumbFn(cfn!(dataproc::orr_reg)),
