@@ -63,6 +63,8 @@ impl Bus {
         match addr {
             HLWD_BASE..=HLWD_TAIL => 
                 Some(DeviceHandle { dev: Device::Io(Hlwd), base: HLWD_BASE }),
+            DI_BASE..=DI_TAIL =>
+                Some(DeviceHandle { dev: Device::Io(Di), base: DI_BASE }),
             AHB_BASE..=AHB_TAIL =>
                 Some(DeviceHandle { dev: Device::Io(Ahb), base: AHB_BASE }),
             _ => None,

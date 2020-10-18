@@ -155,6 +155,7 @@ pub enum IoDevice {
 
     Hlwd,
     Ahb,
+    Di,
 }
 
 

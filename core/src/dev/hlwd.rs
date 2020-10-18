@@ -6,11 +6,14 @@ use crate::bus::prim::*;
 use crate::bus::mmio::*;
 use crate::bus::task::*;
 
-/// Fused/one-time programmable memory.
+/// One-time programmable [fused] memory.
 pub mod otp;
 
 /// Interface to GPIO pins.
 pub mod gpio;
+
+/// Flipper-compatible interfaces.
+pub mod compat;
 
 /// Various bus control registers (?)
 #[derive(Default, Debug, Clone)]
@@ -52,12 +55,15 @@ pub struct Hollywood {
     pub ahb: AhbInterface,
     pub otp: otp::OtpInterface,
     pub gpio: gpio::GpioInterface,
+
+    pub di: compat::DriveInterface,
 }
 impl Hollywood {
     pub fn new(dbg: Arc<RwLock<Debugger>>) -> Self {
         // TODO: Where do the initial values for these registers matter?
         Hollywood {
             dbg, 
+            di: compat::DriveInterface::default(),
             busctrl: BusCtrlInterface::default(),
             ahb: AhbInterface::default(),
             otp: otp::OtpInterface::new(),

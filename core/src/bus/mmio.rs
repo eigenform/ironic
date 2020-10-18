@@ -25,6 +25,7 @@ impl Bus {
             (BusWidth::W, Aes)  => dref.aes.read(off),
             (BusWidth::W, Sha)  => dref.sha.read(off),
             (BusWidth::W, Hlwd) => dref.hlwd.read(off),
+            (BusWidth::W, Di) => dref.hlwd.di.read(off),
             _ => panic!("Unsupported read {:?} for {:?} at {:x}", width, dev, off),
         }
     }
