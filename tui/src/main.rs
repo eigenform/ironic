@@ -21,7 +21,7 @@ fn main() {
     let mut cpu = Cpu::new(dbg.clone(), bus.clone());
     let mut reg_fd = File::create("/tmp/ironic.log").unwrap();
 
-    let num_steps = 10_000;
+    let num_steps = 20_000;
     let now = Instant::now();
     for i in 0..num_steps {
         // Make a copy of the registers, normalize PC.

@@ -15,6 +15,14 @@ pub mod gpio;
 /// Flipper-compatible interfaces.
 pub mod compat;
 
+
+#[derive(Default, Debug, Clone)]
+pub struct ClockInterface {
+    pub ddr: u32,
+    pub ddr_ext: u32,
+}
+
+
 /// Various bus control registers (?)
 #[derive(Default, Debug, Clone)]
 pub struct BusCtrlInterface {
@@ -56,6 +64,7 @@ pub struct Hollywood {
     pub otp: otp::OtpInterface,
     pub gpio: gpio::GpioInterface,
     pub di: compat::DriveInterface,
+    pub pll: ClockInterface,
 
     pub timer: u32,
     pub resets: u32,
@@ -71,6 +80,7 @@ impl Hollywood {
             ahb: AhbInterface::default(),
             otp: otp::OtpInterface::new(),
             gpio: gpio::GpioInterface::default(),
+            pll: ClockInterface::default(),
 
             resets: 0,
             timer: 0,
@@ -91,6 +101,8 @@ impl MmioDevice for Hollywood {
             0x1f0           => self.otp.out,
             0x180           => self.compat,
             0x194           => self.resets,
+            0x1bc           => self.pll.ddr,
+            0x1c0           => self.pll.ddr_ext,
             0x214           => 0x0000_0000,
             _ => panic!("Unimplemented Hollywood read at {:x}", off),
         };
@@ -108,6 +120,8 @@ impl MmioDevice for Hollywood {
             0x0dc..=0x0fc   => self.gpio.arm.write_handler(off - 0xdc, val),
             0x180           => self.compat = val,
             0x194           => self.resets = val,
+            0x1bc           => self.pll.ddr = val,
+            0x1c0           => self.pll.ddr_ext = val,
             0x1ec           => self.otp.write_handler(val),
             _ => panic!("Unimplemented Hollywood write at {:x}", off),
         }

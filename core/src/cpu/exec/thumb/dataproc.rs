@@ -4,6 +4,16 @@ use crate::cpu::reg::Reg;
 use crate::cpu::alu::*;
 use crate::cpu::exec::thumb::bits::*;
 
+/// Set all of the condition flags.
+macro_rules! set_all_flags { 
+    ($cpu:ident, $n:ident, $z:ident, $c:ident, $v:ident) => {
+        $cpu.reg.cpsr.set_n($n);
+        $cpu.reg.cpsr.set_z($z);
+        $cpu.reg.cpsr.set_c($c);
+        $cpu.reg.cpsr.set_v($v);
+    }
+}
+
 pub fn mov_reg(cpu: &mut Cpu, op: MovRegBits) -> DispatchRes {
     assert_ne!(op.rm(), 15);
 
@@ -64,10 +74,7 @@ pub fn add_reg_alt(cpu: &mut Cpu, op: AddRegAltBits) -> DispatchRes {
     let rn = rd;
     let (alu_out, n, z, c, v) = add_generic(cpu.reg[rn], cpu.reg[op.rm()]);
     cpu.reg[rd] = alu_out;
-    cpu.reg.cpsr.set_n(n);
-    cpu.reg.cpsr.set_z(z);
-    cpu.reg.cpsr.set_c(c);
-    cpu.reg.cpsr.set_v(v);
+    set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
 
@@ -107,10 +114,7 @@ pub fn add_reg(cpu: &mut Cpu, op: AddSubRegBits) -> DispatchRes {
     });
     let (alu_out, n, z, c, v) = add_generic(cpu.reg[op.rn()], val);
     cpu.reg[op.rd()] = alu_out;
-    cpu.reg.cpsr.set_n(n);
-    cpu.reg.cpsr.set_z(z);
-    cpu.reg.cpsr.set_c(c);
-    cpu.reg.cpsr.set_v(v);
+    set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
 pub fn sub_reg(cpu: &mut Cpu, op: AddSubRegBits) -> DispatchRes {
@@ -120,10 +124,7 @@ pub fn sub_reg(cpu: &mut Cpu, op: AddSubRegBits) -> DispatchRes {
     });
     let (alu_out, n, z, c, v) = sub_generic(cpu.reg[op.rn()], val);
     cpu.reg[op.rd()] = alu_out;
-    cpu.reg.cpsr.set_n(n);
-    cpu.reg.cpsr.set_z(z);
-    cpu.reg.cpsr.set_c(c);
-    cpu.reg.cpsr.set_v(v);
+    set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
 
@@ -170,12 +171,10 @@ pub fn bic_reg(cpu: &mut Cpu, op: BitwiseRegBits) -> DispatchRes {
 
 pub fn cmp_imm(cpu: &mut Cpu, op: CmpImmBits) -> DispatchRes {
     let (_, n, z, c, v) = sub_generic(cpu.reg[op.rn()], op.imm8() as u32);
-    cpu.reg.cpsr.set_n(n);
-    cpu.reg.cpsr.set_z(z);
-    cpu.reg.cpsr.set_c(c);
-    cpu.reg.cpsr.set_v(v);
+    set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
+
 pub fn cmp_reg(cpu: &mut Cpu, op: CmpRegBits) -> DispatchRes {
     let rm = cpu.reg[op.rm()];
     let (val, _) = barrel_shift(ShiftArgs::Reg { rm, 
@@ -183,21 +182,36 @@ pub fn cmp_reg(cpu: &mut Cpu, op: CmpRegBits) -> DispatchRes {
     });
 
     let (_, n, z, c, v) = sub_generic(cpu.reg[op.rn()], val);
-    cpu.reg.cpsr.set_n(n);
-    cpu.reg.cpsr.set_z(z);
-    cpu.reg.cpsr.set_c(c);
-    cpu.reg.cpsr.set_v(v);
+    set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
 
+pub fn cmp_reg_alt(cpu: &mut Cpu, op: CmpRegAltBits) -> DispatchRes {
+    let rn = if op.n() { op.rn() | 0x8 } else { op.rn() };
+    assert!(!(rn  < 8 && op.rm() < 8));
+    assert!(!(rn == 15 || op.rm() == 15));
+
+    let rm = cpu.reg[op.rm()];
+    let (val, _) = barrel_shift(ShiftArgs::Reg { rm, 
+        stype: ShiftType::Lsl as u32, imm5: 0, c_in: cpu.reg.cpsr.c()
+    });
+    let (_, n, z, c, v) = sub_generic(cpu.reg[op.rn()], val);
+    set_all_flags!(cpu, n, z, c, v);
+    DispatchRes::RetireOk
+}
 
 pub fn add_imm(cpu: &mut Cpu, op: AddSubImmBits) -> DispatchRes {
     assert_ne!(op.rd(), 15);
     let (alu_out, n, z, c, v) = add_generic(cpu.reg[op.rn()], op.imm3() as u32);
     cpu.reg[op.rd()] = alu_out;
-    cpu.reg.cpsr.set_n(n);
-    cpu.reg.cpsr.set_z(z);
-    cpu.reg.cpsr.set_c(c);
-    cpu.reg.cpsr.set_v(v);
+    set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
+pub fn sub_imm(cpu: &mut Cpu, op: AddSubImmBits) -> DispatchRes {
+    assert_ne!(op.rd(), 15);
+    let (alu_out, n, z, c, v) = sub_generic(cpu.reg[op.rn()], op.imm3() as u32);
+    cpu.reg[op.rd()] = alu_out;
+    set_all_flags!(cpu, n, z, c, v);
+    DispatchRes::RetireOk
+}
+
