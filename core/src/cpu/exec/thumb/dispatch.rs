@@ -1,5 +1,4 @@
 
-use crate::cpu::lut::*;
 use crate::cpu::exec::thumb::*;
 use crate::cpu::exec::thumb::decode::ThumbInst;
 
@@ -39,6 +38,7 @@ impl InstLutEntry for ThumbFn {
             MovImm      => ThumbFn(cfn!(dataproc::mov_imm)),
             AddRegAlt   => ThumbFn(cfn!(dataproc::add_reg_alt)),
             AddSpImm    => ThumbFn(cfn!(dataproc::add_sp_imm)),
+            SubSpImm    => ThumbFn(cfn!(dataproc::sub_sp_imm)),
             AndReg      => ThumbFn(cfn!(dataproc::and_reg)),
             OrrReg      => ThumbFn(cfn!(dataproc::orr_reg)),
 

@@ -43,6 +43,13 @@ pub fn mov_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn sub_sp_imm(cpu: &mut Cpu, op: AddSubSpImmAltBits) -> DispatchRes {
+    let imm = (op.imm7() as u32) << 2;
+    let res = cpu.reg[Reg::Sp].wrapping_sub(imm);
+    cpu.reg[Reg::Sp] = res;
+    DispatchRes::RetireOk
+}
+
 pub fn add_sp_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
     assert_ne!(op.rd(), 15);
     let imm = (op.imm8() as u32) << 2;

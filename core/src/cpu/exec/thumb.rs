@@ -27,7 +27,7 @@ impl InstLut for ThumbLut {
     }
 
     fn idx_to_opcd(idx: usize) -> u16 {
-        ((idx & 0x0ffc) << 6) as u16
+        (idx << 6) as u16
     }
 
     fn opcd_to_idx(opcd: u16) -> usize {
