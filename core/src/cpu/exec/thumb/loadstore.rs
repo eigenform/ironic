@@ -129,6 +129,14 @@ pub fn str_imm(cpu: &mut Cpu, op: LoadStoreImmBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn strb_imm(cpu: &mut Cpu, op: LoadStoreImmBits) -> DispatchRes {
+    let imm = op.imm5() as u32;
+    let addr = cpu.reg[op.rn()].wrapping_add(imm);
+    let val = cpu.reg[op.rt()] as u8;
+    cpu.mmu.write8(addr, val);
+    DispatchRes::RetireOk
+}
+
 pub fn strh_imm(cpu: &mut Cpu, op: LoadStoreImmBits) -> DispatchRes {
     let imm = (op.imm5() as u32) << 2;
     let addr = cpu.reg[op.rn()].wrapping_add(imm);
