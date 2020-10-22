@@ -2,7 +2,7 @@
 
 use std::ops::{Index, IndexMut};
 
-pub enum Reg { Lr, Sp, Ip, }
+pub enum Reg { Lr, Sp, Ip }
 
 /// Top-level container for register state.
 #[derive(Debug, Copy, Clone, PartialEq)]

@@ -7,8 +7,8 @@ pub struct ThumbFn(pub fn(&mut Cpu, u16) -> DispatchRes);
 
 pub fn unimpl_instr(cpu: &mut Cpu, op: u16) -> DispatchRes {
     log(&cpu.dbg, LogLevel::Cpu, &format!(
-        "Couldn't dispatch Thumb instruction {:04x} ({:?})",
-        op, ThumbInst::decode(op)));
+        "pc={:08x} Couldn't dispatch Thumb instruction {:04x} ({:?})",
+        cpu.read_fetch_pc(), op, ThumbInst::decode(op)));
     println!("Couldn't dispatch Thumb instruction {:04x} ({:?})",
         op, ThumbInst::decode(op));
     DispatchRes::FatalErr
@@ -39,6 +39,7 @@ impl InstLutEntry for ThumbFn {
             LdrImmAlt   => ThumbFn(cfn!(loadstore::ldr_imm_sp)),
             StrImmAlt   => ThumbFn(cfn!(loadstore::str_imm_sp)),
             StrReg      => ThumbFn(cfn!(loadstore::str_reg)),
+            StrbReg     => ThumbFn(cfn!(loadstore::strb_reg)),
             StrImm      => ThumbFn(cfn!(loadstore::str_imm)),
             StrbImm     => ThumbFn(cfn!(loadstore::strb_imm)),
             StrhImm     => ThumbFn(cfn!(loadstore::strh_imm)),

@@ -29,7 +29,7 @@ fn main() {
     let emu_bus = bus.clone();
     let emu_thread = Builder::new().name("EmuThread".to_owned()).spawn(move || {
         let mut ctx = EmuThreadContext::new(emu_dbg, emu_bus);
-        ctx.run_slice(0x40_000);
+        ctx.run_slice(0x4_000_000);
     }).unwrap();
 
     emu_thread.join().unwrap();

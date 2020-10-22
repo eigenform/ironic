@@ -63,6 +63,22 @@ pub fn ldr_reg(cpu: &mut Cpu, op: LsRegBits) -> DispatchRes {
     }
 }
 
+pub fn str_reg(cpu: &mut Cpu, op: LsRegBits) -> DispatchRes {
+    let (offset, _) = barrel_shift(ShiftArgs::Reg { rm: cpu.reg[op.rm()],
+        stype: op.stype(), imm5: op.imm5(), c_in: cpu.reg.cpsr.c()
+    });
+
+    let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
+        offset, op.u(), op.p(), op.w()
+    );
+
+    let val = cpu.reg[op.rt()];
+    cpu.mmu.write32(addr, val);
+    cpu.reg[op.rn()] = wb_addr;
+    DispatchRes::RetireOk
+}
+
+
 
 pub fn str_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
@@ -80,6 +96,46 @@ pub fn strb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     cpu.mmu.write8(addr, cpu.reg[op.rt()] as u8);
     DispatchRes::RetireOk
 }
+
+pub fn ldmib(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
+    assert_ne!(op.rn(), 15);
+    let reglist = op.register_list();
+    let mut addr = cpu.reg[op.rn()] + 4;
+    let wb_addr = addr + (reglist.count_ones() * 4);
+
+    for i in 0..16 {
+        if (reglist & (1 << i)) != 0 {
+            cpu.reg[i as u32] = cpu.mmu.read32(addr);
+            addr += 4;
+        }
+    }
+    assert!(addr == wb_addr);
+    if op.w() { 
+        cpu.reg[op.rn()] = wb_addr;
+    }
+    DispatchRes::RetireOk
+}
+
+
+pub fn ldmia(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
+    assert_ne!(op.rn(), 15);
+    let reglist = op.register_list();
+    let mut addr = cpu.reg[op.rn()];
+    let wb_addr = addr + (reglist.count_ones() * 4);
+
+    for i in 0..16 {
+        if (reglist & (1 << i)) != 0 {
+            cpu.reg[i as u32] = cpu.mmu.read32(addr);
+            addr += 4;
+        }
+    }
+    assert!(addr == wb_addr);
+    if op.w() { 
+        cpu.reg[op.rn()] = wb_addr;
+    }
+    DispatchRes::RetireOk
+}
+
 
 
 pub fn stmdb(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {

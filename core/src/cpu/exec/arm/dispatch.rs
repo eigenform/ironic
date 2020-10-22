@@ -34,10 +34,17 @@ impl InstLutEntry for ArmFn {
         }}}
 
         match inst {
+            Umull       => ArmFn(cfn!(multiply::umull)),
+            Mul         => ArmFn(cfn!(multiply::mul)),
             LdrImm      => ArmFn(cfn!(loadstore::ldr_imm)),
             SubImm      => ArmFn(cfn!(dataproc::sub_imm)),
+            SubReg      => ArmFn(cfn!(dataproc::sub_reg)),
 
             LdrReg      => ArmFn(cfn!(loadstore::ldr_reg)),
+            StrReg      => ArmFn(cfn!(loadstore::str_reg)),
+
+            Ldmib       => ArmFn(cfn!(loadstore::ldmib)),
+            Ldm         => ArmFn(cfn!(loadstore::ldmia)),
 
             StrImm      => ArmFn(cfn!(loadstore::str_imm)),
             StrbImm     => ArmFn(cfn!(loadstore::strb_imm)),
@@ -50,7 +57,11 @@ impl InstLutEntry for ArmFn {
             Bx          => ArmFn(cfn!(branch::bx)),
             BlImm       => ArmFn(cfn!(branch::bl_imm)),
 
+            RsbImm      => ArmFn(cfn!(dataproc::rsb_imm)),
+            RsbReg      => ArmFn(cfn!(dataproc::rsb_reg)),
             MovImm      => ArmFn(cfn!(dataproc::mov_imm)),
+            MvnImm      => ArmFn(cfn!(dataproc::mvn_imm)),
+            MvnReg      => ArmFn(cfn!(dataproc::mvn_reg)),
             MovReg      => ArmFn(cfn!(dataproc::mov_reg)),
             AddImm      => ArmFn(cfn!(dataproc::add_imm)),
             AddReg      => ArmFn(cfn!(dataproc::add_reg)),
@@ -63,6 +74,8 @@ impl InstLutEntry for ArmFn {
             CmpReg      => ArmFn(cfn!(dataproc::cmp_reg)),
             TstReg      => ArmFn(cfn!(dataproc::tst_reg)),
             BicImm      => ArmFn(cfn!(dataproc::bic_imm)),
+
+            OrrRegShiftReg => ArmFn(cfn!(dataproc::orr_rsr)),
             _           => ArmFn(unimpl_instr),
         }
     }

@@ -137,8 +137,8 @@ impl Cpu {
     pub fn exec_arm(&mut self) -> DispatchRes {
         let opcd = self.mmu.read32(self.read_fetch_pc());
 
-        self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(),
-            format!("{:?}",ArmInst::decode(opcd)), self.reg));
+        //self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(),
+        //    format!("{:?}",ArmInst::decode(opcd)), self.reg));
 
         if self.reg.cond_pass(opcd) {
             let func = self.lut.arm.lookup(opcd);
@@ -152,8 +152,8 @@ impl Cpu {
     pub fn exec_thumb(&mut self) -> DispatchRes {
         let opcd = self.mmu.read16(self.read_fetch_pc());
 
-        self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), 
-            format!("{:?}", ThumbInst::decode(opcd)), self.reg));
+        //self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), 
+        //    format!("{:?}", ThumbInst::decode(opcd)), self.reg));
 
         let func = self.lut.thumb.lookup(opcd);
         func.0(self, opcd)
