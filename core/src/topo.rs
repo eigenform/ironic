@@ -1,9 +1,12 @@
 
-
 use std::sync::{Arc,RwLock};
+//use std::thread;
+//use std::sync::mpsc::{channel, Sender, Receiver};
 use crate::dbg::*;
 
 use crate::mem::*;
+use crate::bus::*;
+use crate::cpu::*;
 use crate::dev::hlwd::*;
 use crate::dev::aes::*;
 use crate::dev::sha::*;
@@ -52,5 +55,31 @@ impl SystemDevice {
     }
 }
 
+/// Context/state associated with some thread responsible for CPU emulation.
+pub struct EmuThreadContext {
+    pub bus: Arc<RwLock<Bus>>,
+    pub dbg: Arc<RwLock<Debugger>>,
+    pub cpu: Cpu,
+}
+impl EmuThreadContext {
+    pub fn new(dbg: Arc<RwLock<Debugger>>, bus: Arc<RwLock<Bus>>) -> Self {
+        let cpu = Cpu::new(dbg.clone(), bus.clone());
+        EmuThreadContext { bus: bus.clone(), dbg: dbg.clone(), cpu }
+    }
+}
 
+impl EmuThreadContext {
+
+    /// Run the emulator thread for some number of steps (currently, Bus steps
+    /// are interleaved with CPU steps).
+    pub fn run_slice(&mut self, num_steps: usize) {
+        for _i in 0..num_steps {
+            let res = self.cpu.step();
+            match res {
+                CpuRes::StepOk => { self.bus.write().unwrap().step(); },
+                CpuRes::HaltEmulation => break,
+            }
+        }
+    }
+}
 

@@ -1,7 +1,9 @@
 
+pub mod symbols;
+
+use std::collections::HashMap;
 use std::sync::{Arc,RwLock};
 use crate::cpu;
-
 
 #[derive(Debug)]
 pub enum ControlMessage {
@@ -17,18 +19,15 @@ pub enum CpuState {
 
 /// Container for runtime debugging state.
 pub struct Debugger {
-
     pub cpu_msg: Option<ControlMessage>,
-
     /// Buffer for memory window.
     pub mem_window: Vec<u8>,
-
     /// Buffer for log entries.
     pub console_buf: Vec<LogEntry>,
-
     /// Periodically-updated copy of CPU register state.
     pub reg: cpu::reg::RegisterFile,
 
+    pub sym: HashMap<u32, String>,
 }
 impl Debugger {
     pub fn new() -> Self {
@@ -37,7 +36,12 @@ impl Debugger {
             console_buf: Vec::new(),
             reg: cpu::reg::RegisterFile::new(),
             cpu_msg: None,
+            sym: symbols::parse_symbol_file("boot1c.sym"),
         }
+    }
+
+    pub fn get_symbol(&self, addr: u32) -> &str { 
+        self.sym.get(&addr).unwrap() 
     }
 }
 
@@ -48,6 +52,8 @@ pub enum LogLevel {
     Emu, 
     Bus,
     Nand,
+    Aes,
+    Sha,
     Hlwd,
 }
 
@@ -62,4 +68,8 @@ pub fn log(dbg: &Arc<RwLock<Debugger>>, lvl: LogLevel, s: &str) {
     let mut debugger = dbg.write().unwrap();
     debugger.console_buf.push(LogEntry{ lvl, data: s.to_string()});
 }
+
+
+
+
 

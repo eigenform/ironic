@@ -12,8 +12,8 @@ use crate::bus::task::*;
 const NAND_PAGE_LEN: usize = 0x0000_0840;
 
 /// Number of pages in NAND flash.
-const NUM_NAND_PAGES: usize = 0x1000;
-//const NUM_NAND_PAGES: usize = 0x0040_000;
+//const NUM_NAND_PAGES: usize = 0x0010_0000;
+const NUM_NAND_PAGES: usize = 0x0040_000;
 
 /// Types of NAND interface commands.
 #[derive(Debug, Clone, Copy)]

@@ -67,6 +67,10 @@ impl Bus {
                 Some(DeviceHandle { dev: Device::Io(Di), base: DI_BASE }),
             AHB_BASE..=AHB_TAIL =>
                 Some(DeviceHandle { dev: Device::Io(Ahb), base: AHB_BASE }),
+            MEM_BASE..=MEM_TAIL => 
+                Some(DeviceHandle { dev: Device::Io(Mi), base: MEM_BASE }),
+            DDR_BASE..=DDR_TAIL =>
+                Some(DeviceHandle { dev: Device::Io(Ddr), base: DDR_BASE }),
             _ => None,
         }
     }

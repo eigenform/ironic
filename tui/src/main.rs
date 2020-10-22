@@ -4,12 +4,19 @@ use ironic_core::cpu::*;
 use ironic_core::cpu::reg::*;
 use ironic_core::bus::*;
 use ironic_core::topo::*;
+
 use std::sync::{Arc, RwLock};
-use std::fs::File;
-use std::io::Write;
-use std::time::Instant;
+use std::thread::Builder;
+
+//use std::fs::File;
+//use std::io::Write;
+//use std::time::Instant;
+//use std::sync::mpsc::{channel, Sender, Receiver};
+
 
 fn main() {
+
+    // These are all resources that might be shared between threads.
     let dbg = Arc::new(RwLock::new(Debugger::new()));
     let mem = Arc::new(RwLock::new(SystemMemory::new()));
     let dev = Arc::new(RwLock::new(SystemDevice::new(dbg.clone())));
@@ -17,39 +24,24 @@ fn main() {
             dbg.clone(), mem.clone(), dev.clone()
     )));
 
+    // The CPU runs in this thread, using references to the resources above.
+    let emu_dbg = dbg.clone();
+    let emu_bus = bus.clone();
+    let emu_thread = Builder::new().name("EmuThread".to_owned()).spawn(move || {
+        let mut ctx = EmuThreadContext::new(emu_dbg, emu_bus);
+        ctx.run_slice(0x40_000);
+    }).unwrap();
 
-    let mut cpu = Cpu::new(dbg.clone(), bus.clone());
-    let mut reg_fd = File::create("/tmp/ironic.log").unwrap();
+    emu_thread.join().unwrap();
 
-    let num_steps = 20_000;
-    let now = Instant::now();
-    for i in 0..num_steps {
-        // Make a copy of the registers, normalize PC.
-        let mut regs = cpu.reg;
-        regs.pc -= 8;
+    // Drain messages from the log buffer
 
-        // Write register state
-        let state = unsafe {
-            std::slice::from_raw_parts_mut(
-                (&mut regs as *mut RegisterFile) as *mut u8,
-                std::mem::size_of::<RegisterFile>()
-            )
-        };
-        reg_fd.write(state).unwrap();
-
-        // Single step the CPU
-        let res = cpu.step();
-        match res {
-            CpuRes::HaltEmulation => {
-                println!("Halted after {} steps", i);
-                break;
-            },
-            CpuRes::StepOk => {
-                bus.write().unwrap().step();
-            },
-        }
+    let mut loglines = {
+        let mut d = dbg.write().unwrap();
+        std::mem::replace(&mut d.console_buf, Vec::new())
+    };
+    for line in loglines.drain(..) {
+        println!("[{:?}] {}", line.lvl, line.data);
     }
-    let dur = now.elapsed();
-    let mips = ((1f64 / dur.as_secs_f64()) * num_steps as f64) / 1_000_000f64;
-    println!("Running time: {:?} (~{:.4}Mips)", dur, mips);
 }
+

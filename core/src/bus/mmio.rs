@@ -25,7 +25,10 @@ impl Bus {
             (BusWidth::W, Aes)  => dref.aes.read(off),
             (BusWidth::W, Sha)  => dref.sha.read(off),
             (BusWidth::W, Hlwd) => dref.hlwd.read(off),
-            (BusWidth::W, Di) => dref.hlwd.di.read(off),
+            (BusWidth::W, Ahb)  => dref.hlwd.ahb.read(off),
+            (BusWidth::W, Di)   => dref.hlwd.di.read(off),
+            (BusWidth::H, Mi)   => dref.hlwd.mi.read(off),
+            (BusWidth::H, Ddr)  => dref.hlwd.ddr.read(off),
             _ => panic!("Unsupported read {:?} for {:?} at {:x}", width, dev, off),
         }
     }
@@ -40,6 +43,10 @@ impl Bus {
             (Word(val), Sha)  => dref.sha.write(off, val),
             (Word(val), Hlwd) => dref.hlwd.write(off, val),
             (Word(val), Ahb)  => dref.hlwd.ahb.write(off, val),
+
+            (Half(val), Mi)   => dref.hlwd.mi.write(off, val),
+            (Half(val), Ddr)  => dref.hlwd.ddr.write(off, val),
+
             _ => panic!("Unsupported write {:?} for {:?} at {:x}", msg, dev, off),
         };
         if task.is_some() {
@@ -59,6 +66,33 @@ impl Bus {
         hlwd.timer = hlwd.timer.wrapping_add(4);
     }
 
+    pub fn handle_task_mi(&mut self, kind: TaskType, data: u16) {
+
+        let local_ref = self.dev.clone();
+        let mut dev = local_ref.write().unwrap();
+        let hlwd = &mut dev.hlwd;
+
+        match kind {
+            TaskType::Read => {
+                assert!(data >= 0x0100);
+                hlwd.mi.ddr_addr = data;
+                let off = ((data * 2) - 0x0200) as usize;
+                let res = hlwd.ddr.read(off);
+                hlwd.mi.ddr_data = match res {
+                    BusPacket::Half(val) => val,
+                    _ => unreachable!(),
+                };
+            },
+            TaskType::Write => {
+                let ddr_addr = hlwd.mi.ddr_addr;
+                assert!(ddr_addr >= 0x0100);
+                let off = ((hlwd.mi.ddr_addr * 2) - 0x200) as usize;
+                hlwd.ddr.write(off, data);
+            }
+        }
+    }
+
+
     pub fn step(&mut self) {
         self.handle_step_hlwd();
 
@@ -72,6 +106,7 @@ impl Bus {
                     BusTask::Nand(val) => self.handle_task_nand(val),
                     BusTask::Aes(val) => self.handle_task_aes(val),
                     BusTask::Sha(val) => self.handle_task_sha(val),
+                    BusTask::Mi{kind, data} => self.handle_task_mi(kind, data),
                 }
             }
         }

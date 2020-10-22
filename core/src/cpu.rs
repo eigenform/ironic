@@ -48,6 +48,7 @@ pub enum CpuRes {
 
 /// Container for an ARMv5-compatible CPU.
 pub struct Cpu {
+
     /// NOTE: Hacky scratch register, for dealing with the fact that Thumb BL 
     /// instructions are interpreted as a pair of 16-bit instructions
     pub scratch: u32,
@@ -66,6 +67,7 @@ pub struct Cpu {
 
     /// Some shared state with the UI thread.
     pub dbg: Arc<RwLock<Debugger>>,
+    pub log_buf: Vec<String>,
 }
 impl Cpu {
     pub fn new(dbg: Arc<RwLock<Debugger>>, bus: Arc<RwLock<Bus>>) -> Self { 
@@ -75,6 +77,7 @@ impl Cpu {
             lut: CpuLut::new(),
             mmu: mmu::Mmu::new(bus),
             scratch: 0,
+            log_buf: Vec::new(),
             dbg
         };
         log(&cpu.dbg, LogLevel::Cpu, "CPU instantiated");
@@ -133,8 +136,9 @@ impl Cpu {
     /// Decode and dispatch an ARM instruction.
     pub fn exec_arm(&mut self) -> DispatchRes {
         let opcd = self.mmu.read32(self.read_fetch_pc());
-        println!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), format!(
-                "{:?}",ArmInst::decode(opcd)), self.reg);
+
+        self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(),
+            format!("{:?}",ArmInst::decode(opcd)), self.reg));
 
         if self.reg.cond_pass(opcd) {
             let func = self.lut.arm.lookup(opcd);
@@ -147,10 +151,26 @@ impl Cpu {
     /// Decode and dispatch a Thumb instruction.
     pub fn exec_thumb(&mut self) -> DispatchRes {
         let opcd = self.mmu.read16(self.read_fetch_pc());
-        println!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), format!(
-                "{:?}", ThumbInst::decode(opcd)), self.reg);
+
+        self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), 
+            format!("{:?}", ThumbInst::decode(opcd)), self.reg));
+
         let func = self.lut.thumb.lookup(opcd);
         func.0(self, opcd)
+    }
+}
+
+/// Logging/debugging interfaces.
+impl Cpu {
+    fn log(&mut self, s: String) { self.log_buf.push(s); }
+
+    /// Drain the CPU log buffer into the attached debugger.
+    fn drain_log_buffer(&mut self) {
+        let mut entries = std::mem::replace(&mut self.log_buf, Vec::new());
+        let mut dbg = self.dbg.write().unwrap();
+        for entry in entries.drain(..) {
+            dbg.console_buf.push(LogEntry{ lvl: LogLevel::Cpu, data: entry });
+        }
     }
 }
 
@@ -173,8 +193,9 @@ impl Cpu {
             _ => unreachable!(),
         };
 
+        self.drain_log_buffer();
         // Update the debugger's copy of the register file and return.
-        //self.dbg.write().unwrap().reg = self.reg;
+        self.dbg.write().unwrap().reg = self.reg;
         cpu_res
     }
 }

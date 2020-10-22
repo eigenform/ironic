@@ -56,6 +56,7 @@ impl Index<LogLevel> for UiState {
             LogLevel::Bus => &self.log_bus,
             LogLevel::Nand => &self.log_nand,
             LogLevel::Hlwd => &self.log_hlwd,
+            _ => panic!(),
         }
     }
 }

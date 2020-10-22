@@ -16,9 +16,6 @@ pub fn bl_imm(cpu: &mut Cpu, op: BranchBits) -> DispatchRes {
     let new_lr = cpu.read_fetch_pc().wrapping_add(4);
     let dest_pc = (cpu.read_exec_pc() as i32).wrapping_add(offset) as u32;
 
-    println!("  lr={:08x}", new_lr);
-    println!("  dest_pc={:08x}", dest_pc);
-
     cpu.reg[Reg::Lr] = new_lr;
     cpu.write_exec_pc(dest_pc);
     DispatchRes::RetireBranch

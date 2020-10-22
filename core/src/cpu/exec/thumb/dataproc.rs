@@ -29,6 +29,19 @@ pub fn mov_reg(cpu: &mut Cpu, op: MovRegBits) -> DispatchRes {
     }
 }
 
+pub fn mvn_reg(cpu: &mut Cpu, op: MvnRegBits) -> DispatchRes {
+    let rm = cpu.reg[op.rm()];
+    let (val, carry) = barrel_shift(ShiftArgs::Reg { rm, 
+        stype: ShiftType::Lsl as u32, imm5: 0, c_in: cpu.reg.cpsr.c()
+    });
+    let res = !val;
+    cpu.reg[op.rd()] = res;
+    cpu.reg.cpsr.set_n(res & 0x8000_0000 != 0);
+    cpu.reg.cpsr.set_z(res == 0);
+    cpu.reg.cpsr.set_c(carry);
+    DispatchRes::RetireOk
+}
+
 pub fn mov_reg_alt(cpu: &mut Cpu, op: MovRegAltBits) -> DispatchRes {
     assert!(op.imm5() != 0);
     assert_ne!(op.rd(), 15);
@@ -68,8 +81,18 @@ pub fn add_sp_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn add_sp_imm_alt(cpu: &mut Cpu, op: AddSubSpImmAltBits) -> DispatchRes {
+    let imm7 = (op.imm7() as u32) << 2;
+    let res = cpu.reg[Reg::Sp].wrapping_add(imm7);
+    cpu.reg[Reg::Sp] = res;
+    DispatchRes::RetireOk
+}
+
+
+
 pub fn add_reg_alt(cpu: &mut Cpu, op: AddRegAltBits) -> DispatchRes {
-    assert_ne!(op.rm(), 13);
+    // ???
+    //assert_ne!(op.rm(), 13);
     let rd = if op.dn() { op.rdn() | 0x8 } else { op.rdn() };
     let rn = rd;
     let (alu_out, n, z, c, v) = add_generic(cpu.reg[rn], cpu.reg[op.rm()]);
@@ -154,6 +177,20 @@ pub fn orr_reg(cpu: &mut Cpu, op: BitwiseRegBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn eor_reg(cpu: &mut Cpu, op: BitwiseRegBits) -> DispatchRes {
+    let rm = cpu.reg[op.rm()];
+    let (val, carry) = barrel_shift(ShiftArgs::Reg { rm, 
+        stype: ShiftType::Lsl as u32, imm5: 0, c_in: cpu.reg.cpsr.c()
+    });
+    let res = cpu.reg[op.rdn()] ^ val;
+
+    cpu.reg[op.rdn()] = res;
+    cpu.reg.cpsr.set_n(res & 0x8000_0000 != 0);
+    cpu.reg.cpsr.set_z(res == 0);
+    cpu.reg.cpsr.set_c(carry);
+    DispatchRes::RetireOk
+}
+
 pub fn bic_reg(cpu: &mut Cpu, op: BitwiseRegBits) -> DispatchRes {
     let rm = cpu.reg[op.rm()];
     let (val, carry) = barrel_shift(ShiftArgs::Reg { rm, 
@@ -202,16 +239,53 @@ pub fn cmp_reg_alt(cpu: &mut Cpu, op: CmpRegAltBits) -> DispatchRes {
 
 pub fn add_imm(cpu: &mut Cpu, op: AddSubImmBits) -> DispatchRes {
     assert_ne!(op.rd(), 15);
-    let (alu_out, n, z, c, v) = add_generic(cpu.reg[op.rn()], op.imm3() as u32);
+    let rn_val = cpu.reg[op.rn()];
+    let imm3 = op.imm3() as u32;
+    let (alu_out, n, z, c, v) = add_generic(rn_val, imm3);
     cpu.reg[op.rd()] = alu_out;
     set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
+
+/// NOTE: Not sure this is correct?
+pub fn rsb_imm(cpu: &mut Cpu, op: RsbImmBits) -> DispatchRes {
+    let rn_val = cpu.reg[op.rn()];
+    let (alu_out, n, z, c, v) = sub_generic(0, rn_val);
+    cpu.reg[op.rd()] = alu_out;
+    set_all_flags!(cpu, n, z, c, v);
+    DispatchRes::RetireOk
+}
+
+
 pub fn sub_imm(cpu: &mut Cpu, op: AddSubImmBits) -> DispatchRes {
     assert_ne!(op.rd(), 15);
-    let (alu_out, n, z, c, v) = sub_generic(cpu.reg[op.rn()], op.imm3() as u32);
+    let rn_val = cpu.reg[op.rn()];
+    let imm3 = op.imm3() as u32;
+    let (alu_out, n, z, c, v) = sub_generic(rn_val, imm3);
     cpu.reg[op.rd()] = alu_out;
     set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
+
+pub fn sub_imm_alt(cpu: &mut Cpu, op: AddSubImmAltBits) -> DispatchRes {
+    assert_ne!(op.rdn(), 15);
+    let rn_val = cpu.reg[op.rdn()];
+    let imm8 = op.imm8() as u32;
+
+    let (alu_out, n, z, c, v) = sub_generic(rn_val, imm8);
+    cpu.reg[op.rdn()] = alu_out;
+    set_all_flags!(cpu, n, z, c, v);
+    DispatchRes::RetireOk
+}
+
+pub fn add_imm_alt(cpu: &mut Cpu, op: AddSubImmAltBits) -> DispatchRes {
+    assert_ne!(op.rdn(), 15);
+    let rn_val = cpu.reg[op.rdn()];
+    let imm8 = op.imm8() as u32;
+    let (alu_out, n, z, c, v) = add_generic(rn_val, imm8);
+    cpu.reg[op.rdn()] = alu_out;
+    set_all_flags!(cpu, n, z, c, v);
+    DispatchRes::RetireOk
+}
+
 

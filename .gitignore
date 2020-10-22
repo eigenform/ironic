@@ -8,4 +8,5 @@ Cargo.lock
 /tui/target
 /tui/Cargo.lock
 *.bin
+*.sym
 perf.data

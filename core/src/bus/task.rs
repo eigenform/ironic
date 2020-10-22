@@ -2,17 +2,25 @@
 use std::collections::VecDeque;
 use crate::bus::mmio::MmioDevice;
 
-/// Implemented on the bus for a specific I/O device; used to handle a task.
-pub trait TaskHandler<T: MmioDevice> {
-    fn handle_task(&mut self, val: u32);
+
+#[derive(Debug)]
+pub enum TaskType {
+    Read,
+    Write,
 }
 
 /// Representing some device and piece of work to-be-completed by the bus.
 #[derive(Debug)]
 pub enum BusTask {
+    /// A NAND interface command.
     Nand(u32),
+    /// An AES interface command.
     Aes(u32),
+    /// A SHA interface command.
     Sha(u32),
+
+    /// A read/write access request on the DDR interface.
+    Mi { kind: TaskType, data: u16 }
 }
 
 /// A queue of tasks to-be-completed by the bus.
