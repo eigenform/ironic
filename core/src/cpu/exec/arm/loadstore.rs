@@ -93,7 +93,7 @@ pub fn strb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
         op.imm12(), op.u(), op.p(), op.w()
     );
     cpu.reg[op.rn()] = wb_addr;
-    cpu.mmu.write8(addr, cpu.reg[op.rt()] as u8);
+    cpu.mmu.write8(addr, cpu.reg[op.rt()]);
     DispatchRes::RetireOk
 }
 

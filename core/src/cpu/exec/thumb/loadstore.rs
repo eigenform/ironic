@@ -78,8 +78,8 @@ fn store_reg(cpu: &mut Cpu, rn: u16, rm: u16, rt: u16, width: Width) {
     let addr = cpu.reg[rn].wrapping_add(cpu.reg[rm]);
     let val: u32 = cpu.reg[rt];
     match width {
-        Width::Byte => cpu.mmu.write8(addr, val as u8),
-        Width::Half => cpu.mmu.write16(addr, val as u16),
+        Width::Byte => cpu.mmu.write8(addr, val),
+        Width::Half => cpu.mmu.write16(addr, val),
         Width::Word => cpu.mmu.write32(addr, val),
     }
 }
@@ -100,8 +100,8 @@ fn store_imm(cpu: &mut Cpu, rn: u16, rt: u16, imm_n: u32, width: Width) {
     let addr = cpu.reg[rn].wrapping_add(imm);
     let val: u32 = cpu.reg[rt];
     match width {
-        Width::Byte => cpu.mmu.write8(addr, val as u8),
-        Width::Half => cpu.mmu.write16(addr, val as u16),
+        Width::Byte => cpu.mmu.write8(addr, val),
+        Width::Half => cpu.mmu.write16(addr, val),
         Width::Word => cpu.mmu.write32(addr, val),
     }
 }

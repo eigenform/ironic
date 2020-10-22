@@ -26,10 +26,10 @@ impl Mmu {
     pub fn write32(&self, addr: u32, val: u32) {
         self.bus.write().unwrap().write32(addr, val);
     }
-    pub fn write16(&self, addr: u32, val: u16) {
-        self.bus.write().unwrap().write16(addr, val);
+    pub fn write16(&self, addr: u32, val: u32) {
+        self.bus.write().unwrap().write16(addr, val as u16);
     }
-    pub fn write8(&self, addr: u32, val: u8) {
-        self.bus.write().unwrap().write8(addr, val);
+    pub fn write8(&self, addr: u32, val: u32) {
+        self.bus.write().unwrap().write8(addr, val as u8);
     }
 }
