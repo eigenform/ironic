@@ -14,6 +14,22 @@ macro_rules! set_all_flags {
     }
 }
 
+pub fn mov_rsr(cpu: &mut Cpu, op: MovRsrBits) -> DispatchRes {
+    let rm_val = cpu.reg[op.rdm()];
+    let rs_val = cpu.reg[op.rs()];
+    let stype = ((op.op() & 0b0100) >> 1 | (op.op() & 0b0001)) as u32;
+
+    let (res, carry) = barrel_shift(ShiftArgs::RegShiftReg { 
+        rm: rm_val, stype, rs: rs_val, c_in: cpu.reg.cpsr.c()
+    });
+
+    cpu.reg[op.rdm()] = res;
+    cpu.reg.cpsr.set_n(res & 0x8000_0000 != 0);
+    cpu.reg.cpsr.set_z(res == 0);
+    cpu.reg.cpsr.set_c(carry);
+    DispatchRes::RetireOk
+}
+
 pub fn mov_reg(cpu: &mut Cpu, op: MovRegBits) -> DispatchRes {
     assert_ne!(op.rm(), 15);
 

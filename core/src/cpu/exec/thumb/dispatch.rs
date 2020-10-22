@@ -45,6 +45,7 @@ impl InstLutEntry for ThumbFn {
             CmpReg      => ThumbFn(cfn!(dataproc::cmp_reg)),
             CmpRegAlt   => ThumbFn(cfn!(dataproc::cmp_reg_alt)),
             MovReg      => ThumbFn(cfn!(dataproc::mov_reg)),
+            MovRegShiftReg => ThumbFn(cfn!(dataproc::mov_rsr)),
             BicReg      => ThumbFn(cfn!(dataproc::bic_reg)),
             TstReg      => ThumbFn(cfn!(dataproc::tst_reg)),
             MvnReg      => ThumbFn(cfn!(dataproc::mvn_reg)),
