@@ -78,6 +78,25 @@ pub fn ldr_lit(cpu: &mut Cpu, op: LoadStoreAltBits) -> DispatchRes {
     }
 }
 
+pub fn ldr_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
+    let rn_val = cpu.reg[op.rn()];
+    let rm_val = cpu.reg[op.rm()];
+    let addr = rn_val.wrapping_add(rm_val);
+    let res = cpu.mmu.read32(addr);
+    cpu.reg[op.rt()] = res;
+    DispatchRes::RetireOk
+}
+
+pub fn ldrb_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
+    let rn_val = cpu.reg[op.rn()];
+    let rm_val = cpu.reg[op.rm()];
+    let addr = rn_val.wrapping_add(rm_val);
+    let res = cpu.mmu.read8(addr);
+    cpu.reg[op.rt()] = res as u32;
+    DispatchRes::RetireOk
+}
+
+
 pub fn ldrb_imm(cpu: &mut Cpu, op: LoadStoreImmBits) -> DispatchRes {
     let imm = (op.imm5() as u32);
     let addr = cpu.reg[op.rn()].wrapping_add(imm);
@@ -90,15 +109,6 @@ pub fn ldrb_imm(cpu: &mut Cpu, op: LoadStoreImmBits) -> DispatchRes {
 pub fn ldr_imm(cpu: &mut Cpu, op: LoadStoreImmBits) -> DispatchRes {
     let imm = (op.imm5() as u32) << 2;
     let addr = cpu.reg[op.rn()].wrapping_add(imm);
-    let res = cpu.mmu.read32(addr);
-    cpu.reg[op.rt()] = res;
-    DispatchRes::RetireOk
-}
-
-pub fn ldr_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
-    let rn_val = cpu.reg[op.rn()];
-    let rm_val = cpu.reg[op.rm()];
-    let addr = rn_val.wrapping_add(rm_val);
     let res = cpu.mmu.read32(addr);
     cpu.reg[op.rt()] = res;
     DispatchRes::RetireOk
@@ -120,6 +130,15 @@ pub fn ldr_imm_sp(cpu: &mut Cpu, op: LoadStoreAltBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+
+pub fn str_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
+    let rn_val = cpu.reg[op.rn()];
+    let rm_val = cpu.reg[op.rm()];
+    let addr = rn_val.wrapping_add(rm_val);
+    let val = cpu.reg[op.rt()];
+    cpu.mmu.write32(addr, val);
+    DispatchRes::RetireOk
+}
 
 pub fn str_imm(cpu: &mut Cpu, op: LoadStoreImmBits) -> DispatchRes {
     let imm = (op.imm5() as u32) << 2;
