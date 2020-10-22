@@ -32,6 +32,16 @@ pub fn bx(cpu: &mut Cpu, op: BxBits) -> DispatchRes {
     DispatchRes::RetireBranch
 }
 
+pub fn blx_reg(cpu: &mut Cpu, op: BxBits) -> DispatchRes {
+    assert_ne!(op.rm(), 15);
+    let new_lr = cpu.read_fetch_pc().wrapping_add(2) | 1;
+    let dest_pc = cpu.reg[op.rm()];
+    cpu.reg.cpsr.set_thumb(dest_pc & 1 != 0);
+    cpu.reg[Reg::Lr] = new_lr;
+    cpu.write_exec_pc(dest_pc & 0xffff_fffe);
+    DispatchRes::RetireBranch
+}
+
 pub fn b_unconditional(cpu: &mut Cpu, op: BranchAltBits) -> DispatchRes {
     let offset = sign_extend(op.imm11() as u32, 11) << 1;
     let dest_pc = (cpu.read_exec_pc() as i32).wrapping_add(offset) as u32;

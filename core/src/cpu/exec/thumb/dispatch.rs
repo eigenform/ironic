@@ -71,6 +71,7 @@ impl InstLutEntry for ThumbFn {
 
             BlPrefix    => ThumbFn(cfn!(branch::bl_prefix)),
             BlImmSuffix => ThumbFn(cfn!(branch::bl_imm_suffix)),
+            BlxReg      => ThumbFn(cfn!(branch::blx_reg)),
             Bx          => ThumbFn(cfn!(branch::bx)),
             B           => ThumbFn(cfn!(branch::b)),
             BAlt        => ThumbFn(cfn!(branch::b_unconditional)),
