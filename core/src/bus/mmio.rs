@@ -76,6 +76,9 @@ impl Bus {
                 BusTask::Aes(val) => self.handle_task_aes(val),
                 BusTask::Sha(val) => self.handle_task_sha(val),
                 BusTask::Mi{kind, data} => self.handle_task_mi(kind, data),
+
+                BusTask::SetRomMapped(x) => self.rom_mapped = x,
+                BusTask::SetSramMirror(x) => self.sram_mirror = x,
             }
         }
     }

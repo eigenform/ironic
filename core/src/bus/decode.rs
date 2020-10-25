@@ -44,7 +44,7 @@ impl Bus {
     /// Read the current state of any arguments which might change the layout
     /// of the physical memory map.
     fn get_physmap_args(&self) -> (bool, bool) {
-        (true, false)
+        (self.rom_mapped, self.sram_mirror)
     }
 
     /// Resolve a physical address associated with the SRAM/mask ROM region.

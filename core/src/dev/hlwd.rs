@@ -32,11 +32,6 @@ pub struct BusCtrlInterface {
     pub srnprot: u32,
     pub ahbprot: u32,
 }
-impl BusCtrlInterface {
-    pub fn sram_mirror(&self) -> bool { 
-        (self.srnprot & 0x0000_0020) != 0 
-    }
-}
 
 #[derive(Default, Debug, Clone)]
 pub struct AhbInterface {
@@ -140,10 +135,12 @@ impl MmioDevice for Hollywood {
     fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
         match off {
             0x060 => {
-                if (val & 0x20) != 0 { 
-                    panic!("");
-                }
                 self.busctrl.srnprot = val;
+                if (val & 0x0000_0020) != 0 { 
+                    return Some(BusTask::SetSramMirror(true));
+                } else {
+                    return Some(BusTask::SetSramMirror(false));
+                }
             }
             0x0c0..=0x0d8 => self.gpio.ppc.write_handler(off - 0xc0, val),
             0x0dc..=0x0fc => {
@@ -152,12 +149,22 @@ impl MmioDevice for Hollywood {
             0x100..=0x13c => self.arb_cfg_m[(off - 0x100)/4] = val,
             0x180 => self.compat = val,
             0x188 => {
+
+                // AHB flushing code seems to check these bits?
                 if (val & 0x0001_0000) != 0 {
                     self.spare1 &= 0xffff_fff6;
                 } else {
                     self.spare1 |= 0x0000_0009;
                 }
+
                 self.spare0 = val;
+
+                // Disable boot ROM mapping
+                if (val & 0x0000_1000) != 0 {
+                    return Some(BusTask::SetRomMapped(false));
+                } else {
+                    return Some(BusTask::SetRomMapped(true));
+                }
             },
             0x194 => self.resets = val,
             0x1bc => self.pll.ddr = val,
