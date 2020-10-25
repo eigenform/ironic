@@ -6,7 +6,7 @@ on Windows/Mac compatibility.
 
 ## Quick Roadmap
 - [x] Execution through the boot ROM
-- [ ] Execution through first-stage bootloader
+- [x] Execution through first-stage bootloader
 - [ ] Execution through second-stage bootloader
 - [ ] Execution in the kernel
 - [ ] Guest debugging functionality (either via GDB or UI)
