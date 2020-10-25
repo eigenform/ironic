@@ -1,4 +1,5 @@
 
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::mem;
@@ -24,6 +25,12 @@ impl BigEndianMemory {
             vec![0u8; len]
         };
         BigEndianMemory { data }
+    }
+}
+
+impl fmt::Debug for BigEndianMemory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BigEndianMemory").finish()
     }
 }
 

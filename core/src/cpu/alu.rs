@@ -194,3 +194,8 @@ pub fn barrel_shift(args: ShiftArgs) -> (u32, bool) {
 }
 
 
+
+#[derive(Debug, PartialEq)]
+pub enum BitwiseOp { And, Orr, Eor, Bic }
+
+

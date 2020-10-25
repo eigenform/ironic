@@ -10,3 +10,4 @@ Cargo.lock
 *.bin
 *.sym
 perf.data
+perf.data.old

@@ -46,6 +46,9 @@ pub enum CpuRes {
     StepOk,
 }
 
+
+pub enum CpuStatus { Boot0, Boot1, Boot2, Kernel }
+
 /// Container for an ARMv5-compatible CPU.
 pub struct Cpu {
 
@@ -68,6 +71,7 @@ pub struct Cpu {
     /// Some shared state with the UI thread.
     pub dbg: Arc<RwLock<Debugger>>,
     pub log_buf: Vec<String>,
+    pub status: CpuStatus,
 }
 impl Cpu {
     pub fn new(dbg: Arc<RwLock<Debugger>>, bus: Arc<RwLock<Bus>>) -> Self { 
@@ -78,6 +82,7 @@ impl Cpu {
             mmu: mmu::Mmu::new(bus),
             scratch: 0,
             log_buf: Vec::new(),
+            status: CpuStatus::Boot0,
             dbg
         };
         log(&cpu.dbg, LogLevel::Cpu, "CPU instantiated");
@@ -137,6 +142,11 @@ impl Cpu {
     pub fn exec_arm(&mut self) -> DispatchRes {
         let opcd = self.mmu.read32(self.read_fetch_pc());
 
+        //let pc = self.read_fetch_pc();
+        //let opname = format!("{:?}", ArmInst::decode(opcd));
+        //if pc >= 0xfff004cc && pc <= 0xfff0_0e13 { 
+        //    println!("{:08x}: {:12} {:x?}", self.read_fetch_pc(), opname, self.reg);
+        //}
         //self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(),
         //    format!("{:?}",ArmInst::decode(opcd)), self.reg));
 
@@ -152,6 +162,12 @@ impl Cpu {
     pub fn exec_thumb(&mut self) -> DispatchRes {
         let opcd = self.mmu.read16(self.read_fetch_pc());
 
+        //let pc = self.read_fetch_pc();
+        //let opname = format!("{:?}", ThumbInst::decode(opcd));
+        //if pc >= 0xfff004cc && pc <= 0xfff0_0e13 { 
+        //    println!("{:08x}: {:12} {:x?}", self.read_fetch_pc(), opname, self.reg);
+        //}
+
         //self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), 
         //    format!("{:?}", ThumbInst::decode(opcd)), self.reg));
 
@@ -159,21 +175,6 @@ impl Cpu {
         func.0(self, opcd)
     }
 }
-
-/// Logging/debugging interfaces.
-impl Cpu {
-    fn log(&mut self, s: String) { self.log_buf.push(s); }
-
-    /// Drain the CPU log buffer into the attached debugger.
-    fn drain_log_buffer(&mut self) {
-        let mut entries = std::mem::replace(&mut self.log_buf, Vec::new());
-        let mut dbg = self.dbg.write().unwrap();
-        for entry in entries.drain(..) {
-            dbg.console_buf.push(LogEntry{ lvl: LogLevel::Cpu, data: entry });
-        }
-    }
-}
-
 
 impl Cpu {
     pub fn step(&mut self) -> CpuRes {
@@ -189,13 +190,29 @@ impl Cpu {
                 CpuRes::StepOk
             },
             DispatchRes::RetireBranch => CpuRes::StepOk,
-            DispatchRes::FatalErr => CpuRes::HaltEmulation,
+            DispatchRes::FatalErr => {
+                println!("CPU halted at pc={:08x}", self.read_fetch_pc());
+                CpuRes::HaltEmulation
+            },
             _ => unreachable!(),
         };
 
-        self.drain_log_buffer();
-        // Update the debugger's copy of the register file and return.
-        self.dbg.write().unwrap().reg = self.reg;
+        match self.status {
+            CpuStatus::Boot0 => {
+                if self.read_fetch_pc() == 0xfff0_0000 { 
+                    println!("Entered boot1");
+                    self.status = CpuStatus::Boot1;
+                }
+            }
+            CpuStatus::Boot1 => {
+                if self.read_fetch_pc() == 0xfff0_0058 { 
+                    println!("Entered boot2");
+                    self.status = CpuStatus::Boot2;
+                }
+            }
+            _ => {},
+        }
+
         cpu_res
     }
 }

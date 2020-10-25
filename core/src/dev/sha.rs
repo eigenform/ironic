@@ -90,19 +90,17 @@ impl Bus {
 
         let cmd = ShaCommand::from(val);
 
-        log(&self.dbg, LogLevel::Sha,
-            &format!("Digest addr={:08x} len={:08x}", sha.src, cmd.len));
+        println!("SHA Digest addr={:08x} len={:08x}", sha.src, cmd.len);
 
         let mut sha_buf = vec![0u8; cmd.len as usize];
         self.dma_read(sha.src, &mut sha_buf);
         sha.state.update(&sha_buf);
         sha.src += cmd.len;
 
-        log(&self.dbg, LogLevel::Sha,
-            &format!("Digest {:08x} {:08x} {:08x} {:08x} {:08x}", 
-                sha.state.digest[0], sha.state.digest[1],
-                sha.state.digest[2], sha.state.digest[3],
-                sha.state.digest[4]));
+        println!("SHA Digest {:08x} {:08x} {:08x} {:08x} {:08x}", 
+            sha.state.digest[0], sha.state.digest[1],
+            sha.state.digest[2], sha.state.digest[3],
+            sha.state.digest[4]);
 
 
         // Mark the command as completed

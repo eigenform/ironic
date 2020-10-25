@@ -118,8 +118,7 @@ impl Bus {
 
         let cmd = AesCommand::from(val);
 
-        log(&self.dbg, LogLevel::Aes, 
-            &format!("Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len));
+        println!("AES Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len);
 
         // Read data from the source address
         let mut aes_inbuf = vec![0u8; cmd.len];

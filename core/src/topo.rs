@@ -80,6 +80,7 @@ impl EmuThreadContext {
                 CpuRes::HaltEmulation => break,
             }
         }
+        println!("CPU slice finished pc={:08x}", self.cpu.read_fetch_pc());
     }
 }
 

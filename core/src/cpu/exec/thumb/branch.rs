@@ -26,7 +26,15 @@ pub fn bl_imm_suffix(cpu: &mut Cpu, op: BlBits) -> DispatchRes {
     DispatchRes::RetireBranch
 }
 pub fn bx(cpu: &mut Cpu, op: BxBits) -> DispatchRes {
-    let dest_pc = cpu.reg[op.rm()];
+    //println!("pc={:08x}", cpu.read_fetch_pc());
+
+    let dest_pc = if op.rm() == 15 {
+        cpu.read_fetch_pc()
+    } else {
+        cpu.reg[op.rm()]
+    };
+
+    //let dest_pc = cpu.reg[op.rm()];
     cpu.reg.cpsr.set_thumb(dest_pc & 1 != 0);
     cpu.write_exec_pc(dest_pc & 0xffff_fffe);
     DispatchRes::RetireBranch

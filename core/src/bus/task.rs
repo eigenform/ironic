@@ -20,7 +20,7 @@ pub enum BusTask {
     Sha(u32),
 
     /// A read/write access request on the DDR interface.
-    Mi { kind: TaskType, data: u16 }
+    Mi { kind: TaskType, data: u16 },
 }
 
 /// A queue of tasks to-be-completed by the bus.

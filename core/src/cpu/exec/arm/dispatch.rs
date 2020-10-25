@@ -49,6 +49,7 @@ impl InstLutEntry for ArmFn {
             StrImm      => ArmFn(cfn!(loadstore::str_imm)),
             StrbImm     => ArmFn(cfn!(loadstore::strb_imm)),
             Stmdb       => ArmFn(cfn!(loadstore::stmdb)),
+            Stm         => ArmFn(cfn!(loadstore::stm)),
 
             Mcr         => ArmFn(cfn!(coproc::mcr)),
             Mrc         => ArmFn(cfn!(coproc::mrc)),

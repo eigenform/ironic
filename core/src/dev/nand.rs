@@ -92,14 +92,10 @@ impl MmioDevice for NandInterface {
             0x14 => self.eccbuf,
             _ => panic!("Unhandled AES read at {:x} ", off),
         };
-        log(&self.dbg, LogLevel::Nand, &format!(
-            "Read {:08x} at offset {:02x}", val, off));
         BusPacket::Word(val)
     }
 
     fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
-        log(&self.dbg, LogLevel::Nand, &format!(
-            "Write {:08x} to offset {:02x}", val, off));
         match off {
             0x00 => {
                 self.ctrl = val;
@@ -140,11 +136,8 @@ impl Bus {
                 assert!(data_len == NAND_PAGE_LEN as u32);
                 assert!(ecc_flag);
 
-                log(&self.dbg, LogLevel::Nand, &format!(
-                    "Reading page {:08x}, DMA write data={:08x} ecc={:08x}", 
-                    nand.addr2, nand.databuf, nand.eccbuf)
-                );
-
+                println!("NAND page {:08x}, DMA write data={:08x} ecc={:08x}",
+                    nand.addr2, nand.databuf, nand.eccbuf);
               
                 let nand_offset = nand.addr2 as usize * NAND_PAGE_LEN;
                 let mut buf = vec![0; data_len as usize];
@@ -157,9 +150,8 @@ impl Bus {
                     let addr = (nand.eccbuf ^ 0x40) + (i as u32 * 4);
                     let old_ecc = self.read32(addr);
                     let new_ecc = calc_ecc(&mut buf[(i * 0x200)..]);
-                    log(&self.dbg, LogLevel::Nand, &format!(
-                        "Wrote ECC to {:08x} (old={:08x} new={:08x} ", 
-                        addr, old_ecc, new_ecc));
+                    println!("NAND ECC write addr={:08x} old={:08x} new={:08x}",
+                        addr, old_ecc, new_ecc);
                     self.write32(addr, new_ecc);
                 }
 

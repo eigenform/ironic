@@ -141,7 +141,6 @@ pub fn ldmia(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
 pub fn stmdb(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
     assert_ne!(op.rn(), 15);
     let reglist = op.register_list();
-
     let mut addr = cpu.reg[op.rn()] - (reglist.count_ones() * 4);
     let wb_addr = addr;
 
@@ -161,3 +160,30 @@ pub fn stmdb(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
     }
     DispatchRes::RetireOk
 }
+
+pub fn stm(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
+    assert_ne!(op.rn(), 15);
+
+    let reglist = op.register_list();
+    let mut addr = cpu.reg[op.rn()];
+    let mut wb_addr = cpu.reg[op.rn()] + (reglist.count_ones() * 4);
+
+    for i in 0..16 {
+        if (reglist & (1 << i)) != 0 {
+            let val = if i == 15 {
+                cpu.read_exec_pc()
+            } else {
+                cpu.reg[i as u32]
+            };
+            cpu.mmu.write32(addr, val);
+            addr += 4;
+        }
+    }
+
+    assert!(addr == wb_addr);
+    if op.w() { 
+        cpu.reg[op.rn()] = wb_addr;
+    }
+    DispatchRes::RetireOk
+}
+

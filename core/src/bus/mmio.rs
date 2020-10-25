@@ -58,56 +58,24 @@ impl Bus {
 
 impl Bus {
 
-    pub fn handle_step_hlwd(&mut self) {
-        let local_ref = self.dev.clone();
-        let mut dev = local_ref.write().unwrap();
-        let hlwd = &mut dev.hlwd;
-
-        hlwd.timer = hlwd.timer.wrapping_add(4);
-    }
-
-    pub fn handle_task_mi(&mut self, kind: TaskType, data: u16) {
-
-        let local_ref = self.dev.clone();
-        let mut dev = local_ref.write().unwrap();
-        let hlwd = &mut dev.hlwd;
-
-        match kind {
-            TaskType::Read => {
-                assert!(data >= 0x0100);
-                hlwd.mi.ddr_addr = data;
-                let off = ((data * 2) - 0x0200) as usize;
-                let res = hlwd.ddr.read(off);
-                hlwd.mi.ddr_data = match res {
-                    BusPacket::Half(val) => val,
-                    _ => unreachable!(),
-                };
-            },
-            TaskType::Write => {
-                let ddr_addr = hlwd.mi.ddr_addr;
-                assert!(ddr_addr >= 0x0100);
-                let off = ((hlwd.mi.ddr_addr * 2) - 0x200) as usize;
-                hlwd.ddr.write(off, data);
-            }
-        }
-    }
-
-
+    /// Emulate a slice of work on the Bus.
     pub fn step(&mut self) {
         self.handle_step_hlwd();
 
         if !self.tasks.is_empty() {
-            log(&self.dbg, LogLevel::Bus, &format!(
-                    "Completing {} tasks", self.tasks.len()));
+            self.drain_tasks();
+        }
+    }
 
-            let mut tasks = std::mem::replace(&mut self.tasks, Vec::new());
-            for task in tasks.drain(..) {
-                match task {
-                    BusTask::Nand(val) => self.handle_task_nand(val),
-                    BusTask::Aes(val) => self.handle_task_aes(val),
-                    BusTask::Sha(val) => self.handle_task_sha(val),
-                    BusTask::Mi{kind, data} => self.handle_task_mi(kind, data),
-                }
+    /// Dispatch all pending tasks on the Bus.
+    fn drain_tasks(&mut self) {
+        let mut tasks = std::mem::replace(&mut self.tasks, Vec::new());
+        for task in tasks.drain(..) {
+            match task {
+                BusTask::Nand(val) => self.handle_task_nand(val),
+                BusTask::Aes(val) => self.handle_task_aes(val),
+                BusTask::Sha(val) => self.handle_task_sha(val),
+                BusTask::Mi{kind, data} => self.handle_task_mi(kind, data),
             }
         }
     }

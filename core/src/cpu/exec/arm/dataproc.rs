@@ -198,20 +198,6 @@ pub fn mov_reg(cpu: &mut Cpu, op: MovRegBits) -> DispatchRes {
 }
 
 
-pub fn orr_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
-    assert_ne!(op.rd(), 15);
-    let (val, carry) = barrel_shift(ShiftArgs::Imm {
-        imm12: op.imm12(), c_in: cpu.reg.cpsr.c()
-    });
-    let res = cpu.reg[op.rn()] | val;
-    if op.s() {
-        cpu.reg.cpsr.set_n((res & 0x8000_0000) != 0);
-        cpu.reg.cpsr.set_z(res == 0);
-        cpu.reg.cpsr.set_c(carry);
-    }
-    cpu.reg[op.rd()] = res;
-    DispatchRes::RetireOk
-}
 pub fn orr_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
     assert_ne!(op.rd(), 15);
     let (val, carry) = barrel_shift(ShiftArgs::Reg {
@@ -274,34 +260,33 @@ pub fn eor_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
 }
 
 
-
-pub fn and_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
-    assert_ne!(op.rd(), 15);
-    let (val, carry) = barrel_shift(ShiftArgs::Imm {
-        imm12: op.imm12(), c_in: cpu.reg.cpsr.c()
-    });
-    let res = cpu.reg[op.rn()] & val;
-    if op.s() {
+fn do_bitwise_imm(cpu: &mut Cpu, rn: u32, rd: u32, imm: u32, s: bool, op: BitwiseOp) {
+    assert_ne!(rd, 15);
+    let (val, carry) = barrel_shift(ShiftArgs::Imm { imm12: imm, c_in: cpu.reg.cpsr.c() });
+    let base = cpu.reg[rn];
+    let res = match op {
+        BitwiseOp::And => base & val,
+        BitwiseOp::Bic => base & !val,
+        BitwiseOp::Orr => base | val,
+        _ => panic!("ARM imm bitwise {:?} unimplemented", op),
+    };
+    if s {
         cpu.reg.cpsr.set_n((res & 0x8000_0000) != 0);
         cpu.reg.cpsr.set_z(res == 0);
         cpu.reg.cpsr.set_c(carry);
     }
-    cpu.reg[op.rd()] = res;
+    cpu.reg[rd] = res;
+}
+pub fn and_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
+    do_bitwise_imm(cpu, op.rn(), op.rd(), op.imm12(), op.s(), BitwiseOp::And);
     DispatchRes::RetireOk
 }
-
 pub fn bic_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
-    assert_ne!(op.rd(), 15);
-    let (val, carry) = barrel_shift(ShiftArgs::Imm {
-        imm12: op.imm12(), c_in: cpu.reg.cpsr.c()
-    });
-    let res = cpu.reg[op.rn()] & !val;
-    if op.s() {
-        cpu.reg.cpsr.set_n((res & 0x8000_0000) != 0);
-        cpu.reg.cpsr.set_z(res == 0);
-        cpu.reg.cpsr.set_c(carry);
-    }
-    cpu.reg[op.rd()] = res;
+    do_bitwise_imm(cpu, op.rn(), op.rd(), op.imm12(), op.s(), BitwiseOp::Bic);
+    DispatchRes::RetireOk
+}
+pub fn orr_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
+    do_bitwise_imm(cpu, op.rn(), op.rd(), op.imm12(), op.s(), BitwiseOp::Orr);
     DispatchRes::RetireOk
 }
 

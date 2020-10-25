@@ -14,6 +14,7 @@ macro_rules! set_all_flags {
     }
 }
 
+
 pub fn mov_rsr(cpu: &mut Cpu, op: MovRsrBits) -> DispatchRes {
     let rm_val = cpu.reg[op.rdm()];
     let rs_val = cpu.reg[op.rs()];
@@ -90,7 +91,7 @@ pub fn add_reg_alt(cpu: &mut Cpu, op: AddRegAltBits) -> DispatchRes {
     let rn = rd;
     let (alu_out, n, z, c, v) = add_generic(cpu.reg[rn], cpu.reg[op.rm()]);
     cpu.reg[rd] = alu_out;
-    set_all_flags!(cpu, n, z, c, v);
+    //set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
 
@@ -140,9 +141,6 @@ pub fn mul_reg(cpu: &mut Cpu, op: MulBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
-
-#[derive(Debug, PartialEq)]
-pub enum BitwiseOp { And, Orr, Eor, Bic }
 
 pub fn do_bitwise_reg(cpu: &mut Cpu, rm: u16, rdn: u16, op: BitwiseOp) {
     let (val, carry) = barrel_shift(ShiftArgs::Reg { rm: cpu.reg[rm], 
@@ -197,14 +195,14 @@ pub fn cmp_reg(cpu: &mut Cpu, op: CmpRegBits) -> DispatchRes {
 
 pub fn cmp_reg_alt(cpu: &mut Cpu, op: CmpRegAltBits) -> DispatchRes {
     let rn = if op.n() { op.rn() | 0x8 } else { op.rn() };
-    assert!(!(rn  < 8 && op.rm() < 8));
+    assert!(!(rn < 8 && op.rm() < 8));
     assert!(!(rn == 15 || op.rm() == 15));
 
     let rm = cpu.reg[op.rm()];
     let (val, _) = barrel_shift(ShiftArgs::Reg { rm, 
         stype: ShiftType::Lsl as u32, imm5: 0, c_in: cpu.reg.cpsr.c()
     });
-    let (_, n, z, c, v) = sub_generic(cpu.reg[op.rn()], val);
+    let (_, n, z, c, v) = sub_generic(cpu.reg[rn], val);
     set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
