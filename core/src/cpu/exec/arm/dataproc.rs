@@ -325,6 +325,17 @@ pub fn cmp_reg(cpu: &mut Cpu, op: DpTestRegBits) -> DispatchRes {
 }
 
 
+pub fn tst_imm(cpu: &mut Cpu, op: DpTestImmBits) -> DispatchRes {
+    let (val, carry) = barrel_shift(ShiftArgs::Imm {
+        imm12: op.imm12(), c_in: cpu.reg.cpsr.c()
+    });
+    let res = cpu.reg[op.rn()] & val;
+    cpu.reg.cpsr.set_n(res & 0x8000_0000 != 0);
+    cpu.reg.cpsr.set_z(res == 0);
+    cpu.reg.cpsr.set_c(carry);
+    DispatchRes::RetireOk
+}
+
 pub fn tst_reg(cpu: &mut Cpu, op: DpTestRegBits) -> DispatchRes {
     let (val, carry) = barrel_shift(ShiftArgs::Reg {
         rm: cpu.reg[op.rm()], 

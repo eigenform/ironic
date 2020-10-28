@@ -3,14 +3,54 @@ use crate::dev::*;
 use crate::bus::*;
 use crate::bus::prim::*;
 
+pub struct PhysMapArgs {
+    /// Is the boot ROM mapping currently enabled?
+    pub rom: bool,
+    /// Is the SRAM mirror currently enabled?
+    pub mirror: bool,
+}
+
+
+/// Declare a constant handle to some memory device.
+macro_rules! decl_mem_handle { 
+    ($name:ident, $id:ident, $mask:expr) => {
+        const $name : DeviceHandle = DeviceHandle {
+            dev: Device::Mem(MemDevice::$id), mask: $mask
+        };
+    }
+}
+
+/// Declare a constant handle to some IO device.
+macro_rules! decl_io_handle { 
+    ($name:ident, $id:ident, $mask:expr) => {
+        const $name : DeviceHandle = DeviceHandle {
+            dev: Device::Io(IoDevice::$id), mask: $mask
+        };
+    }
+}
+
+decl_mem_handle!(MEM1_HANDLE, Mem1, 0x017f_ffff);
+decl_mem_handle!(MEM2_HANDLE, Mem2, 0x03ff_ffff);
+
+decl_io_handle!(NAND_HANDLE, Nand,  0x0000_001f);
+decl_io_handle!(AES_HANDLE, Aes,    0x0000_001f);
+decl_io_handle!(SHA_HANDLE, Sha,    0x0000_001f);
+
+decl_io_handle!(HLWD_HANDLE, Hlwd,  0x0000_03ff);
+decl_io_handle!(AHB_HANDLE, Ahb,    0x0000_3fff);
+decl_io_handle!(MI_HANDLE, Mi,      0x0000_01ff);
+decl_io_handle!(DDR_HANDLE, Ddr,    0x0000_01ff);
+decl_io_handle!(DI_HANDLE, Di,      0x0000_03ff);
+decl_io_handle!(SI_HANDLE, Si,      0x0000_03ff);
+decl_io_handle!(EXI_HANDLE, Exi,    0x0000_03ff);
+
+
+
 /// Decode physical addresses into some token for a device.
 impl Bus {
     pub fn decode_phys_addr(&self, addr: u32) -> Option<DeviceHandle> {
-        use IoDevice::*;
-        use MemDevice::*;
         let hi_bits = (addr & 0xffff_0000) >> 16;
         match hi_bits {
-
             0x0d40 |
             0x0d41 |
             0xfff0 |
@@ -18,20 +58,15 @@ impl Bus {
             0xfffe |
             0xffff => self.resolve_sram(addr),
 
-            0x0d01 => 
-                Some(DeviceHandle { dev: Device::Io(Nand), base: NAND_BASE }),
-            0x0d02 => 
-                Some(DeviceHandle { dev: Device::Io(Aes), base: AES_BASE }),
-            0x0d03 => 
-                Some(DeviceHandle { dev: Device::Io(Sha), base: SHA_BASE }),
+            0x0d01 => Some(NAND_HANDLE),
+            0x0d02 => Some(AES_HANDLE),
+            0x0d03 => Some(SHA_HANDLE),
 
             0x0d80 |
             0x0d8b => self.resolve_hlwd(addr),
 
-            0x0000..=0x017f => 
-                Some(DeviceHandle { dev: Device::Mem(Mem1), base: MEM1_BASE }),
-            0x1000..=0x13ff => 
-                Some(DeviceHandle { dev: Device::Mem(Mem2), base: MEM2_BASE }),
+            0x0000..=0x017f => Some(MEM1_HANDLE),
+            0x1000..=0x13ff => Some(MEM2_HANDLE),
 
             _ => None,
         }
@@ -43,79 +78,104 @@ impl Bus {
 
     /// Read the current state of any arguments which might change the layout
     /// of the physical memory map.
-    fn get_physmap_args(&self) -> (bool, bool) {
-        (self.rom_mapped, self.sram_mirror)
-    }
-
-    /// Resolve a physical address associated with the SRAM/mask ROM region.
-    fn resolve_sram(&self, addr: u32) -> Option<DeviceHandle> {
-        let (mrom, mirror) = self.get_physmap_args();
-        if mirror {
-            self.__resolve_mirror_on(addr, mrom)
-        } else {
-            self.__resolve_mirror_off(addr, mrom)
-        }
+    fn get_physmap_args(&self) -> PhysMapArgs {
+        PhysMapArgs { rom: !self.rom_disabled, mirror: self.mirror_enabled }
     }
 
     /// Resolve a physical address associated with the Hollywood MMIO region.
     fn resolve_hlwd(&self, addr: u32) -> Option<DeviceHandle> {
-        use IoDevice::*;
         match addr {
-            HLWD_BASE..=HLWD_TAIL => 
-                Some(DeviceHandle { dev: Device::Io(Hlwd), base: HLWD_BASE }),
-            DI_BASE..=DI_TAIL =>
-                Some(DeviceHandle { dev: Device::Io(Di), base: DI_BASE }),
-            AHB_BASE..=AHB_TAIL =>
-                Some(DeviceHandle { dev: Device::Io(Ahb), base: AHB_BASE }),
-            MEM_BASE..=MEM_TAIL => 
-                Some(DeviceHandle { dev: Device::Io(Mi), base: MEM_BASE }),
-            DDR_BASE..=DDR_TAIL =>
-                Some(DeviceHandle { dev: Device::Io(Ddr), base: DDR_BASE }),
+            HLWD_BASE..=HLWD_TAIL   => Some(HLWD_HANDLE),
+            DI_BASE..=DI_TAIL       => Some(DI_HANDLE),
+            AHB_BASE..=AHB_TAIL     => Some(AHB_HANDLE),
+            MEM_BASE..=MEM_TAIL     => Some(MI_HANDLE),
+            DDR_BASE..=DDR_TAIL     => Some(DDR_HANDLE),
             _ => None,
         }
     }
 
-    /// Mapping for the SRAM region when the mirror is enabled.
-    fn __resolve_mirror_on(&self, addr: u32, _mrom: bool) -> Option<DeviceHandle> {
-        use MemDevice::*;
-        match addr {
-            SRAM_BASE_A..=0x0d40_7fff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram1), base: SRAM_BASE_A }),
-            SRAM_BASE_B..=0x0d41_ffff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram0), base: SRAM_BASE_B }),
-            SRAM_BASE_C..=0xfff0_7fff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram1), base: SRAM_BASE_C }),
-            SRAM_BASE_D..=0xfff1_ffff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram0), base: SRAM_BASE_D }),
-            SRAM_BASE_E..=0xfffe_ffff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram1), base: SRAM_BASE_E }),
-            SRAM_BASE_F..=0xffff_ffff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram0), base: SRAM_BASE_F }),
-            _ => None,
-        }
-    }
-
-    /// Mapping for the SRAM region when the mirror is disabled.
-    fn __resolve_mirror_off(&self, addr: u32, mrom: bool) -> Option<DeviceHandle> {
-        use MemDevice::*;
-        match addr {
-            SRAM_BASE_A..=0x0d40_ffff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram0), base: SRAM_BASE_A }),
-            SRAM_BASE_B..=0x0d41_7fff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram1), base: SRAM_BASE_B }),
-            SRAM_BASE_C..=0xfff0_ffff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram0), base: SRAM_BASE_C }),
-            SRAM_BASE_D..=0xfff1_7fff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram1), base: SRAM_BASE_D }),
-            SRAM_BASE_E..=0xfffe_ffff => 
-                Some(DeviceHandle { dev: Device::Mem(Sram0), base: SRAM_BASE_E }),
-
-            SRAM_BASE_F..=0xffff_7fff => { if mrom && addr <= MROM_TAIL {
-                Some(DeviceHandle { dev: Device::Mem(MaskRom), base: MROM_BASE })
-            } else {
-                Some(DeviceHandle { dev: Device::Mem(Sram1), base: SRAM_BASE_F })
-            }},
-            _ => None,
+    fn resolve_sram(&self, addr: u32) -> Option<DeviceHandle> {
+        let arg = self.get_physmap_args();
+        match (arg.rom, arg.mirror) {
+            (true,  false) => resolve_rom_nomir(addr),
+            (true,  true)  => resolve_rom_mir(addr),
+            (false, true)  => resolve_norom_mir(addr),
+            (false, false) => resolve_norom_nomir(addr),
         }
     }
 }
+
+fn resolve_rom_nomir(addr: u32) -> Option<DeviceHandle> {
+    use MemDevice::*;
+    match addr {
+        0x0d40_0000..=0x0d40_ffff | 0xfff0_0000..=0xfff0_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram0), mask: 0x0000_ffff }),
+
+        // The top half of this is just garbage?
+        0x0d41_0000..=0x0d41_ffff | 0xfff1_0000..=0xfff1_ffff =>
+            Some(DeviceHandle { dev: Device::Mem(Sram1), mask: 0x0000_ffff }),
+
+        0xfffe_0000..=0xfffe_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram0), mask: 0x0000_ffff }),
+        0xffff_0000..=0xffff_1fff => 
+            Some(DeviceHandle { dev: Device::Mem(MaskRom), mask: 0x0000_1fff }),
+        _ => None,
+    }
+}
+
+fn resolve_rom_mir(addr: u32) -> Option<DeviceHandle> {
+    use MemDevice::*;
+    match addr {
+        0x0d40_0000..=0x0d41_7fff | 0xfff0_0000..=0xfff1_ffff =>
+            Some(DeviceHandle { dev: Device::Mem(MaskRom), mask: 0x0000_1fff }),
+        0xfffe_0000..=0xfffe_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(MaskRom), mask: 0x0000_1fff }),
+        0xffff_0000..=0xffff_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram0), mask: 0x0000_ffff }),
+        _ => None,
+    }
+}
+
+fn resolve_norom_mir(addr: u32) -> Option<DeviceHandle> {
+    use MemDevice::*;
+    match addr {
+
+        // Top half is garbage?
+        0x0d40_0000..=0x0d40_ffff | 0xfff0_0000..=0xfff0_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram1), mask: 0x0000_ffff }),
+
+        0x0d41_0000..=0x0d41_ffff | 0xfff1_0000..=0xfff1_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram1), mask: 0x0000_ffff }),
+
+        // Top half is garbage?
+        0xfffe_0000..=0xfffe_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram1), mask: 0x0000_ffff }),
+
+        0xffff_0000..=0xffff_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram0), mask: 0x0000_ffff }),
+        _ => None,
+    }
+}
+
+fn resolve_norom_nomir(addr: u32) -> Option<DeviceHandle> {
+    use MemDevice::*;
+    match addr {
+
+        0x0d40_0000..=0x0d40_ffff | 0xfff0_0000..=0xfff0_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram0), mask: 0x0000_ffff }),
+
+        // Top half is garbage?
+        0x0d41_0000..=0x0d41_ffff | 0xfff1_0000..=0xfff1_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram1), mask: 0x0000_ffff }),
+
+        0xfffe_0000..=0xfffe_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram0), mask: 0x0000_ffff }),
+
+        // Top half is garbage?
+        0xffff_0000..=0xffff_ffff => 
+            Some(DeviceHandle { dev: Device::Mem(Sram1), mask: 0x0000_ffff }),
+        _ => None,
+    }
+}
+
+

@@ -1,6 +1,9 @@
 
 use std::collections::VecDeque;
 
+extern crate pretty_hex;
+use pretty_hex::*;
+
 extern crate aes;
 extern crate block_modes;
 use aes::Aes128;
@@ -129,6 +132,9 @@ impl Bus {
         // If this command is just a DMA transfer without invoking the
         // AES engine, just write to the destination address
         if !cmd.use_aes {
+            //println!("AES plain DMA");
+            //println!("{:?}", aes_inbuf.hex_dump());
+
             self.dma_write(aes.dst, &aes_inbuf);
             return;
         }
@@ -145,6 +151,10 @@ impl Bus {
         // Decrypt/encrypt the data, then DMA write to memory
         if cmd.decrypt {
             cipher.decrypt(&mut aes_inbuf).unwrap().to_vec();
+
+            //println!("AES decrypt data");
+            //println!("{:?}", aes_inbuf.hex_dump());
+
             self.dma_write(aes.dst, &aes_inbuf);
         } else {
             panic!("AES encrypt unsupported");

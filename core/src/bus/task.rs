@@ -20,9 +20,9 @@ pub enum BusTask {
     Sha(u32),
 
     /// Change the state of the boot ROM mapping
-    SetRomMapped(bool),
+    SetRomDisabled(bool),
     /// Change the state of the SRAM mappings
-    SetSramMirror(bool),
+    SetMirrorEnabled(bool),
 
     /// A read/write access request on the DDR interface.
     Mi { kind: TaskType, data: u16 },

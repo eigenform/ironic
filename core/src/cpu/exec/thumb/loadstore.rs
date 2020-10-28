@@ -45,8 +45,12 @@ pub fn ldrb_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
 
 /// Generic load (immediate).
 fn load_imm(cpu: &mut Cpu, rn: u16, rt: u16, imm_n: u32, width: Width) {
-    // Byte stores do not shift the immediate
-    let imm = if width == Width::Byte { imm_n } else { imm_n << 2 };
+    let imm = match width {
+        Width::Byte => imm_n, 
+        Width::Half => imm_n << 1,
+        Width::Word => imm_n << 2,
+    };
+
     let addr = cpu.reg[rn].wrapping_add(imm);
     let res: u32 = match width {
         Width::Byte => cpu.mmu.read8(addr) as u32,
@@ -95,8 +99,12 @@ pub fn strb_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
 
 /// Generic store (immediate).
 fn store_imm(cpu: &mut Cpu, rn: u16, rt: u16, imm_n: u32, width: Width) {
-    // Byte stores do not shift the immediate
-    let imm = if width == Width::Byte { imm_n } else { imm_n << 2 };
+    let imm = match width {
+        Width::Byte => imm_n, 
+        Width::Half => imm_n << 1,
+        Width::Word => imm_n << 2,
+    };
+
     let addr = cpu.reg[rn].wrapping_add(imm);
     let val: u32 = cpu.reg[rt];
     match width {

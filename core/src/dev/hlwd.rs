@@ -135,12 +135,14 @@ impl MmioDevice for Hollywood {
     fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
         match off {
             0x060 => {
+                let diff = self.busctrl.srnprot ^ val;
                 self.busctrl.srnprot = val;
-                if (val & 0x0000_0020) != 0 { 
-                    return Some(BusTask::SetSramMirror(true));
+                let task = if (diff & 0x0000_0020) != 0 {
+                    Some(BusTask::SetMirrorEnabled((val & 0x0000_0020) != 0))
                 } else {
-                    return Some(BusTask::SetSramMirror(false));
-                }
+                    None
+                };
+                return task;
             }
             0x0c0..=0x0d8 => self.gpio.ppc.write_handler(off - 0xc0, val),
             0x0dc..=0x0fc => {
@@ -150,21 +152,25 @@ impl MmioDevice for Hollywood {
             0x180 => self.compat = val,
             0x188 => {
 
+                self.spare0 = val;
+
                 // AHB flushing code seems to check these bits?
                 if (val & 0x0001_0000) != 0 {
                     self.spare1 &= 0xffff_fff6;
                 } else {
                     self.spare1 |= 0x0000_0009;
                 }
-
-                self.spare0 = val;
-
-                // Disable boot ROM mapping
-                if (val & 0x0000_1000) != 0 {
-                    return Some(BusTask::SetRomMapped(false));
-                } else {
-                    return Some(BusTask::SetRomMapped(true));
-                }
+            },
+            0x18c => {
+                // Potentially toggle the boot ROM mapping
+                let diff = self.spare1 ^ val;
+                self.spare1 = val;
+                let task = if (diff & 0x0000_1000) != 0 {
+                    Some(BusTask::SetRomDisabled((val & 0x0000_1000) != 0))
+                } else { 
+                    None
+                };
+                return task;
             },
             0x194 => self.resets = val,
             0x1bc => self.pll.ddr = val,

@@ -27,7 +27,8 @@ pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     let res = if op.rn() == 15 {
         assert_eq!(op.w(), false);
         let addr = do_amode_lit(cpu.read_exec_pc(), op.imm12(), op.p(), op.u());
-        cpu.mmu.read32(addr)
+        let val = cpu.mmu.read32(addr);
+        val
     } else {
         let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
             op.imm12(), op.u(), op.p(), op.w());
@@ -166,7 +167,7 @@ pub fn stm(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
 
     let reglist = op.register_list();
     let mut addr = cpu.reg[op.rn()];
-    let mut wb_addr = cpu.reg[op.rn()] + (reglist.count_ones() * 4);
+    let mut wb_addr = addr + (reglist.count_ones() * 4);
 
     for i in 0..16 {
         if (reglist & (1 << i)) != 0 {

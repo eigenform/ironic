@@ -47,7 +47,8 @@ pub enum CpuRes {
 }
 
 
-pub enum CpuStatus { Boot0, Boot1, Boot2, Kernel }
+#[derive(PartialEq)]
+pub enum CpuStatus { Boot0, Boot1, Boot2Stub, Boot2, Kernel }
 
 /// Container for an ARMv5-compatible CPU.
 pub struct Cpu {
@@ -142,13 +143,11 @@ impl Cpu {
     pub fn exec_arm(&mut self) -> DispatchRes {
         let opcd = self.mmu.read32(self.read_fetch_pc());
 
-        //let pc = self.read_fetch_pc();
-        //let opname = format!("{:?}", ArmInst::decode(opcd));
-        //if pc >= 0xfff004cc && pc <= 0xfff0_0e13 { 
-        //    println!("{:08x}: {:12} {:x?}", self.read_fetch_pc(), opname, self.reg);
-        //}
-        //self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(),
-        //    format!("{:?}",ArmInst::decode(opcd)), self.reg));
+        if self.status == CpuStatus::Boot2 {
+            let pc = self.read_fetch_pc();
+            let opname = format!("{:?}", ArmInst::decode(opcd));
+            println!("({:08x}) {:08x}: {:12} {:x?}", opcd, self.read_fetch_pc(), opname, self.reg);
+        }
 
         if self.reg.cond_pass(opcd) {
             let func = self.lut.arm.lookup(opcd);
@@ -162,11 +161,11 @@ impl Cpu {
     pub fn exec_thumb(&mut self) -> DispatchRes {
         let opcd = self.mmu.read16(self.read_fetch_pc());
 
-        //let pc = self.read_fetch_pc();
-        //let opname = format!("{:?}", ThumbInst::decode(opcd));
-        //if pc >= 0xfff004cc && pc <= 0xfff0_0e13 { 
-        //    println!("{:08x}: {:12} {:x?}", self.read_fetch_pc(), opname, self.reg);
-        //}
+        if self.status == CpuStatus::Boot2 {
+            let pc = self.read_fetch_pc();
+            let opname = format!("{:?}", ThumbInst::decode(opcd));
+            println!("{:08x}: {:12} {:x?}", self.read_fetch_pc(), opname, self.reg);
+        }
 
         //self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), 
         //    format!("{:?}", ThumbInst::decode(opcd)), self.reg));
@@ -206,10 +205,17 @@ impl Cpu {
             }
             CpuStatus::Boot1 => {
                 if self.read_fetch_pc() == 0xfff0_0058 { 
+                    println!("Entered boot2 stub");
+                    self.status = CpuStatus::Boot2Stub;
+                }
+            }
+            CpuStatus::Boot2Stub => {
+                if self.read_fetch_pc() == 0xffff_0000 { 
                     println!("Entered boot2");
                     self.status = CpuStatus::Boot2;
                 }
             }
+
             _ => {},
         }
 

@@ -72,8 +72,8 @@ pub struct Bus {
     /// Reference to [SystemDevice].
     pub dev: DevRef,
 
-    pub rom_mapped: bool,
-    pub sram_mirror: bool,
+    pub rom_disabled: bool,
+    pub mirror_enabled: bool,
 
     /// Queue for pending work on I/O devices.
     pub tasks: Vec<BusTask>,
@@ -82,8 +82,8 @@ impl Bus {
     pub fn new(dbg: DbgRef, mem: MemRef, dev: DevRef)-> Self {
         Bus { 
             dbg, mem, dev,
-            rom_mapped: true,
-            sram_mirror: false,
+            rom_disabled: false,
+            mirror_enabled: false,
             tasks: Vec::new(),
         }
     }

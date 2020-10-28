@@ -25,7 +25,11 @@ pub const AHB_SIZE:     u32 = 0x0000_4000;
 
 // Base addresses for physical memory devices.
 pub const MEM1_BASE:    u32 = 0x0000_0000;
+pub const MEM1_MASK:    u32 = 0x017f_ffff;
+
 pub const MEM2_BASE:    u32 = 0x1000_0000;
+pub const MEM2_MASK:    u32 = 0x03ff_ffff;
+
 pub const NAND_BASE:    u32 = 0x0d01_0000;
 pub const AES_BASE:     u32 = 0x0d02_0000;
 pub const SHA_BASE:     u32 = 0x0d03_0000;
@@ -47,7 +51,9 @@ pub const SRAM_BASE_C:  u32 = 0xfff0_0000;
 pub const SRAM_BASE_D:  u32 = 0xfff1_0000;
 pub const SRAM_BASE_E:  u32 = 0xfffe_0000;
 pub const SRAM_BASE_F:  u32 = 0xffff_0000;
+
 pub const MROM_BASE:    u32 = 0xffff_0000;
+pub const MROM_MASK:    u32 = 0x0000_1fff;
 
 // Tail addresses for physical memory devices.
 pub const MEM1_TAIL:    u32 = MEM1_BASE + MEM1_SIZE - 1;

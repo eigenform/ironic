@@ -129,8 +129,9 @@ pub trait PhysMemDispatch: PhysMemMap + PhysMemDecode {
 /// Handle to a target for some physical memory access.
 #[derive(Debug, Clone, Copy)]
 pub struct DeviceHandle {
-    pub base: u32,
     pub dev: Device,
+    //pub base: u32,
+    pub mask: u32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -139,7 +140,7 @@ pub enum Device {
     Io(IoDevice),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MemDevice {
     MaskRom, 
     Sram0, 
@@ -147,7 +148,7 @@ pub enum MemDevice {
     Mem1, 
     Mem2,
 }
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum IoDevice {
     Nand, 
     Aes, 
@@ -156,6 +157,8 @@ pub enum IoDevice {
     Hlwd,
     Ahb,
     Di,
+    Si,
+    Exi,
     Mi,
     Ddr,
 }

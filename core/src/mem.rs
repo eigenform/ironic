@@ -2,6 +2,7 @@
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
+use std::io::Write;
 use std::mem;
 
 use crate::bus::prim::AccessWidth;
@@ -25,6 +26,12 @@ impl BigEndianMemory {
             vec![0u8; len]
         };
         BigEndianMemory { data }
+    }
+
+    pub fn dump(&self, filename: &str) {
+        let mut f = File::create(filename).expect("Couldn't create file");
+        let res = f.write(self.data.as_slice());
+        println!("Dumped memory to {} ({:?})", filename, res);
     }
 }
 

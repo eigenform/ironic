@@ -74,6 +74,7 @@ impl InstLutEntry for ArmFn {
             CmpImm      => ArmFn(cfn!(dataproc::cmp_imm)),
             CmpReg      => ArmFn(cfn!(dataproc::cmp_reg)),
             TstReg      => ArmFn(cfn!(dataproc::tst_reg)),
+            TstImm      => ArmFn(cfn!(dataproc::tst_imm)),
             BicImm      => ArmFn(cfn!(dataproc::bic_imm)),
 
             OrrRegShiftReg => ArmFn(cfn!(dataproc::orr_rsr)),

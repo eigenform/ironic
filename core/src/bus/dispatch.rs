@@ -48,7 +48,7 @@ impl Bus {
             panic!("Unresolved physical address {:08x}", addr)
         );
 
-        let off = addr.wrapping_sub(handle.base) as usize;
+        let off = (addr & handle.mask) as usize;
         let resp = match handle.dev {
             Device::Mem(dev) => self.do_mem_read(dev, off, width),
             Device::Io(dev) => self.do_mmio_read(dev, off, width),
@@ -62,7 +62,7 @@ impl Bus {
             panic!("Unresolved physical address {:08x}", addr)
         );
 
-        let off = addr.wrapping_sub(handle.base) as usize;
+        let off = (addr & handle.mask) as usize;
         let _resp = match handle.dev {
             Device::Mem(dev) => self.do_mem_write(dev, off, msg),
             Device::Io(dev) => self.do_mmio_write(dev, off, msg),
@@ -117,7 +117,7 @@ impl Bus {
             panic!("Unresolved physical address {:08x}", addr)
         );
 
-        let off = addr.wrapping_sub(handle.base) as usize;
+        let off = (addr & handle.mask) as usize;
         let mut mem = self.mem.write().unwrap();
         match handle.dev {
             Device::Mem(dev) => { match dev {
@@ -137,7 +137,7 @@ impl Bus {
             panic!("Unresolved physical address {:08x}", addr)
         );
 
-        let off = addr.wrapping_sub(handle.base) as usize;
+        let off = (addr & handle.mask) as usize;
         let mem = self.mem.write().unwrap();
         match handle.dev {
             Device::Mem(dev) => { match dev {

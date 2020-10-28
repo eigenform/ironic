@@ -43,5 +43,11 @@ fn main() {
     for line in loglines.drain(..) {
         println!("[{:?}] {}", line.lvl, line.data);
     }
+
+    mem.write().unwrap().sram0.dump("/tmp/sram0.bin");
+    mem.write().unwrap().sram1.dump("/tmp/sram1.bin");
+    mem.write().unwrap().mem1.dump("/tmp/mem1.bin");
+    mem.write().unwrap().mem2.dump("/tmp/mem2.bin");
+
 }
 
