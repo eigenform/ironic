@@ -2,7 +2,7 @@
 It's an emulator.
 
 If there end up being features specific to Linux platforms, I am not planning 
-on Windows/Mac compatibility.
+on Windows/Mac compatibility. It's also probably very slow, sorry.
 
 ## Quick Roadmap
 - [x] Execution through the boot ROM
@@ -10,7 +10,8 @@ on Windows/Mac compatibility.
 - [ ] Execution through second-stage bootloader
 - [ ] Execution in the kernel
 - [ ] Guest debugging functionality (either via GDB or UI)
-- [ ] Performance optimizations (i.e. a JIT backend)
+- [ ] Go fast (performance optimizations, i.e. a JIT backend, etc)
+- [ ] Other related tools?
 
 ## Contributing
 I am not interested in accepting contributions to this project and I will 
