@@ -9,6 +9,7 @@ pub mod dataproc;
 pub mod branch;
 pub mod coproc;
 pub mod multiply;
+pub mod status;
 
 use crate::cpu::*;
 

@@ -11,6 +11,7 @@ use std::sync::{Arc,RwLock};
 use crate::dbg::*;
 use crate::bus::*;
 use crate::cpu::lut::*;
+use crate::cpu::reg::*;
 
 use crate::cpu::exec::DispatchRes;
 
@@ -146,7 +147,7 @@ impl Cpu {
         if self.status == CpuStatus::Boot2 {
             let pc = self.read_fetch_pc();
             let opname = format!("{:?}", ArmInst::decode(opcd));
-            println!("({:08x}) {:08x}: {:12} {:x?}", opcd, self.read_fetch_pc(), opname, self.reg);
+            println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
         }
 
         if self.reg.cond_pass(opcd) {
@@ -164,11 +165,8 @@ impl Cpu {
         if self.status == CpuStatus::Boot2 {
             let pc = self.read_fetch_pc();
             let opname = format!("{:?}", ThumbInst::decode(opcd));
-            println!("{:08x}: {:12} {:x?}", self.read_fetch_pc(), opname, self.reg);
+            println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
         }
-
-        //self.log(format!("{:08x}: {:12} {:x?} ", self.read_fetch_pc(), 
-        //    format!("{:?}", ThumbInst::decode(opcd)), self.reg));
 
         let func = self.lut.thumb.lookup(opcd);
         func.0(self, opcd)
@@ -177,6 +175,8 @@ impl Cpu {
 
 impl Cpu {
     pub fn step(&mut self) -> CpuRes {
+        assert_eq!(self.reg.mode, self.reg.cpsr.mode());
+
         let disp_res = if self.reg.cpsr.thumb() {
             self.exec_thumb()
         } else {

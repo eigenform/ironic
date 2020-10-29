@@ -36,7 +36,8 @@ pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
         cpu.mmu.read32(addr)
     };
     if op.rt() == 15 {
-        cpu.write_exec_pc(res);
+        cpu.reg.cpsr.set_thumb(res & 1 != 0);
+        cpu.write_exec_pc(res & 0xffff_fffe);
         DispatchRes::RetireBranch
     } else {
         cpu.reg[op.rt()] = res;
