@@ -62,7 +62,6 @@ impl RegisterFile {
         init_cpsr.set_thumb(false);
         init_cpsr.set_fiq_disable(true);
         init_cpsr.set_irq_disable(true);
-        init_cpsr.set_imp_disable(true);
 
         RegisterFile {
             r: [0; 15],
@@ -228,8 +227,10 @@ impl std::ops::IndexMut<Reg> for RegisterFile {
 impl std::fmt::Debug for RegisterFile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let pc = if self.cpsr.thumb() { self.pc - 4 } else { self.pc - 8 };
-        let cpsr = format!("[{:?} {}{}{}{}{}{}]", self.cpsr.mode(),
+        let cpsr = format!("[{:?}|{}{}{}|{}{}{}{}{}]", self.cpsr.mode(),
             if self.cpsr.thumb() { "T" } else { "-" },
+            if self.cpsr.irq_disable() { "-" } else { "I" },
+            if self.cpsr.fiq_disable() { "-" } else { "F" },
             if self.cpsr.n() { "N" } else { "-" },
             if self.cpsr.z() { "Z" } else { "-" },
             if self.cpsr.c() { "C" } else { "-" },
@@ -316,7 +317,6 @@ impl Psr {
     pub fn thumb(&self) -> bool { (self.0 & 0x0000_0020) != 0 }
     pub fn fiq_disable(&self) -> bool { (self.0 & 0x0000_0040) != 0 }
     pub fn irq_disable(&self) -> bool { (self.0 & 0x0000_0080) != 0 }
-    pub fn imp_disable(&self) -> bool { (self.0 & 0x0000_0100) != 0 }
 
     pub fn q(&self) -> bool { (self.0 & 0x0800_0000) != 0 }
     pub fn v(&self) -> bool { (self.0 & 0x1000_0000) != 0 }
@@ -328,7 +328,6 @@ impl Psr {
     pub fn set_thumb(&mut self, val: bool) { self.set_bit(5, val); }
     pub fn set_fiq_disable(&mut self, val: bool) { self.set_bit(6, val); }
     pub fn set_irq_disable(&mut self, val: bool) { self.set_bit(7, val); }
-    pub fn set_imp_disable(&mut self, val: bool) { self.set_bit(8, val); }
 
     pub fn set_q(&mut self, val: bool) { self.set_bit(27, val); }
     pub fn set_v(&mut self, val: bool) { self.set_bit(28, val); }

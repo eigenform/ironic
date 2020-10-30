@@ -222,7 +222,10 @@ pub fn pop(cpu: &mut Cpu, op: PopBits) -> DispatchRes {
     cpu.reg[Reg::Sp] = end_addr;
 
     if new_pc.is_some() {
-        panic!("  POP pc={:08x} is unimplmented", new_pc.unwrap());
+        let dest_pc = new_pc.unwrap();
+        cpu.reg.cpsr.set_thumb(dest_pc & 1 != 0);
+        cpu.write_exec_pc(dest_pc & 0xffff_fffe);
+        DispatchRes::RetireBranch
     } else {
         DispatchRes::RetireOk
     }

@@ -1,15 +1,14 @@
 
 /// Hollywood platform interface.
 pub mod hlwd;
-
 /// The NAND flash interface.
 pub mod nand;
-
 /// The AES engine interface.
 pub mod aes;
-
 /// The SHA engine interface.
 pub mod sha;
+
+pub mod ehci;
 
 // Sizes of physical memory devices.
 pub const MEM1_SIZE:    u32 = 0x0180_0000;

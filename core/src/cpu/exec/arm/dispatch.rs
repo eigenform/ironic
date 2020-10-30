@@ -35,6 +35,8 @@ impl InstLutEntry for ArmFn {
 
         match inst {
             MsrImm      => ArmFn(cfn!(status::msr_imm)),
+            MsrReg      => ArmFn(cfn!(status::msr_reg)),
+            Mrs         => ArmFn(cfn!(status::mrs)),
             Umull       => ArmFn(cfn!(multiply::umull)),
             Mul         => ArmFn(cfn!(multiply::mul)),
             LdrImm      => ArmFn(cfn!(loadstore::ldr_imm)),

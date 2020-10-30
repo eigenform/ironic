@@ -11,6 +11,7 @@ use crate::dev::hlwd::*;
 use crate::dev::aes::*;
 use crate::dev::sha::*;
 use crate::dev::nand::*;
+use crate::dev::ehci::*;
 
 
 /// Top-level container for system memories.
@@ -39,18 +40,20 @@ impl SystemMemory {
 ///
 /// This structure owns all of the references to I/O devices.
 pub struct SystemDevice {
+    pub hlwd: Hollywood,
     pub nand: NandInterface,
     pub aes: AesInterface,
     pub sha: ShaInterface,
-    pub hlwd: Hollywood,
+    pub ehci: EhcInterface,
 }
 impl SystemDevice {
     pub fn new(dbg: Arc<RwLock<Debugger>>) -> Self {
         SystemDevice {
+            hlwd: Hollywood::new(dbg.clone()),
+            nand: NandInterface::new(dbg.clone(), "./nand.bin"),
             aes: AesInterface::new(),
             sha: ShaInterface::new(),
-            nand: NandInterface::new(dbg.clone(), "./nand.bin"),
-            hlwd: Hollywood::new(dbg.clone()),
+            ehci: EhcInterface::new(),
         }
     }
 }

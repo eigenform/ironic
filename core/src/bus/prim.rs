@@ -153,6 +153,7 @@ pub enum IoDevice {
     Nand, 
     Aes, 
     Sha,
+    Ehci,
 
     Hlwd,
     Ahb,
