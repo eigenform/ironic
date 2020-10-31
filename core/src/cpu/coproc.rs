@@ -25,7 +25,15 @@ impl SystemControl {
             Config => self.cfg.0 = val,
 
             // NOTE: I'm leaving these unimplemented for now.
-            CacheControl => { },
+            TlbControl |
+            PageControl | 
+            AccessControl | 
+            FaultStatus |
+            FaultAddress |
+            CacheControl => { 
+                println!("CPU p15 write {:08x} to reg={:?} crm={} opcd2={}", 
+                    val, SystemControlReg::from(reg), _crm, _opcd2); 
+            },
 
             _ => panic!("Unimpl p15 write to {:?}", SystemControlReg::from(reg)),
         }
@@ -81,9 +89,29 @@ pub enum CacheControlFunc {
 //    }
 //}
 
+
+#[repr(u32)]
+pub enum CRFlag {
+    MmuEnabled          = 0x0000_0001,
+    AlignFault          = 0x0000_0002,
+    UnifiedCache        = 0x0000_0004,
+    WriteBuffer         = 0x0000_0008,
+    BigEndian           = 0x0000_0080,
+    BranchPrediction    = 0x0000_0800,
+    ICache              = 0x0000_1000,
+    HighVectors         = 0x0000_2000,
+    RoundRobin          = 0x0000_4000,
+    InterworkDisable    = 0x0000_8000,
+}
+
+
 #[repr(transparent)]
 pub struct ConfigRegister(u32);
 impl ConfigRegister {
+    fn set(&mut self, flag: CRFlag) { self.0 |= flag as u32; }
+    fn toggle(&mut self, flag: CRFlag) { self.0 ^= flag as u32; }
+    fn unset(&mut self, flag: CRFlag) { self.0 &= !(flag as u32); }
+
     fn set_bit(&mut self, idx: usize, val: bool) {
         self.0 = (self.0 & !(1 << idx)) | (val as u32) << idx
     }

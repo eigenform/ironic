@@ -23,6 +23,14 @@ pub mod ddr;
 pub mod irq;
 
 #[derive(Default, Debug, Clone)]
+pub struct IpcInterface {
+    pub ppc_msg: u32,
+    pub ppc_ctrl: u32,
+    pub arm_msg: u32,
+    pub arm_ctrl: u32,
+}
+
+#[derive(Default, Debug, Clone)]
 pub struct TimerInterface {
     pub timer: u32,
     pub alarm: u32,
@@ -94,6 +102,7 @@ pub struct Hollywood {
     pub dbg: Arc<RwLock<Debugger>>,
     pub task: Option<HlwdTask>,
 
+    pub ipc: IpcInterface,
     pub timer: TimerInterface,
     pub busctrl: BusCtrlInterface,
     pub pll: ClockInterface,
@@ -124,6 +133,7 @@ impl Hollywood {
         Hollywood {
             dbg, 
             task: None,
+            ipc: IpcInterface::default(),
             busctrl: BusCtrlInterface::default(),
             timer: TimerInterface::default(),
             irq: irq::IrqInterface::default(),
@@ -155,6 +165,7 @@ impl MmioDevice for Hollywood {
     type Width = u32;
     fn read(&mut self, off: usize) -> BusPacket {
         let val = match off {
+            0x00c           => self.ipc.arm_ctrl,
             0x010           => self.timer.timer,
             0x014           => self.timer.alarm,
             0x030..=0x05c   => self.irq.read_handler(off - 0x30),
@@ -188,6 +199,7 @@ impl MmioDevice for Hollywood {
 
     fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
         match off {
+            0x00c => self.ipc.arm_ctrl = val,
             0x014 => {
                 println!("HLWD alarm set to {:08x}", val);
                 self.timer.alarm = val;

@@ -39,7 +39,9 @@ impl InstLutEntry for ArmFn {
             Mrs         => ArmFn(cfn!(status::mrs)),
             Umull       => ArmFn(cfn!(multiply::umull)),
             Mul         => ArmFn(cfn!(multiply::mul)),
+
             LdrImm      => ArmFn(cfn!(loadstore::ldr_imm)),
+            LdrbImm     => ArmFn(cfn!(loadstore::ldrb_imm)),
             SubImm      => ArmFn(cfn!(dataproc::sub_imm)),
             SubReg      => ArmFn(cfn!(dataproc::sub_reg)),
 

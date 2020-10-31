@@ -22,6 +22,21 @@ pub fn do_amode_lit(pc: u32, imm: u32, p: bool, u: bool) -> u32 {
     }
 }
 
+pub fn ldrb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
+    assert_ne!(op.rt(), 15);
+    let res = if op.rn() == 15 {
+        assert_eq!(op.w(), false);
+        let addr = do_amode_lit(cpu.read_exec_pc(), op.imm12(), op.p(), op.u());
+        cpu.mmu.read8(addr)
+    } else {
+        let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
+            op.imm12(), op.u(), op.p(), op.w());
+        cpu.reg[op.rn()] = wb_addr;
+        cpu.mmu.read8(addr)
+    };
+    cpu.reg[op.rt()] = res as u32;
+    DispatchRes::RetireOk
+}
 
 pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     let res = if op.rn() == 15 {

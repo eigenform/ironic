@@ -4,8 +4,16 @@ use crate::cpu::reg::*;
 use crate::cpu::exec::thumb::bits::*;
 use crate::bus::*;
 
+pub fn sign_extend(x: u32, bits: i32) -> i32 {
+    if ((x as i32 >> (bits - 1)) & 1) != 0 { 
+        x as i32 | !0 << bits 
+    } else { 
+        x as i32 
+    }
+}
+
 #[derive(Debug, PartialEq)]
-enum Width { Byte, Half, Word }
+enum Width { Byte, Half, Word, SignedHalf }
 
 
 pub fn ldr_lit(cpu: &mut Cpu, op: LoadStoreAltBits) -> DispatchRes {
@@ -30,6 +38,8 @@ fn load_reg(cpu: &mut Cpu, rn: u16, rm: u16, rt: u16, width: Width) {
         Width::Byte => cpu.mmu.read8(addr) as u32,
         Width::Half => cpu.mmu.read16(addr) as u32,
         Width::Word => cpu.mmu.read32(addr),
+        Width::SignedHalf => 
+            sign_extend(cpu.mmu.read16(addr) as u32, 16) as u32,
     };
     cpu.reg[rt] = res;
 }
@@ -41,6 +51,11 @@ pub fn ldrb_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
     load_reg(cpu, op.rn(), op.rm(), op.rt(), Width::Byte);
     DispatchRes::RetireOk
 }
+pub fn ldrsh_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
+    load_reg(cpu, op.rn(), op.rm(), op.rt(), Width::SignedHalf);
+    DispatchRes::RetireOk
+}
+
 
 
 /// Generic load (immediate).
@@ -49,6 +64,7 @@ fn load_imm(cpu: &mut Cpu, rn: u16, rt: u16, imm_n: u32, width: Width) {
         Width::Byte => imm_n, 
         Width::Half => imm_n << 1,
         Width::Word => imm_n << 2,
+        _ => unreachable!(),
     };
 
     let addr = cpu.reg[rn].wrapping_add(imm);
@@ -56,6 +72,7 @@ fn load_imm(cpu: &mut Cpu, rn: u16, rt: u16, imm_n: u32, width: Width) {
         Width::Byte => cpu.mmu.read8(addr) as u32,
         Width::Half => cpu.mmu.read16(addr) as u32,
         Width::Word => cpu.mmu.read32(addr),
+        _ => unreachable!(),
     };
     cpu.reg[rt] = res;
 }
@@ -85,6 +102,7 @@ fn store_reg(cpu: &mut Cpu, rn: u16, rm: u16, rt: u16, width: Width) {
         Width::Byte => cpu.mmu.write8(addr, val),
         Width::Half => cpu.mmu.write16(addr, val),
         Width::Word => cpu.mmu.write32(addr, val),
+        _ => unreachable!(),
     }
 }
 pub fn str_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
@@ -103,6 +121,7 @@ fn store_imm(cpu: &mut Cpu, rn: u16, rt: u16, imm_n: u32, width: Width) {
         Width::Byte => imm_n, 
         Width::Half => imm_n << 1,
         Width::Word => imm_n << 2,
+        _ => unreachable!(),
     };
 
     let addr = cpu.reg[rn].wrapping_add(imm);
@@ -111,6 +130,7 @@ fn store_imm(cpu: &mut Cpu, rn: u16, rt: u16, imm_n: u32, width: Width) {
         Width::Byte => cpu.mmu.write8(addr, val),
         Width::Half => cpu.mmu.write16(addr, val),
         Width::Word => cpu.mmu.write32(addr, val),
+        _ => unreachable!(),
     }
 }
 pub fn str_imm(cpu: &mut Cpu, op: LoadStoreImmBits) -> DispatchRes {
@@ -129,6 +149,8 @@ pub fn str_imm_sp(cpu: &mut Cpu, op: LoadStoreAltBits) -> DispatchRes {
     store_imm(cpu, 13, op.rt(), op.imm8() as u32, Width::Word);
     DispatchRes::RetireOk
 }
+
+
 
 
 pub fn ldm(cpu: &mut Cpu, op: LoadStoreMultiBits) -> DispatchRes {

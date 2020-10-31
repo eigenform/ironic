@@ -33,6 +33,7 @@ impl InstLutEntry for ThumbFn {
             LdrLit      => ThumbFn(cfn!(loadstore::ldr_lit)),
             LdrReg      => ThumbFn(cfn!(loadstore::ldr_reg)),
             LdrbReg     => ThumbFn(cfn!(loadstore::ldrb_reg)),
+            LdrshReg    => ThumbFn(cfn!(loadstore::ldrsh_reg)),
             LdrImm      => ThumbFn(cfn!(loadstore::ldr_imm)),
             LdrbImm     => ThumbFn(cfn!(loadstore::ldrb_imm)),
             LdrhImm     => ThumbFn(cfn!(loadstore::ldrh_imm)),
