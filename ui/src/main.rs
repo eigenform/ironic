@@ -273,6 +273,9 @@ pub fn emu_thread_loop(rx: Receiver<CpuMsg>, dbg: Arc<RwLock<Debugger>>,
                     let res = cpu.step();
                     match res { 
                         CpuRes::HaltEmulation => break 'main,
+                        CpuRes::StepException(e) => {
+                            panic!("Exceptions unimplemented here");
+                        }
                         CpuRes::StepOk => {
                             bus.write().unwrap().step();
                         },

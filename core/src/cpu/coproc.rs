@@ -31,8 +31,8 @@ impl SystemControl {
             FaultStatus |
             FaultAddress |
             CacheControl => { 
-                println!("CPU p15 write {:08x} to reg={:?} crm={} opcd2={}", 
-                    val, SystemControlReg::from(reg), _crm, _opcd2); 
+                //println!("CPU p15 write {:08x} to reg={:?} crm={} opcd2={}", 
+                //    val, SystemControlReg::from(reg), _crm, _opcd2); 
             },
 
             _ => panic!("Unimpl p15 write to {:?}", SystemControlReg::from(reg)),

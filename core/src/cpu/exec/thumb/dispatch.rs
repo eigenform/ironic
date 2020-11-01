@@ -77,6 +77,7 @@ impl InstLutEntry for ThumbFn {
             Bx          => ThumbFn(cfn!(branch::bx)),
             B           => ThumbFn(cfn!(branch::b)),
             BAlt        => ThumbFn(cfn!(branch::b_unconditional)),
+            Svc         => ThumbFn(cfn!(misc::svc)),
             _           => ThumbFn(unimpl_instr),
         }
     }

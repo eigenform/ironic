@@ -3,6 +3,7 @@
 pub mod arm;
 pub mod thumb;
 
+use crate::cpu::excep::ExceptionType;
 
 /// Result of dispatching an instruction.
 #[derive(Debug)]
@@ -15,5 +16,7 @@ pub enum DispatchRes {
     RetireBranch,
     /// This instruction retired and the PC should be incremented.
     RetireOk,
+    /// This instruction resulted in an exception.
+    Exception(ExceptionType)
 }
 

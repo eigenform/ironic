@@ -114,6 +114,35 @@ pub fn strb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn ldm_user(cpu: &mut Cpu, op: LdmRegUserBits) -> DispatchRes {
+    assert_ne!(op.rn(), 15);
+    let reglist = op.register_list();
+
+    let len = reglist.count_ones() * 4;
+    let mut addr = if op.u() { 
+        cpu.reg[op.rn()]
+    } else {
+        cpu.reg[op.rn()] - len
+    };
+    if op.p() == op.u() {
+        addr += 4;
+    }
+
+    for i in 0..16 {
+        if (reglist & (1 << i)) != 0 {
+            let val = cpu.mmu.read32(addr);
+
+            match i {
+                13 => cpu.reg.bank.sys[0] = val,
+                14 => cpu.reg.bank.sys[1] = val,
+                _ => cpu.reg[i as u32] = val,
+            }
+            addr += 4;
+        }
+    }
+    DispatchRes::RetireOk
+}
+
 pub fn ldmib(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
     assert_ne!(op.rn(), 15);
     let reglist = op.register_list();

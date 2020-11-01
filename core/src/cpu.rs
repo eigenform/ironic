@@ -1,5 +1,6 @@
 
 pub mod coproc;
+pub mod excep;
 pub mod reg;
 pub mod mmu;
 pub mod exec;
@@ -12,6 +13,7 @@ use crate::dbg::*;
 use crate::bus::*;
 use crate::cpu::lut::*;
 use crate::cpu::reg::*;
+use crate::cpu::excep::*;
 
 use crate::cpu::exec::DispatchRes;
 
@@ -45,6 +47,8 @@ pub enum CpuRes {
     HaltEmulation,
     /// We single-stepped and returned successfully.
     StepOk,
+    /// We single stepped and took some exception.
+    StepException(ExceptionType),
 }
 
 
@@ -139,7 +143,48 @@ impl Cpu {
             self.reg.pc = self.reg.pc.wrapping_add(4);
         }
     }
+}
 
+/// These are functions that define the behavior for dealing with the current
+/// mode and behavior for implementing exceptions.
+impl Cpu {
+
+    pub fn set_mode(&mut self, target_mode: CpuMode) {
+        if target_mode == self.reg.mode { return; }
+        self.reg.swap_bank(target_mode);
+        self.reg.cpsr.set_mode(target_mode);
+        self.reg.mode = target_mode;
+    }
+
+    /// Generate the current-pending exception.
+    pub fn generate_exception(&mut self, e: ExceptionType) {
+        let target_mode = CpuMode::from(e);
+        let target_pc = ExceptionType::get_vector(e);
+        let return_pc = self.read_fetch_pc()
+            .wrapping_add(ExceptionType::get_pc_off(e, self.reg.cpsr.thumb()));
+
+        println!("CPU taking {:?} exception at {:08x}", e, self.read_fetch_pc());
+
+        // Save the CPSR to the target SPSR, then change mode
+        let cpsr = self.reg.read_cpsr();
+        self.reg.spsr.write(target_mode, cpsr);
+        self.set_mode(target_mode);
+
+        self.reg.cpsr.set_thumb(false);
+        if e == ExceptionType::Fiq {
+            self.reg.cpsr.set_fiq_disable(true);
+        }
+        self.reg.cpsr.set_irq_disable(true);
+        self.reg[Reg::Lr] = return_pc;
+        self.write_exec_pc(target_pc);
+    }
+}
+
+
+/// These are functions for decoding and dispatching an instruction from
+/// either the ARM or Thumb lookup table.
+
+impl Cpu {
     /// Decode and dispatch an ARM instruction.
     pub fn exec_arm(&mut self) -> DispatchRes {
         let opcd = self.mmu.read32(self.read_fetch_pc());
@@ -173,6 +218,7 @@ impl Cpu {
     }
 }
 
+
 impl Cpu {
     pub fn step(&mut self) -> CpuRes {
         assert_eq!(self.reg.mode, self.reg.cpsr.mode());
@@ -188,7 +234,13 @@ impl Cpu {
                 self.increment_pc(); 
                 CpuRes::StepOk
             },
-            DispatchRes::RetireBranch => CpuRes::StepOk,
+            DispatchRes::RetireBranch => {
+                CpuRes::StepOk
+            },
+            DispatchRes::Exception(e) => {
+                self.generate_exception(e);
+                CpuRes::StepException(e)
+            },
             DispatchRes::FatalErr => {
                 println!("CPU halted at pc={:08x}", self.read_fetch_pc());
                 CpuRes::HaltEmulation
@@ -218,7 +270,6 @@ impl Cpu {
 
             _ => {},
         }
-
         cpu_res
     }
 }

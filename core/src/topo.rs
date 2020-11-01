@@ -1,4 +1,7 @@
 
+extern crate pretty_hex;
+use pretty_hex::*;
+
 use std::sync::{Arc,RwLock};
 //use std::thread;
 //use std::sync::mpsc::{channel, Sender, Receiver};
@@ -7,6 +10,7 @@ use crate::dbg::*;
 use crate::mem::*;
 use crate::bus::*;
 use crate::cpu::*;
+use crate::cpu::excep::*;
 use crate::dev::hlwd::*;
 use crate::dev::aes::*;
 use crate::dev::sha::*;
@@ -62,16 +66,33 @@ impl SystemDevice {
 pub struct EmuThreadContext {
     pub bus: Arc<RwLock<Bus>>,
     pub dbg: Arc<RwLock<Debugger>>,
+    pub svc_buf: String,
     pub cpu: Cpu,
 }
 impl EmuThreadContext {
     pub fn new(dbg: Arc<RwLock<Debugger>>, bus: Arc<RwLock<Bus>>) -> Self {
         let cpu = Cpu::new(dbg.clone(), bus.clone());
-        EmuThreadContext { bus: bus.clone(), dbg: dbg.clone(), cpu }
+        EmuThreadContext { bus: bus.clone(), dbg: dbg.clone(), cpu,
+            svc_buf: String::new(),
+        }
     }
 }
 
 impl EmuThreadContext {
+
+    pub fn svc_read(&mut self) {
+        let r1 = self.cpu.reg.r[1];
+        let mut line_buf = [0u8; 16];
+        self.bus.write().unwrap().dma_read(r1, &mut line_buf);
+
+        self.svc_buf += std::str::from_utf8(&line_buf).unwrap();
+        if self.svc_buf.find('\n').is_some() {
+            let string: String = self.svc_buf.chars()
+                .take(self.svc_buf.find('\n').unwrap()).collect();
+            println!("SVC {}", string);
+            self.svc_buf.clear();
+        }
+    }
 
     /// Run the emulator thread for some number of steps (currently, Bus steps
     /// are interleaved with CPU steps).
@@ -79,7 +100,14 @@ impl EmuThreadContext {
         for _i in 0..num_steps {
             let res = self.cpu.step();
             match res {
-                CpuRes::StepOk => { self.bus.write().unwrap().step(); },
+                CpuRes::StepOk => { 
+                    self.bus.write().unwrap().step(); 
+                },
+                CpuRes::StepException(e) => {
+                    if e == ExceptionType::Swi {
+                        self.svc_read();
+                    }
+                },
                 CpuRes::HaltEmulation => break,
             }
         }

@@ -50,6 +50,7 @@ impl InstLutEntry for ArmFn {
 
             Ldmib       => ArmFn(cfn!(loadstore::ldmib)),
             Ldm         => ArmFn(cfn!(loadstore::ldmia)),
+            LdmRegUser  => ArmFn(cfn!(loadstore::ldm_user)),
 
             StrImm      => ArmFn(cfn!(loadstore::str_imm)),
             StrbImm     => ArmFn(cfn!(loadstore::strb_imm)),

@@ -28,6 +28,57 @@ impl RegisterBank {
     }
 }
 
+/// Saved program status registers.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct SavedStatusBank {
+    /// SVC mode saved program status register.
+    pub svc: Psr,
+    /// ABT mode saved program status register.
+    pub abt: Psr,
+    /// UND mode saved program status register.
+    pub und: Psr,
+    /// IRQ mode saved program status register.
+    pub irq: Psr,
+    /// FIQ mode saved program status register.
+    pub fiq: Psr,
+}
+impl SavedStatusBank {
+    pub fn new() -> Self {
+        SavedStatusBank {
+            svc: Psr(0x0000_0000),
+            abt: Psr(0x0000_0000),
+            und: Psr(0x0000_0000),
+            irq: Psr(0x0000_0000),
+            fiq: Psr(0x0000_0000),
+        }
+    }
+
+    /// Write the SPSR for the provided mode.
+    pub fn write(&mut self, mode: CpuMode, val: Psr) {
+        use CpuMode::*;
+        match mode {
+            Svc => self.svc = val,
+            Abt => self.abt = val,
+            Und => self.und = val,
+            Irq => self.irq = val,
+            Fiq => self.fiq = val,
+            _ => panic!("Invalid mode {:?} for SPSR write", mode),
+        }
+    }
+
+    /// Read the SPSR for the provided mode.
+    pub fn read(&mut self, mode: CpuMode) -> Psr {
+        use CpuMode::*;
+        match mode {
+            Svc => self.svc,
+            Abt => self.abt,
+            Und => self.und,
+            Irq => self.irq,
+            Fiq => self.fiq,
+            _ => panic!("Invalid mode {:?} for SPSR read", mode),
+        }
+    }
+}
 
 
 /// Top-level container for register state.
@@ -44,16 +95,8 @@ pub struct RegisterFile {
     pub mode: CpuMode,
     /// The current program status register.
     pub cpsr: Psr,
-    /// SVC mode saved program status register.
-    pub spsr_svc: Psr,
-    /// ABT mode saved program status register.
-    pub spsr_abt: Psr,
-    /// UND mode saved program status register.
-    pub spsr_und: Psr,
-    /// IRQ mode saved program status register.
-    pub spsr_irq: Psr,
-    /// FIQ mode saved program status register.
-    pub spsr_fiq: Psr,
+    /// The saved program status registers.
+    pub spsr: SavedStatusBank,
 }
 impl RegisterFile {
     pub fn new() -> Self {
@@ -68,16 +111,13 @@ impl RegisterFile {
             pc: 0xffff_0000 + 8,
             cpsr: init_cpsr,
             mode: CpuMode::Svc,
-            spsr_svc: Psr(0x0000_0000),
-            spsr_abt: Psr(0x0000_0000),
-            spsr_und: Psr(0x0000_0000),
-            spsr_irq: Psr(0x0000_0000),
-            spsr_fiq: Psr(0x0000_0000),
             bank: RegisterBank::default(),
+            spsr: SavedStatusBank::new(),
         }
     }
 }
 
+/// Functions for dealing with the current program status register.
 impl RegisterFile {
 
     /// Write the current status program register.
@@ -93,32 +133,11 @@ impl RegisterFile {
     /// Read the current status program register.
     pub fn read_cpsr(&mut self) -> Psr { self.cpsr }
 
-    /// Write to the SPSR for the provided mode.
-    pub fn write_spsr(&mut self, mode: CpuMode, val: Psr) {
-        use CpuMode::*;
-        match mode {
-            Svc => self.spsr_svc = val,
-            Abt => self.spsr_abt = val,
-            Und => self.spsr_und = val,
-            Irq => self.spsr_irq = val,
-            Fiq => self.spsr_fiq = val,
-            _ => panic!("Invalid mode {:?} for SPSR write", mode),
-        }
-    }
+}
 
-    /// Read the SPSR for the provided mode.
-    pub fn read_spsr(&mut self, mode: CpuMode) -> Psr {
-        use CpuMode::*;
-        match mode {
-            Svc => self.spsr_svc,
-            Abt => self.spsr_abt,
-            Und => self.spsr_und,
-            Irq => self.spsr_irq,
-            Fiq => self.spsr_fiq,
-            _ => panic!("Invalid mode {:?} for SPSR read", mode),
-        }
-    }
 
+/// Functions for swapping between active registers and banked registers
+impl RegisterFile {
     /// Swap the currently active registers with some set of banked registers.
     pub fn swap_bank(&mut self, target_mode: CpuMode) {
         println!("CPU swapping to register bank for mode={:?}", target_mode);
@@ -141,12 +160,15 @@ impl RegisterFile {
             self.r[i] = *iter.next().unwrap();
         }
     }
+}
 
 
+/// These functions are used for determining whether or not some condition is
+/// satisfied when dispatching/executing some instruction.
+impl RegisterFile {
     pub fn cond_pass(&self, opcd: u32) -> bool {
         self.is_cond_satisfied(Cond::from((opcd & 0xf000_0000) >> 28))
     }
-
     pub fn is_cond_satisfied(&self, cond: Cond) -> bool {
         use Cond::*;
         match cond {

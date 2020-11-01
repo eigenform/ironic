@@ -182,17 +182,20 @@ pub fn mov_reg(cpu: &mut Cpu, op: MovRegBits) -> DispatchRes {
         stype: op.stype(), imm5: op.imm5(), c_in: cpu.reg.cpsr.c()
     });
 
-    if op.s() {
-        cpu.reg.cpsr.set_n((res & 0x8000_0000) != 0);
-        cpu.reg.cpsr.set_z(res == 0);
-        cpu.reg.cpsr.set_c(carry);
-    }
-
     if op.rd() == 15 {
+        if op.s() {
+            let current_spsr = cpu.reg.spsr.read(cpu.reg.mode);
+            cpu.reg.write_cpsr(current_spsr);
+        }
         cpu.write_exec_pc(res);
         DispatchRes::RetireBranch
     } else {
         cpu.reg[op.rd()] = res;
+        if op.s() {
+            cpu.reg.cpsr.set_n((res & 0x8000_0000) != 0);
+            cpu.reg.cpsr.set_z(res == 0);
+            cpu.reg.cpsr.set_c(carry);
+        }
         DispatchRes::RetireOk
     }
 }
