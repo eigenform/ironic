@@ -183,11 +183,11 @@ pub fn mov_reg(cpu: &mut Cpu, op: MovRegBits) -> DispatchRes {
     });
 
     if op.rd() == 15 {
-        if op.s() {
-            let current_spsr = cpu.reg.spsr.read(cpu.reg.mode);
-            cpu.reg.write_cpsr(current_spsr);
+        if op.s() { 
+            cpu.exception_return(res); 
+        } else { 
+            cpu.write_exec_pc(res); 
         }
-        cpu.write_exec_pc(res);
         DispatchRes::RetireBranch
     } else {
         cpu.reg[op.rd()] = res;

@@ -178,6 +178,16 @@ impl Cpu {
         self.reg[Reg::Lr] = return_pc;
         self.write_exec_pc(target_pc);
     }
+
+    /// Return from an exception.
+    pub fn exception_return(&mut self, dest_pc: u32) {
+        let current_mode = self.reg.cpsr.mode();
+        assert_eq!(current_mode, self.reg.mode);
+
+        let current_spsr = self.reg.spsr.read(self.reg.mode);
+        self.reg.write_cpsr(current_spsr);
+        self.write_exec_pc(dest_pc & 0xffff_fffe);
+    }
 }
 
 

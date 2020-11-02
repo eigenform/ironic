@@ -13,7 +13,7 @@ pub fn sign_extend(x: u32, bits: i32) -> i32 {
 }
 
 #[derive(Debug, PartialEq)]
-enum Width { Byte, Half, Word, SignedHalf }
+enum Width { Byte, Half, Word, SignedByte, SignedHalf }
 
 
 pub fn ldr_lit(cpu: &mut Cpu, op: LoadStoreAltBits) -> DispatchRes {
@@ -40,6 +40,8 @@ fn load_reg(cpu: &mut Cpu, rn: u16, rm: u16, rt: u16, width: Width) {
         Width::Word => cpu.mmu.read32(addr),
         Width::SignedHalf => 
             sign_extend(cpu.mmu.read16(addr) as u32, 16) as u32,
+        Width::SignedByte => 
+            sign_extend(cpu.mmu.read8(addr) as u32, 8) as u32,
     };
     cpu.reg[rt] = res;
 }
@@ -49,6 +51,10 @@ pub fn ldr_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
 }
 pub fn ldrb_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
     load_reg(cpu, op.rn(), op.rm(), op.rt(), Width::Byte);
+    DispatchRes::RetireOk
+}
+pub fn ldrsb_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
+    load_reg(cpu, op.rn(), op.rm(), op.rt(), Width::SignedByte);
     DispatchRes::RetireOk
 }
 pub fn ldrsh_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
