@@ -6,7 +6,7 @@ use crate::cpu::reg::*;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ExceptionType {
     //Reset,
-    Undef,
+    Undef(u32),
     Swi,
     Pabt,
     Dabt,
@@ -20,7 +20,7 @@ impl ExceptionType {
         use ExceptionType::*;
         match self {
             //Reset => 0xffff_0000,
-            Undef => 0xffff_0004,
+            Undef(_) => 0xffff_0004,
             Swi   => 0xffff_0008,
             Pabt  => 0xffff_000c,
             Dabt  => 0xffff_0010,
@@ -36,13 +36,13 @@ impl ExceptionType {
         //}
         if thumb { 
             match self { 
-                Swi | Undef => 2, 
+                Swi | Undef(_) => 2, 
                 Pabt | Fiq | Irq => 4, 
                 Dabt => 8, 
             }
         } else { 
             match self { 
-                Swi | Undef | Pabt | Fiq | Irq => 4, 
+                Swi | Undef(_) | Pabt | Fiq | Irq => 4, 
                 Dabt => 8, 
             }
         }
@@ -55,7 +55,7 @@ impl From<ExceptionType> for CpuMode {
         use ExceptionType::*;
         match e {
             //Reset => CpuMode::Svc,
-            Undef => CpuMode::Und,
+            Undef(_) => CpuMode::Und,
             Swi   => CpuMode::Svc,
             Pabt  => CpuMode::Abt,
             Dabt  => CpuMode::Abt,

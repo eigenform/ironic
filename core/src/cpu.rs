@@ -14,6 +14,7 @@ use crate::bus::*;
 use crate::cpu::lut::*;
 use crate::cpu::reg::*;
 use crate::cpu::excep::*;
+use crate::cpu::coproc::CoprocTask;
 
 use crate::cpu::exec::DispatchRes;
 
@@ -154,16 +155,26 @@ impl Cpu {
         self.reg.swap_bank(target_mode);
         self.reg.cpsr.set_mode(target_mode);
         self.reg.mode = target_mode;
+        self.mmu.cpu_mode = target_mode;
     }
 
-    /// Generate the current-pending exception.
+    /// Cause the CPU to take some exception.
     pub fn generate_exception(&mut self, e: ExceptionType) {
+        let current_mode = self.reg.cpsr.mode();
+        assert_eq!(current_mode, self.reg.mode);
+
         let target_mode = CpuMode::from(e);
         let target_pc = ExceptionType::get_vector(e);
         let return_pc = self.read_fetch_pc()
             .wrapping_add(ExceptionType::get_pc_off(e, self.reg.cpsr.thumb()));
 
-        println!("CPU taking {:?} exception at {:08x}", e, self.read_fetch_pc());
+        // Just log syscalls here, for now
+        match e {
+            ExceptionType::Undef(opcd) => {
+                ios::log_syscall(opcd, self.read_fetch_pc(), self.reg[Reg::Lr]); 
+            },
+            _ => {},
+        }
 
         // Save the CPSR to the target SPSR, then change mode
         let cpsr = self.reg.read_cpsr();
@@ -181,12 +192,39 @@ impl Cpu {
 
     /// Return from an exception.
     pub fn exception_return(&mut self, dest_pc: u32) {
-        let current_mode = self.reg.cpsr.mode();
-        assert_eq!(current_mode, self.reg.mode);
+        assert_ne!(self.reg.mode, CpuMode::Usr);
+        assert_ne!(self.reg.mode, CpuMode::Sys);
 
+        let current_mode = self.reg.mode;
         let current_spsr = self.reg.spsr.read(self.reg.mode);
+
         self.reg.write_cpsr(current_spsr);
         self.write_exec_pc(dest_pc & 0xffff_fffe);
+    }
+}
+
+
+/// These functions implement the accesses and side-effects associated with
+/// the system control coproessor (p15).
+
+impl Cpu {
+    /// Read from the system control coprocessor.
+    pub fn read_p15(&mut self, crn: u32, crm: u32, opcd2: u32) -> u32 {
+        self.p15.read(crn, crm, opcd2)
+    }
+
+    /// Write to the system control coprocessor, then potentially handle some 
+    /// side-effects (specifically, on the MMU) associated with a particular 
+    /// change in some register.
+    pub fn write_p15(&mut self, val: u32, crn: u32, crm: u32, opcd2: u32) {
+        let res = self.p15.write(val, crn, crm, opcd2);
+        //println!("P15 write returned {:?}", res);
+        match res {
+            CoprocTask::ControlChange => self.mmu.ctrl = self.p15.c1_ctrl,
+            CoprocTask::TtbrChange => self.mmu.ttbr = self.p15.c2_ttbr0,
+            CoprocTask::DacrChange => self.mmu.dacr = self.p15.c3_dacr,
+            CoprocTask::None => {},
+        }
     }
 }
 
@@ -199,11 +237,11 @@ impl Cpu {
     pub fn exec_arm(&mut self) -> DispatchRes {
         let opcd = self.mmu.read32(self.read_fetch_pc());
 
-        if self.status == CpuStatus::Boot2 {
-            let pc = self.read_fetch_pc();
-            let opname = format!("{:?}", ArmInst::decode(opcd));
-            println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
-        }
+        //if self.status == CpuStatus::Boot2 {
+        //    let pc = self.read_fetch_pc();
+        //    let opname = format!("{:?}", ArmInst::decode(opcd));
+        //    println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
+        //}
 
         if self.reg.cond_pass(opcd) {
             let func = self.lut.arm.lookup(opcd);
@@ -217,11 +255,11 @@ impl Cpu {
     pub fn exec_thumb(&mut self) -> DispatchRes {
         let opcd = self.mmu.read16(self.read_fetch_pc());
 
-        if self.status == CpuStatus::Boot2 {
-            let pc = self.read_fetch_pc();
-            let opname = format!("{:?}", ThumbInst::decode(opcd));
-            println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
-        }
+        //if self.status == CpuStatus::Boot2 {
+        //    let pc = self.read_fetch_pc();
+        //    let opname = format!("{:?}", ThumbInst::decode(opcd));
+        //    println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
+        //}
 
         let func = self.lut.thumb.lookup(opcd);
         func.0(self, opcd)
@@ -231,7 +269,7 @@ impl Cpu {
 
 impl Cpu {
     pub fn step(&mut self) -> CpuRes {
-        assert_eq!(self.reg.mode, self.reg.cpsr.mode());
+        assert!((self.read_fetch_pc() & 1) == 0);
 
         let disp_res = if self.reg.cpsr.thumb() {
             self.exec_thumb()

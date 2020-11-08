@@ -9,14 +9,15 @@ use crate::cpu::exec::arm::decode::ArmInst;
 pub struct ArmFn(pub fn(&mut Cpu, u32) -> DispatchRes);
 
 /// Unimplemented instruction handler.
+///
+/// For now, we expect that we should panic on all unimplemented instructions 
+/// that aren't used for IOS syscalls.
 pub fn unimpl_instr(cpu: &mut Cpu, op: u32) -> DispatchRes {
-    log(&cpu.dbg, LogLevel::Cpu, &format!(
-        "Couldn't dispatch instruction {:08x} ({:?})", 
-        op, ArmInst::decode(op)
-    ));
-    println!("Couldn't dispatch instruction {:08x} ({:?})",
-        op, ArmInst::decode(op));
-    DispatchRes::FatalErr
+    if (op & 0xe600_0000) != 0xe600_0000 {
+        println!("Undefined ARM instr {:08x}", op);
+        return DispatchRes::FatalErr;
+    }
+    DispatchRes::Exception(ExceptionType::Undef(op))
 }
 
 /// Implementing [InstLutEntry] maps each instruction to a function.
@@ -56,6 +57,7 @@ impl InstLutEntry for ArmFn {
             StrbImm     => ArmFn(cfn!(loadstore::strb_imm)),
             Stmdb       => ArmFn(cfn!(loadstore::stmdb)),
             Stm         => ArmFn(cfn!(loadstore::stm)),
+            StmRegUser  => ArmFn(cfn!(loadstore::stm_user)),
 
             Mcr         => ArmFn(cfn!(coproc::mcr)),
             Mrc         => ArmFn(cfn!(coproc::mrc)),

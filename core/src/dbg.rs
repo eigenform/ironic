@@ -1,5 +1,6 @@
 
 pub mod symbols;
+pub mod ios;
 
 use std::collections::HashMap;
 use std::sync::{Arc,RwLock};

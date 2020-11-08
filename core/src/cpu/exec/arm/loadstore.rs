@@ -114,6 +114,36 @@ pub fn strb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+
+pub fn stm_user(cpu: &mut Cpu, op: StmRegUserBits) -> DispatchRes {
+    assert_ne!(op.rn(), 15);
+    let reglist = op.register_list();
+    let len = reglist.count_ones() * 4;
+    let mut addr = if op.u() { 
+        cpu.reg[op.rn()]
+    } else {
+        cpu.reg[op.rn()] - len
+    };
+    if op.p() == op.u() {
+        addr += 4;
+    }
+
+    for i in 0..16 {
+        if (reglist & (1 << i)) != 0 {
+            let val = match i {
+                13 => cpu.reg.bank.sys[0],
+                14 => cpu.reg.bank.sys[1],
+                15 => panic!("stm_user r15 load unimplemented"),
+                _ => cpu.reg[i as u32],
+            };
+            cpu.mmu.write32(addr, val);
+            addr += 4;
+        }
+    }
+    DispatchRes::RetireOk
+
+}
+
 pub fn ldm_user(cpu: &mut Cpu, op: LdmRegUserBits) -> DispatchRes {
     assert_ne!(op.rn(), 15);
     let reglist = op.register_list();

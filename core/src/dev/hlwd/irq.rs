@@ -66,7 +66,10 @@ impl IrqInterface {
     pub fn write_handler(&mut self, off: usize, val: u32) {
         match off {
             0x08 => self.arm_irq_status &= !val,
-            0x0c => self.arm_irq_enable = val,
+            0x0c => {
+                self.arm_irq_enable = val;
+                println!("IRQ ARM enable={:08x}", val);
+            },
             0x10 => self.arm_fiq_enable = val,
             _ => panic!("Unhandled write {:08x} on HLWD IRQ interface {:02x}", 
                 val, off),

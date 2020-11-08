@@ -49,6 +49,10 @@ pub fn ldr_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
     load_reg(cpu, op.rn(), op.rm(), op.rt(), Width::Word);
     DispatchRes::RetireOk
 }
+pub fn ldrh_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
+    load_reg(cpu, op.rn(), op.rm(), op.rt(), Width::Half);
+    DispatchRes::RetireOk
+}
 pub fn ldrb_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
     load_reg(cpu, op.rn(), op.rm(), op.rt(), Width::Byte);
     DispatchRes::RetireOk
@@ -119,6 +123,11 @@ pub fn strb_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
     store_reg(cpu, op.rn(), op.rm(), op.rt(), Width::Byte);
     DispatchRes::RetireOk
 }
+pub fn strh_reg(cpu: &mut Cpu, op: LoadStoreRegBits) -> DispatchRes {
+    store_reg(cpu, op.rn(), op.rm(), op.rt(), Width::Half);
+    DispatchRes::RetireOk
+}
+
 
 
 /// Generic store (immediate).

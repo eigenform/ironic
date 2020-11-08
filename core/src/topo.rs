@@ -11,6 +11,8 @@ use crate::mem::*;
 use crate::bus::*;
 use crate::cpu::*;
 use crate::cpu::excep::*;
+use crate::cpu::reg::*;
+use crate::cpu::mmu::prim::{TLBReq, Access};
 use crate::dev::hlwd::*;
 use crate::dev::aes::*;
 use crate::dev::sha::*;
@@ -81,9 +83,14 @@ impl EmuThreadContext {
 impl EmuThreadContext {
 
     pub fn svc_read(&mut self) {
+        // We need to use out-of-band requests to the MMU here
         let r1 = self.cpu.reg.r[1];
+        let paddr = self.cpu.mmu.translate(
+            TLBReq::new(self.cpu.reg.r[1], Access::Debug)
+        );
+
         let mut line_buf = [0u8; 16];
-        self.bus.write().unwrap().dma_read(r1, &mut line_buf);
+        self.bus.write().unwrap().dma_read(paddr, &mut line_buf);
 
         self.svc_buf += std::str::from_utf8(&line_buf).unwrap();
         if self.svc_buf.find('\n').is_some() {
@@ -94,9 +101,14 @@ impl EmuThreadContext {
         }
     }
 
+    pub fn syscall_log(&mut self, opcd: u32) {
+        println!("IOS syscall {:08x}, lr={:08x}", opcd, self.cpu.reg[Reg::Lr]);
+    }
+
     /// Run the emulator thread for some number of steps (currently, Bus steps
     /// are interleaved with CPU steps).
     pub fn run_slice(&mut self, num_steps: usize) {
+        use ExceptionType::*;
         for _i in 0..num_steps {
             let res = self.cpu.step();
             match res {
@@ -104,8 +116,11 @@ impl EmuThreadContext {
                     self.bus.write().unwrap().step(); 
                 },
                 CpuRes::StepException(e) => {
-                    if e == ExceptionType::Swi {
-                        self.svc_read();
+                    match e {
+                        Swi => self.svc_read(),
+                        Undef(_) => {},
+                        //Undef(opcd) => self.syscall_log(opcd),
+                        _ => panic!("Unimplemented exception type"),
                     }
                 },
                 CpuRes::HaltEmulation => break,

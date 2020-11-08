@@ -67,7 +67,7 @@ impl SavedStatusBank {
     }
 
     /// Read the SPSR for the provided mode.
-    pub fn read(&mut self, mode: CpuMode) -> Psr {
+    pub fn read(&self, mode: CpuMode) -> Psr {
         use CpuMode::*;
         match mode {
             Svc => self.svc,
@@ -133,6 +133,8 @@ impl RegisterFile {
     /// Read the current status program register.
     pub fn read_cpsr(&mut self) -> Psr { self.cpsr }
 
+    /// Read the SPSR associated with the current CPU mode.
+    pub fn read_current_spsr(&self) -> Psr { self.spsr.read(self.mode) }
 }
 
 
@@ -140,7 +142,6 @@ impl RegisterFile {
 impl RegisterFile {
     /// Swap the currently active registers with some set of banked registers.
     pub fn swap_bank(&mut self, target_mode: CpuMode) {
-        println!("CPU swapping to register bank for mode={:?}", target_mode);
         self.save_current_bank();
         self.load_bank(target_mode);
     }
