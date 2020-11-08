@@ -155,7 +155,8 @@ impl Cpu {
         // Just log syscalls here, for now
         match e {
             ExceptionType::Undef(opcd) => {
-                ios::log_syscall(opcd, self.read_fetch_pc(), self.reg[Reg::Lr]); 
+                ios::resolve_syscall(self, opcd);
+                //ios::log_syscall(opcd, self.read_fetch_pc(), self.reg[Reg::Lr]); 
             },
             _ => {},
         }
@@ -227,6 +228,17 @@ impl Cpu {
         //    println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
         //}
 
+        //if self.boot_status == BootStatus::Boot2 {
+        //    match ArmInst::decode(opcd) {
+        //        ArmInst::BlImm => {
+        //            let pc = self.read_fetch_pc();
+        //            let opname = format!("{:?}", ArmInst::decode(opcd));
+        //            println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
+        //        }
+        //        _ => {},
+        //    }
+        //}
+
         if self.reg.cond_pass(opcd) {
             let func = self.lut.arm.lookup(opcd);
             func.0(self, opcd)
@@ -238,6 +250,17 @@ impl Cpu {
     /// Decode and dispatch a Thumb instruction.
     pub fn exec_thumb(&mut self) -> DispatchRes {
         let opcd = self.mmu.read16(self.read_fetch_pc());
+
+        //if self.boot_status == BootStatus::Boot2 {
+        //    match ThumbInst::decode(opcd) {
+        //        ThumbInst::BlPrefix => {
+        //            let pc = self.read_fetch_pc();
+        //            let opname = format!("{:?}", ThumbInst::decode(opcd));
+        //            println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
+        //        },
+        //        _ => {},
+        //    }
+        //}
 
         //if self.boot_status == BootStatus::Boot2 {
         //    let pc = self.read_fetch_pc();
