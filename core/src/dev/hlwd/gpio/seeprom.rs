@@ -4,18 +4,9 @@ use std::fs::File;
 use crate::dev::hlwd::gpio::*;
 use crate::mem::*;
 
+/// Set of commands to/states of the SEEPROM state machine.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum SeepromOp {
-    Ewds    = 0,
-    Wral    = 1,
-    Eral    = 2,
-    Ewen    = 3,
-    Ext     = 4,
-    Write   = 5,
-    Read    = 6,
-    Erase   = 7,
-    Init,
-}
+pub enum SeepromOp { Ewds, Wral, Eral, Ewen, Ext, Write, Read, Erase, Init }
 impl From<u32> for SeepromOp {
     fn from(x: u32) -> Self {
         use SeepromOp::*;
@@ -33,13 +24,20 @@ impl From<u32> for SeepromOp {
     }
 }
 
+/// Container for the state of the emulated SEEPROM device.
 #[derive(Debug)]
 pub struct SeepromState {
+    /// Data on the SEEPROM device.
+    data: BigEndianMemory,
+
+    /// Input buffer (of some set of bits).
     pub in_buf: u32,
+    /// The number of bits shifted into the input buffer.
     pub num_bits: u32,
+    /// Output buffer.
     pub out_buf: u16,
+    /// Current command/state.
     pub state: SeepromOp,
-    pub data: BigEndianMemory,
 }
 impl SeepromState {
     pub fn new() -> Self {
@@ -52,6 +50,7 @@ impl SeepromState {
         }
     }
 }
+
 impl SeepromState {
     pub fn reset(&mut self) {
         self.in_buf = 0;
@@ -109,11 +108,13 @@ impl GpioInterface {
         let clk_rise = (self.arm.output & GpioPin::SeepromClk as u32) == 0 
             && (val & GpioPin::SeepromClk as u32) != 0;
 
-        // If CS is asserted and we're at the rising edge of the clock,
-        // compute the next step of the serial/SPI state machine
+        // When CS is deasserted, the state of the SEEPROM is irrelevant.
         if !cs {
             self.seeprom.reset();
         } 
+
+        // If CS is asserted and we're at the rising edge of the clock,
+        // compute the next step of the serial/SPI state machine.
         if cs && clk_rise {
             let new_input = self.seeprom.step(mosi, self.arm.input);
             if new_input.is_some() {

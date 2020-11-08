@@ -2,12 +2,9 @@
 use std::collections::VecDeque;
 use crate::bus::mmio::MmioDevice;
 
-
+/// Some type of indirect access (from memory interface to the DDR interface).
 #[derive(Debug)]
-pub enum TaskType {
-    Read,
-    Write,
-}
+pub enum IndirAccess { Read, Write }
 
 /// Representing some device and piece of work to-be-completed by the bus.
 #[derive(Debug)]
@@ -25,7 +22,7 @@ pub enum BusTask {
     SetMirrorEnabled(bool),
 
     /// A read/write access request on the DDR interface.
-    Mi { kind: TaskType, data: u16 },
+    Mi { kind: IndirAccess, data: u16 },
 }
 
 /// A queue of tasks to-be-completed by the bus.
@@ -35,5 +32,4 @@ impl TaskQueue {
         TaskQueue { q: VecDeque::new() } 
     }
 }
-
 

@@ -22,6 +22,7 @@ pub mod ddr;
 /// Interrupt controller.
 pub mod irq;
 
+/// The inter-processor communication interface.
 #[derive(Default, Debug, Clone)]
 pub struct IpcInterface {
     pub ppc_msg: u32,
@@ -30,6 +31,7 @@ pub struct IpcInterface {
     pub arm_ctrl: u32,
 }
 
+/// The timer/alarm interface.
 #[derive(Default, Debug, Clone)]
 pub struct TimerInterface {
     pub timer: u32,
@@ -38,16 +40,18 @@ pub struct TimerInterface {
 }
 impl TimerInterface {
     pub fn step(&mut self) {
-        self.timer = self.timer.wrapping_add(4);
+        self.timer = self.timer.wrapping_add(0x10);
         if self.alarm_set {
             if self.timer == self.alarm {
-                println!("HLWD alarm interrupt {:08x} == {:08x}", self.timer, self.alarm);
-                panic!("Timer interrupt unimpl");
+                println!("HLWD alarm interrupt {:08x} == {:08x}", 
+                    self.timer, self.alarm);
+                panic!("Timer/alarm interrupts are unimplemented");
             }
         }
     }
 }
 
+/// Various clocking registers.
 #[derive(Default, Debug, Clone)]
 pub struct ClockInterface {
     pub sys: u32, 
@@ -71,6 +75,7 @@ pub struct BusCtrlInterface {
     pub aipprot: u32,
 }
 
+/// Unknown interface (probably related to the AHB).
 #[derive(Default, Debug, Clone)]
 pub struct AhbInterface {
     pub unk_08: u32,
@@ -267,9 +272,7 @@ impl MmioDevice for Hollywood {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum HlwdTask {
-    GpioOutput(u32),
-}
+pub enum HlwdTask { GpioOutput(u32) }
 
 impl Bus {
     pub fn handle_step_hlwd(&mut self) {

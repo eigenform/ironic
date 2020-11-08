@@ -19,12 +19,10 @@ use crate::cpu::coproc::CoprocTask;
 use crate::cpu::exec::DispatchRes;
 
 use crate::cpu::exec::arm;
-use crate::cpu::exec::arm::decode::ArmInst;
-use crate::cpu::exec::arm::dispatch::ArmFn;
-
 use crate::cpu::exec::thumb;
+
+use crate::cpu::exec::arm::decode::ArmInst;
 use crate::cpu::exec::thumb::decode::ThumbInst;
-use crate::cpu::exec::thumb::dispatch::ThumbFn;
 
 /// Container for lookup tables
 pub struct CpuLut {
@@ -35,12 +33,19 @@ pub struct CpuLut {
 }
 impl CpuLut {
     pub fn new() -> Self {
-        CpuLut {
-            arm: arm::ArmLut::create_lut(ArmFn(arm::dispatch::unimpl_instr)),
-            thumb: thumb::ThumbLut::create_lut(ThumbFn(thumb::dispatch::unimpl_instr)),
-        }
+        let arm = arm::ArmLut::create_lut(
+            arm::dispatch::ArmFn(arm::dispatch::unimpl_instr)
+        );
+        let thumb = thumb::ThumbLut::create_lut(
+            thumb::dispatch::ThumbFn(thumb::dispatch::unimpl_instr)
+        );
+        CpuLut { arm, thumb }
     }
 }
+
+/// Current status of the platform's boot process.
+#[derive(PartialEq)]
+pub enum BootStatus { Boot0, Boot1, Boot2Stub, Boot2, Kernel }
 
 /// Result after exiting the emulated CPU.
 pub enum CpuRes {
@@ -52,33 +57,25 @@ pub enum CpuRes {
     StepException(ExceptionType),
 }
 
-
-#[derive(PartialEq)]
-pub enum CpuStatus { Boot0, Boot1, Boot2Stub, Boot2, Kernel }
-
 /// Container for an ARMv5-compatible CPU.
 pub struct Cpu {
-
-    /// NOTE: Hacky scratch register, for dealing with the fact that Thumb BL 
-    /// instructions are interpreted as a pair of 16-bit instructions
-    pub scratch: u32,
-
-    /// The CPU's register file
+    /// The CPU's register file.
     pub reg: reg::RegisterFile,
-
-    /// The system control co-processor
+    /// The system control co-processor.
     pub p15: coproc::SystemControl,
-
-    /// ARM/Thumb lookup tables (instruction decoding)
+    /// ARM/Thumb lookup tables (for instruction decoding).
     pub lut: CpuLut,
-
-    /// The CPU's memory management unit
+    /// The CPU's memory management unit.
     pub mmu: mmu::Mmu,
+
+    /// Current stage in the boot process.
+    pub boot_status: BootStatus,
+
+    /// NOTE: Hacky scratch register, for dealing with Thumb BL instructions
+    pub scratch: u32,
 
     /// Some shared state with the UI thread.
     pub dbg: Arc<RwLock<Debugger>>,
-    pub log_buf: Vec<String>,
-    pub status: CpuStatus,
 }
 impl Cpu {
     pub fn new(dbg: Arc<RwLock<Debugger>>, bus: Arc<RwLock<Bus>>) -> Self { 
@@ -88,8 +85,7 @@ impl Cpu {
             lut: CpuLut::new(),
             mmu: mmu::Mmu::new(bus),
             scratch: 0,
-            log_buf: Vec::new(),
-            status: CpuStatus::Boot0,
+            boot_status: BootStatus::Boot0,
             dbg
         };
         log(&cpu.dbg, LogLevel::Cpu, "CPU instantiated");
@@ -114,35 +110,23 @@ impl Cpu {
 impl Cpu {
     /// Read the program counter (from the context of the fetch stage).
     pub fn read_fetch_pc(&self) -> u32 {
-        if self.reg.cpsr.thumb() {
-            self.reg.pc.wrapping_sub(4)
-        } else { 
-            self.reg.pc.wrapping_sub(8)
-        }
+        let pc_adj = if self.reg.cpsr.thumb() { 4 } else { 8 };
+        self.reg.pc.wrapping_sub(pc_adj)
     }
 
     /// Read the program counter (from the context of the execute stage).
-    pub fn read_exec_pc(&self) -> u32 { 
-        self.reg.pc 
-    }
+    pub fn read_exec_pc(&self) -> u32 { self.reg.pc }
 
     /// Write the program counter (from the context of the execute stage).
     pub fn write_exec_pc(&mut self, val: u32) {
-        let new_pc = if self.reg.cpsr.thumb() {
-            val.wrapping_add(4)
-        } else {
-            val.wrapping_add(8)
-        };
-        self.reg.pc = new_pc;
+        let pc_adj = if self.reg.cpsr.thumb() { 4 } else { 8 };
+        self.reg.pc = val.wrapping_add(pc_adj);
     }
 
     /// Increment the program counter.
     pub fn increment_pc(&mut self) {
-        if self.reg.cpsr.thumb() {
-            self.reg.pc = self.reg.pc.wrapping_add(2);
-        } else {
-            self.reg.pc = self.reg.pc.wrapping_add(4);
-        }
+        let pc_inc = if self.reg.cpsr.thumb() { 2 } else { 4 };
+        self.reg.pc = self.reg.pc.wrapping_add(pc_inc);
     }
 }
 
@@ -237,7 +221,7 @@ impl Cpu {
     pub fn exec_arm(&mut self) -> DispatchRes {
         let opcd = self.mmu.read32(self.read_fetch_pc());
 
-        //if self.status == CpuStatus::Boot2 {
+        //if self.boot_status == BootStatus::Boot2 {
         //    let pc = self.read_fetch_pc();
         //    let opname = format!("{:?}", ArmInst::decode(opcd));
         //    println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
@@ -255,7 +239,7 @@ impl Cpu {
     pub fn exec_thumb(&mut self) -> DispatchRes {
         let opcd = self.mmu.read16(self.read_fetch_pc());
 
-        //if self.status == CpuStatus::Boot2 {
+        //if self.boot_status == BootStatus::Boot2 {
         //    let pc = self.read_fetch_pc();
         //    let opname = format!("{:?}", ThumbInst::decode(opcd));
         //    println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
@@ -268,6 +252,31 @@ impl Cpu {
 
 
 impl Cpu {
+    fn check_boot_status(&mut self) {
+        match self.boot_status {
+            BootStatus::Boot0 => {
+                if self.read_fetch_pc() == 0xfff0_0000 { 
+                    println!("Entered boot1");
+                    self.boot_status = BootStatus::Boot1;
+                }
+            }
+            BootStatus::Boot1 => {
+                if self.read_fetch_pc() == 0xfff0_0058 { 
+                    println!("Entered boot2 stub");
+                    self.boot_status = BootStatus::Boot2Stub;
+                }
+            }
+            BootStatus::Boot2Stub => {
+                if self.read_fetch_pc() == 0xffff_0000 { 
+                    println!("Entered boot2");
+                    self.boot_status = BootStatus::Boot2;
+                }
+            }
+            _ => {},
+        }
+    }
+
+
     pub fn step(&mut self) -> CpuRes {
         assert!((self.read_fetch_pc() & 1) == 0);
 
@@ -296,28 +305,7 @@ impl Cpu {
             _ => unreachable!(),
         };
 
-        match self.status {
-            CpuStatus::Boot0 => {
-                if self.read_fetch_pc() == 0xfff0_0000 { 
-                    println!("Entered boot1");
-                    self.status = CpuStatus::Boot1;
-                }
-            }
-            CpuStatus::Boot1 => {
-                if self.read_fetch_pc() == 0xfff0_0058 { 
-                    println!("Entered boot2 stub");
-                    self.status = CpuStatus::Boot2Stub;
-                }
-            }
-            CpuStatus::Boot2Stub => {
-                if self.read_fetch_pc() == 0xffff_0000 { 
-                    println!("Entered boot2");
-                    self.status = CpuStatus::Boot2;
-                }
-            }
-
-            _ => {},
-        }
+        self.check_boot_status();
         cpu_res
     }
 }

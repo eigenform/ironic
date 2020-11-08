@@ -5,44 +5,52 @@
 use crate::bus::*;
 use crate::bus::prim::*;
 
-/// Top-level read/write functions.
+/// Top-level read/write functions for performing physical memory accesses.
 impl Bus {
+    /// Perform a 32-bit physical memory read.
     pub fn read32(&mut self, addr: u32) -> u32 {
         let msg = self.do_read(addr, BusWidth::W);
         match msg { BusPacket::Word(res) => res, _ => unreachable!(), }
     }
+
+    /// Perform a 16-bit physical memory read.
     pub fn read16(&mut self, addr: u32) -> u16 {
         let msg = self.do_read(addr, BusWidth::H);
         match msg { BusPacket::Half(res) => res, _ => unreachable!(), }
     }
+
+    /// Perform an 8-bit physical memory read.
     pub fn read8(&mut self, addr: u32) -> u8 {
         let msg = self.do_read(addr, BusWidth::B);
         match msg { BusPacket::Byte(res) => res, _ => unreachable!(), }
     }
 
+    /// Perform a 32-bit physical memory write.
     pub fn write32(&mut self, addr: u32, val: u32) {
         self.do_write(addr, BusPacket::Word(val));
     }
+    /// Perform a 16-bit physical memory write.
     pub fn write16(&mut self, addr: u32, val: u16) {
         self.do_write(addr, BusPacket::Half(val));
     }
+    /// Perform an 8-bit physical memory write.
     pub fn write8(&mut self, addr: u32, val: u8) {
         self.do_write(addr, BusPacket::Byte(val));
     }
 
+    /// Perform a DMA write operation.
     pub fn dma_write(&mut self, addr: u32, buf: &[u8]) {
         self.do_dma_write(addr, buf);
     }
+    /// Perform a DMA read operation.
     pub fn dma_read(&mut self, addr: u32, buf: &mut [u8]) {
         self.do_dma_read(addr, buf);
     }
 
 }
 
-/// Decode a physical address. At this point, we know we either need to deal
-/// with a plain memory device, or some memory-mapped I/O device.
 impl Bus {
-    /// Dispatch a read access.
+    /// Dispatch a physical read access (to memory, or some I/O device).
     fn do_read(&mut self, addr: u32, width: BusWidth) -> BusPacket {
         let handle = self.decode_phys_addr(addr).unwrap_or_else(||
             panic!("Unresolved physical address {:08x}", addr)
@@ -56,7 +64,7 @@ impl Bus {
         resp
     }
 
-    /// Dispatch a write access.
+    /// Dispatch a physical write access (to memory, or some I/O device).
     fn do_write(&mut self, addr: u32, msg: BusPacket) {
         let handle = self.decode_phys_addr(addr).unwrap_or_else(||
             panic!("Unresolved physical address {:08x}", addr)
@@ -70,8 +78,8 @@ impl Bus {
     }
 }
 
-/// Dispatch a read or write of some width to a memory device.
 impl Bus {
+    /// Dispatch a physical read access to some memory device.
     fn do_mem_read(&mut self, dev: MemDevice, off: usize, width: BusWidth) -> BusPacket {
         use MemDevice::*;
         use BusPacket::*;
@@ -90,6 +98,7 @@ impl Bus {
         }
     }
 
+    /// Dispatch a physical write access to some memory device.
     fn do_mem_write(&mut self, dev: MemDevice, off: usize, msg: BusPacket) {
         use MemDevice::*;
         use BusPacket::*;
@@ -109,8 +118,8 @@ impl Bus {
     }
 }
 
-/// Perform some DMA request.
 impl Bus {
+    /// Dispatch a DMA write to some memory device.
     fn do_dma_write(&mut self, addr: u32, buf: &[u8]) {
         use MemDevice::*;
         let handle = self.decode_phys_addr(addr).unwrap_or_else(||
@@ -131,6 +140,7 @@ impl Bus {
         }
     }
 
+    /// Dispatch a DMA read to some memory device.
     fn do_dma_read(&mut self, addr: u32, buf: &mut [u8]) {
         use MemDevice::*;
         let handle = self.decode_phys_addr(addr).unwrap_or_else(||

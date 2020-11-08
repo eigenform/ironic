@@ -72,7 +72,9 @@ pub struct Bus {
     /// Reference to [SystemDevice].
     pub dev: DevRef,
 
+    /// True when the ROM mapping is disabled.
     pub rom_disabled: bool,
+    /// True when the SRAM mirror is enabled.
     pub mirror_enabled: bool,
 
     /// Queue for pending work on I/O devices.

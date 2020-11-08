@@ -3,14 +3,6 @@ use crate::dev::*;
 use crate::bus::*;
 use crate::bus::prim::*;
 
-pub struct PhysMapArgs {
-    /// Is the boot ROM mapping currently enabled?
-    pub rom: bool,
-    /// Is the SRAM mirror currently enabled?
-    pub mirror: bool,
-}
-
-
 /// Declare a constant handle to some memory device.
 macro_rules! decl_mem_handle { 
     ($name:ident, $id:ident, $mask:expr) => {
@@ -29,6 +21,9 @@ macro_rules! decl_io_handle {
     }
 }
 
+// These are declarations of all the constant DeviceHandle structures whose 
+// parameters (base address, size, etc.) will never change during runtime.
+
 decl_mem_handle!(MEM1_HANDLE, Mem1, 0x017f_ffff);
 decl_mem_handle!(MEM2_HANDLE, Mem2, 0x03ff_ffff);
 
@@ -46,9 +41,8 @@ decl_io_handle!(SI_HANDLE, Si,      0x0000_03ff);
 decl_io_handle!(EXI_HANDLE, Exi,    0x0000_03ff);
 
 
-
-/// Decode physical addresses into some token for a device.
 impl Bus {
+    /// Decode a physical address into some handle for a particlar device.
     pub fn decode_phys_addr(&self, addr: u32) -> Option<DeviceHandle> {
         let hi_bits = (addr & 0xffff_0000) >> 16;
         match hi_bits {
@@ -75,15 +69,8 @@ impl Bus {
     }
 }
 
-/// Helper functions for decoding physical addresses.
+/// These are helper functions for decoding physical addresses.
 impl Bus {
-
-    /// Read the current state of any arguments which might change the layout
-    /// of the physical memory map.
-    fn get_physmap_args(&self) -> PhysMapArgs {
-        PhysMapArgs { rom: !self.rom_disabled, mirror: self.mirror_enabled }
-    }
-
     /// Resolve a physical address associated with the Hollywood MMIO region.
     fn resolve_hlwd(&self, addr: u32) -> Option<DeviceHandle> {
         match addr {
@@ -96,9 +83,9 @@ impl Bus {
         }
     }
 
+    /// Resolve a physical address associated with SRAM or the mask ROM.
     fn resolve_sram(&self, addr: u32) -> Option<DeviceHandle> {
-        let arg = self.get_physmap_args();
-        match (arg.rom, arg.mirror) {
+        match (!self.rom_disabled, self.mirror_enabled) {
             (true,  false) => resolve_rom_nomir(addr),
             (true,  true)  => resolve_rom_mir(addr),
             (false, true)  => resolve_norom_mir(addr),
@@ -179,5 +166,4 @@ fn resolve_norom_nomir(addr: u32) -> Option<DeviceHandle> {
         _ => None,
     }
 }
-
 

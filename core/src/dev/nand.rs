@@ -39,7 +39,6 @@ impl From<u32> for NandCommand {
     }
 }
 
-
 /// Representing the state of the NAND interface.
 pub struct NandInterface {
     pub dbg: Arc<RwLock<Debugger>>,

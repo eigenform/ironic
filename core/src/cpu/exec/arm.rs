@@ -12,6 +12,7 @@ pub mod multiply;
 pub mod status;
 
 use crate::cpu::*;
+use crate::cpu::arm::dispatch::ArmFn;
 
 /// An ARMv5 lookup table.
 pub struct ArmLut { 

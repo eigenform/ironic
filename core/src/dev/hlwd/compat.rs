@@ -3,7 +3,7 @@ use crate::bus::mmio::*;
 use crate::bus::task::*;
 use crate::bus::Bus;
 
-/// Disc drive interface.
+/// Legacy disc drive interface.
 #[derive(Default, Debug, Clone)]
 pub struct DriveInterface {
     disr: u32,
@@ -33,19 +33,17 @@ impl MmioDevice for DriveInterface {
 }
 
 
-
-const MEM_SPACE_LEN: usize = 0x40;
 /// Legacy memory interface.
 #[derive(Clone)]
 pub struct MemInterface {
-    pub reg: [u16; MEM_SPACE_LEN],
+    pub reg: [u16; 0x40],
     pub ddr_data: u16,
     pub ddr_addr: u16,
 }
 impl MemInterface {
     pub fn new() -> Self {
         MemInterface {
-            reg: [0; MEM_SPACE_LEN],
+            reg: [0; 0x40],
             ddr_data: 0,
             ddr_addr: 0,
         }
@@ -63,22 +61,23 @@ impl MmioDevice for MemInterface {
     }
     fn write(&mut self, off: usize, val: u16) -> Option<BusTask> {
         let task = match off {
-            0x74 => Some(BusTask::Mi { kind: TaskType::Read, data: val }),
-            0x76 => Some(BusTask::Mi { kind: TaskType::Write, data: val }),
+            0x74 => Some(BusTask::Mi { kind: IndirAccess::Read, data: val }),
+            0x76 => Some(BusTask::Mi { kind: IndirAccess::Write, data: val }),
             _ => { self.reg[off / 2] = val; None }
         };
         task
     }
 }
 
+
 impl Bus {
-    pub fn handle_task_mi(&mut self, kind: TaskType, data: u16) {
+    pub fn handle_task_mi(&mut self, kind: IndirAccess, data: u16) {
         let local_ref = self.dev.clone();
         let mut dev = local_ref.write().unwrap();
         let hlwd = &mut dev.hlwd;
 
         match kind {
-            TaskType::Read => {
+            IndirAccess::Read => {
                 assert!(data >= 0x0100);
                 hlwd.mi.ddr_addr = data;
                 let off = ((data * 2) - 0x0200) as usize;
@@ -88,7 +87,7 @@ impl Bus {
                     _ => unreachable!(),
                 };
             },
-            TaskType::Write => {
+            IndirAccess::Write => {
                 let ddr_addr = hlwd.mi.ddr_addr;
                 assert!(ddr_addr >= 0x0100);
                 let off = ((hlwd.mi.ddr_addr * 2) - 0x200) as usize;

@@ -3,9 +3,13 @@ use std::io::Read;
 use std::fs::File;
 use crate::bus::prim::AccessWidth;
 
+/// One-time programmable memory device/interface.
 pub struct OtpInterface {
+    /// Bits fused to the device.
     data: [u8; 0x80],
+    /// Command register.
     pub cmd: u32,
+    /// Command output register.
     pub out: u32,
 }
 impl OtpInterface {
@@ -17,6 +21,7 @@ impl OtpInterface {
         otp
     }
 }
+
 impl OtpInterface {
     /// Read a word from OTP memory.
     fn read(&self, word_idx: usize) -> u32 {

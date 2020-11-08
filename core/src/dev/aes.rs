@@ -1,15 +1,15 @@
 
-use std::collections::VecDeque;
-
-extern crate pretty_hex;
-use pretty_hex::*;
-
 extern crate aes;
 extern crate block_modes;
+extern crate pretty_hex;
+
+use pretty_hex::*;
 use aes::Aes128;
 use block_modes::{BlockMode, Cbc};
 use block_modes::block_padding::NoPadding;
 type Aes128Cbc = Cbc<Aes128, NoPadding>;
+
+use std::collections::VecDeque;
 
 use crate::bus::*;
 use crate::dbg::*;

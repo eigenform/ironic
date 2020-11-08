@@ -15,8 +15,8 @@ pub trait MmioDevice {
     fn write(&mut self, off: usize, val: Self::Width) -> Option<BusTask>;
 }
 
-/// Dispatch a read or write to some memory-mapped I/O device.
 impl Bus {
+    /// Dispatch a physical read access to some memory-mapped I/O device.
     pub fn do_mmio_read(&mut self, dev: IoDevice, off: usize, width: BusWidth) -> BusPacket {
         use IoDevice::*;
         let mut dref = self.dev.write().unwrap();
@@ -35,6 +35,7 @@ impl Bus {
         }
     }
 
+    /// Dispatch a physical write access to some memory-mapped I/O device.
     pub fn do_mmio_write(&mut self, dev: IoDevice, off: usize, msg: BusPacket) {
         use IoDevice::*;
         use BusPacket::*;
@@ -61,16 +62,18 @@ impl Bus {
 
 impl Bus {
 
-    /// Emulate a slice of work on the Bus.
+    /// Emulate a slice of work on the system bus.
+    ///
+    /// This drains all pending tasks that have been scheduled on any of the
+    /// I/O devices.
     pub fn step(&mut self) {
         self.handle_step_hlwd();
-
         if !self.tasks.is_empty() {
             self.drain_tasks();
         }
     }
 
-    /// Dispatch all pending tasks on the Bus.
+    /// Dispatch all of the pending tasks on the Bus.
     fn drain_tasks(&mut self) {
         let mut tasks = std::mem::replace(&mut self.tasks, Vec::new());
         for task in tasks.drain(..) {

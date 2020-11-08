@@ -12,22 +12,13 @@ pub unsafe trait AccessWidth: Sized {
     fn as_be(self) -> Self;
     fn as_le(self) -> Self;
 
-    #[inline]
-    fn as_ptr(&self) -> *const Self {
-        self as *const Self
-    }
+    fn as_ptr(&self) -> *const Self { self as *const Self }
+    fn as_mut(&mut self) -> *mut Self { self as *mut Self }
 
-    #[inline]
-    fn as_mut(&mut self) -> *mut Self {
-        self as *mut Self
-    }
-
-    #[inline]
     unsafe fn as_bytes(&self) -> &[u8] {
         slice::from_raw_parts(self.as_ptr() as *const u8, mem::size_of_val(self))
     }
 
-    #[inline]
     unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
         slice::from_raw_parts_mut(self.as_mut() as *mut u8, mem::size_of_val(self))
     }
@@ -37,26 +28,19 @@ pub unsafe trait AccessWidth: Sized {
 macro_rules! impl_accesswidth {
     ($type:ident) => {
         unsafe impl AccessWidth for $type {
-            #[inline]
             fn from_be_bytes(data: &[u8]) -> Self {
                 Self::from_be_bytes(data.try_into().unwrap())
             }
-            #[inline]
             fn from_le_bytes(data: &[u8]) -> Self {
                 Self::from_le_bytes(data.try_into().unwrap())
             }
-            #[inline]
-            fn as_be(self) -> Self {
-                Self::to_be(self)
-            }
-            #[inline]
-            fn as_le(self) -> Self {
-                Self::to_le(self)
-            }
+            fn as_be(self) -> Self { Self::to_be(self) }
+            fn as_le(self) -> Self { Self::to_le(self) }
         }
     };
 }
 
+// Implement AccessWidth for the supported numeric primitives.
 impl_accesswidth!(u32);
 impl_accesswidth!(u16);
 impl_accesswidth!(u8);
@@ -105,7 +89,6 @@ pub trait PhysMemDispatch: PhysMemMap + PhysMemDecode {
         self._write8(self.decode_phys_addr(addr).unwrap(), addr, val)
     }
 
-
     fn phys_read(&mut self, req: Self::Req) -> Option<Self::Resp>;
     fn phys_write(&mut self, req: Self::Req) -> Option<Self::Resp>;
 
@@ -125,45 +108,28 @@ pub trait PhysMemDispatch: PhysMemMap + PhysMemDecode {
 }
 
 
-
 /// Handle to a target for some physical memory access.
 #[derive(Debug, Clone, Copy)]
 pub struct DeviceHandle {
     pub dev: Device,
-    //pub base: u32,
     pub mask: u32,
 }
 
+/// Some kind of target device for a physical memory access.
 #[derive(Debug, Clone, Copy)]
-pub enum Device {
-    Mem(MemDevice),
-    Io(IoDevice),
-}
+pub enum Device { Mem(MemDevice), Io(IoDevice) }
 
+/// Different kinds of memory devices that support physical memory accesses.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum MemDevice {
-    MaskRom, 
-    Sram0, 
-    Sram1, 
-    Mem1, 
-    Mem2,
-}
+pub enum MemDevice { MaskRom, Sram0, Sram1, Mem1, Mem2 }
+
+/// Different kinds of I/O devices that support physical memory accesses.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum IoDevice {
-    Nand, 
-    Aes, 
-    Sha,
-    Ehci,
-
-    Hlwd,
-    Ahb,
-    Di,
-    Si,
-    Exi,
-    Mi,
-    Ddr,
+    Nand, Aes, Sha, Ehci,
+    Hlwd, Ahb, Ddr,
+    Di, Si, Exi, Mi,
 }
-
 
 /// A message on the bus containing some value.
 #[derive(Debug, Clone, Copy)]
@@ -173,16 +139,15 @@ pub enum BusPacket { Byte(u8), Half(u16), Word(u32) }
 #[derive(Debug, Clone, Copy)]
 pub enum BusWidth { B, H, W }
 
-
-#[derive(Debug)]
 /// An abstract request on the bus.
+#[derive(Debug)]
 pub struct BusReq {
     pub handle: DeviceHandle,
     pub msg: Option<BusPacket>,
 }
 
-#[derive(Debug)]
 /// An abstract reply to a bus request.
+#[derive(Debug)]
 pub struct BusRep {
     pub msg: Option<BusPacket>,
 }
