@@ -19,9 +19,11 @@ const NUM_NAND_PAGES: usize = 0x0040_000;
 #[derive(Debug, Clone, Copy)]
 pub enum NandCommand {
     /// Reset command (idempotent).
-    Reset(u32),
+    Reset { irq: bool },
+
     /// Read some data from memory (used in bootloaders).
-    ReadBoot(u32),
+    ReadBoot { irq: bool, ecc: bool, r: bool, w: bool, len: u32 },
+
     /// Read the NAND chip ID (?).
     ReadId(u32),
     /// Unknown command (does nothing?)
@@ -29,11 +31,17 @@ pub enum NandCommand {
 }
 impl From<u32> for NandCommand {
     fn from(x: u32) -> Self {
+        let irq = (x & 0x4000_0000) != 0;
+        let ecc = (x & 0x0000_1000) != 0;
+        let r   = (x & 0x0000_2000) != 0;
+        let w   = (x & 0x0000_4000) != 0;
+        let len =  x & 0x0000_0fff;
+
         match (x & 0x00ff_0000) >> 16 {
             0x00 => NandCommand::Ignore(x),
-            0x30 => NandCommand::ReadBoot(x),
+            0x30 => NandCommand::ReadBoot { irq, ecc, r, w, len },
             0x90 => NandCommand::ReadId(x),
-            0xff => NandCommand::Reset(x),
+            0xff => NandCommand::Reset { irq },
             _ => panic!("Unhandled NandCommand {:08x}", x),
         }
     }
@@ -89,14 +97,17 @@ impl MmioDevice for NandInterface {
             0x0c => self.addr2,
             0x10 => self.databuf,
             0x14 => self.eccbuf,
-            _ => panic!("Unhandled AES read at {:x} ", off),
+            _ => panic!("Unhandled NAND read at {:x} ", off),
         };
+        println!("NAND read off={:02x} val={:08x}", off, val);
         BusPacket::Word(val)
     }
 
     fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
+        println!("NAND write off={:02x} val={:08x}", off, val);
         match off {
             0x00 => {
+                //assert!((val & 0x4000_0000) == 0);
                 self.ctrl = val;
                 if val & 0x8000_0000 != 0 {
                     return Some(BusTask::Nand(val));
@@ -122,24 +133,17 @@ impl Bus {
 
         // Perform the scheduled command
         let cmd = NandCommand::from(val);
+        println!("NAND cmdval={:08x}", val);
+
         match cmd {
-            NandCommand::ReadBoot(cmd) => {
-                let irq_req     = cmd & 0x4000_0000 != 0;
-                let ecc_flag    = cmd & 0x0000_1000 != 0;
-                let read_flag   = cmd & 0x0000_2000 != 0;
-                let _write_flag  = cmd & 0x0000_4000 != 0;
-                let data_len    = cmd & 0x0000_0fff;
-
-                assert!(read_flag);
-                assert!(!irq_req);
-                assert!(data_len == NAND_PAGE_LEN as u32);
-                assert!(ecc_flag);
-
+            NandCommand::ReadBoot { irq, ecc, r, w, len } => {
+                assert!(!irq);
+                assert!(r && ecc && !w);
+                assert!(len == NAND_PAGE_LEN as u32);
                 println!("NAND page {:08x}, DMA write data={:08x} ecc={:08x}",
                     nand.addr2, nand.databuf, nand.eccbuf);
-              
                 let nand_offset = nand.addr2 as usize * NAND_PAGE_LEN;
-                let mut buf = vec![0; data_len as usize];
+                let mut buf = vec![0; len as usize];
 
                 nand.data.read_buf(nand_offset, &mut buf);
 
@@ -153,11 +157,13 @@ impl Bus {
                         addr, old_ecc, new_ecc);
                     self.write32(addr, new_ecc);
                 }
-
             },
-            NandCommand::Reset(_)  => {},
+
+            NandCommand::Reset { irq } => {
+                assert!(!irq);
+            },
             NandCommand::Ignore(_) => {},
-            _ => panic!("Unhandled NAND command {:?}", cmd),
+            _ => panic!("Unhandled NAND command {:?}", val),
         }
 
         // Mark the command as completed.
