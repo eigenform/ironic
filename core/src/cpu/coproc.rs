@@ -189,7 +189,8 @@ impl SystemControl {
             CacheControl => match (crm, opcd2) {
                 (5, 0) => {}, //println!("P15 Invalidate entire icache"),
                 (6, 0) => {}, //println!("P15 Invalidate entire dcache"),
-                (10, 1) => {}, //println!("P15 Clean data cache line {:08x}", val),
+                (6, 1) => {}, //println!("P15 Invalidate dcache line {:08x}", val"),
+                (10, 1) => {}, //println!("P15 Clean dcache line {:08x}", val),
                 (10, 4) => {}, //println!("P15 Drain write buffer"),
                 _ => panic!("Unimpl P15 write {:08x} {:?} crm={} opcd2={}",
                     val, SystemControlReg::from(reg), crm, opcd2),

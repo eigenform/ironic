@@ -3,6 +3,7 @@ use crate::bus::*;
 use crate::dbg::*;
 use crate::bus::prim::*;
 use crate::bus::task::*;
+use crate::dev::hlwd::irq::*;
 
 /// Interface used by the bus to perform some access on an I/O device.
 pub trait MmioDevice {
@@ -62,6 +63,17 @@ impl Bus {
 
 impl Bus {
 
+    //pub fn schedule_task(&mut self, t: BusTask) {
+    //    use BusTask::*;
+    //    let latency = match t {
+    //        Nand(_) | Aes(_) | Sha(_) => 4,
+    //        Mi {..} => 0,
+    //        SetRomDisabled(_) | SetMirrorEnabled(_) => 0,
+    //    };
+    //    self.task_queue.push(Task { kind: t, ctr: latency});
+    //}
+
+
     /// Emulate a slice of work on the system bus.
     ///
     /// This drains all pending tasks that have been scheduled on any of the
@@ -71,6 +83,12 @@ impl Bus {
         if !self.tasks.is_empty() {
             self.drain_tasks();
         }
+    }
+
+    /// Returns the state of the IRQ input signal attached to the CPU.
+    pub fn irq_line(&mut self) -> bool {
+        let dev = self.dev.read().unwrap();
+        dev.hlwd.irq.irq_output
     }
 
     /// Dispatch all of the pending tasks on the Bus.

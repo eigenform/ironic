@@ -77,13 +77,13 @@ impl SeepromState {
             0x0b => if self.state == Read {
                 let addr = (self.in_buf & 0x7f) as usize;
                 self.out_buf = self.data.read::<u16>(addr * 2);
-                //println!("SEEPROM read {:04x} from {:x}", self.out_buf, addr);
+                println!("SEEPROM read {:04x} from {:x}", self.out_buf, addr);
             },
             0x1b => if self.state == Write {
                 let addr = ((self.in_buf >> 16) & 0x7f) as usize;
                 let data = (self.in_buf & 0xffff) as u16;
                 self.data.write::<u16>(addr * 2, data);
-                //println!("SEEPROM write {:04x} to {:x}", data, addr);
+                println!("SEEPROM write {:04x} to {:x}", data, addr);
             },
             _ => {},
         }

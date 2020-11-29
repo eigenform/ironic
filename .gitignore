@@ -9,5 +9,6 @@ Cargo.lock
 /tui/Cargo.lock
 *.bin
 *.sym
+*.py
 perf.data
 perf.data.old

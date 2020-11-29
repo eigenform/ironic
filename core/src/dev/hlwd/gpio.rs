@@ -53,6 +53,10 @@ impl GpioInterface {
             self.handle_seeprom(val);
         } else if (diff & 0x00ff_0000) != 0 {
             println!("GPIO DEBUG pins [{:02x}]", (val & 0x00ff_0000) >> 16);
+        } else if (diff & 0x0000_000c) != 0 {
+            println!("GPIO Fan/DCDC output {:08x}", diff);
+        } else {
+            panic!("Unhandled GPIO output diff={:08x}", diff);
         }
     }
 }

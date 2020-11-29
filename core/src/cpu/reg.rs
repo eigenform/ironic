@@ -1,10 +1,75 @@
-//! Implementation of the register file.
 
+use crate::cpu::psr::*;
+
+/// Token for a particular register.
 pub enum Reg { Lr, Sp, Ip }
 
+/// CPU operating mode.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum CpuMode { 
+    Usr = 0b10000, 
+    Fiq = 0b10001, 
+    Irq = 0b10010, 
+    Svc = 0b10011, 
+    Abt = 0b10111, 
+    Und = 0b11011, 
+    Sys = 0b11111,
+}
+impl CpuMode {
+    pub fn is_privileged(self) -> bool { self != CpuMode::Usr }
+    pub fn is_exception(self) -> bool { 
+        self != CpuMode::Usr && self != CpuMode::Sys 
+    }
+}
+impl From<u32> for CpuMode {
+    fn from(x: u32) -> Self {
+        use CpuMode::*;
+        match x {
+            0b10000 => Usr, 0b10001 => Fiq,
+            0b10010 => Irq, 0b10011 => Svc,
+            0b10111 => Abt, 0b11011 => Und,
+            0b11111 => Sys,
+            _ => panic!("Invalid mode bits {:08x}", x),
+        }
+    }
+}
+
+/// Condition field used when decoding instructions.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Cond {
+    EQ = 0b0000, NE = 0b0001,
+    CS = 0b0010, CC = 0b0011,
+    MI = 0b0100, PL = 0b0101,
+    VS = 0b0110, VC = 0b0111,
+    HI = 0b1000, LS = 0b1001,
+    GE = 0b1010, LT = 0b1011,
+    GT = 0b1100, LE = 0b1101,
+    AL = 0b1110,
+}
+impl From<u32> for Cond {
+    fn from(x: u32) -> Self {
+        use Cond::*;
+        match x {
+            0b0000 => EQ, 0b0001 => NE,
+            0b0010 => CS, 0b0011 => CC,
+            0b0100 => MI, 0b0101 => PL,
+            0b0110 => VS, 0b0111 => VC,
+            0b1000 => HI, 0b1001 => LS,
+            0b1010 => GE, 0b1011 => LT,
+            0b1100 => GT, 0b1101 => LE,
+            0b1110 => AL,
+            _ => panic!("Invalid condition bits {:08x}", x),
+        }
+    }
+}
+
+
+/// The set of banked registers for all operating modes.
 #[derive(Debug, Copy, Clone, Default, PartialEq)]
 pub struct RegisterBank {
+    /// General-purpose registers (shared among all modes).
     pub gen: [u32; 13],
+
     pub sys: [u32; 2],
     pub svc: [u32; 2],
     pub abt: [u32; 2],
@@ -28,58 +93,6 @@ impl RegisterBank {
     }
 }
 
-/// Saved program status registers.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct SavedStatusBank {
-    /// SVC mode saved program status register.
-    pub svc: Psr,
-    /// ABT mode saved program status register.
-    pub abt: Psr,
-    /// UND mode saved program status register.
-    pub und: Psr,
-    /// IRQ mode saved program status register.
-    pub irq: Psr,
-    /// FIQ mode saved program status register.
-    pub fiq: Psr,
-}
-impl SavedStatusBank {
-    pub fn new() -> Self {
-        SavedStatusBank {
-            svc: Psr(0x0000_0000),
-            abt: Psr(0x0000_0000),
-            und: Psr(0x0000_0000),
-            irq: Psr(0x0000_0000),
-            fiq: Psr(0x0000_0000),
-        }
-    }
-
-    /// Write the SPSR for the provided mode.
-    pub fn write(&mut self, mode: CpuMode, val: Psr) {
-        use CpuMode::*;
-        match mode {
-            Svc => self.svc = val,
-            Abt => self.abt = val,
-            Und => self.und = val,
-            Irq => self.irq = val,
-            Fiq => self.fiq = val,
-            _ => panic!("Invalid mode {:?} for SPSR write", mode),
-        }
-    }
-
-    /// Read the SPSR for the provided mode.
-    pub fn read(&self, mode: CpuMode) -> Psr {
-        use CpuMode::*;
-        match mode {
-            Svc => self.svc,
-            Abt => self.abt,
-            Und => self.und,
-            Irq => self.irq,
-            Fiq => self.fiq,
-            _ => panic!("Invalid mode {:?} for SPSR read", mode),
-        }
-    }
-}
-
 
 /// Top-level container for register state.
 #[derive(Copy, Clone, PartialEq)]
@@ -91,8 +104,6 @@ pub struct RegisterFile {
     pub pc: u32,
     /// The set of banked registers.
     pub bank: RegisterBank,
-    /// The current CPU mode.
-    pub mode: CpuMode,
     /// The current program status register.
     pub cpsr: Psr,
     /// The saved program status registers.
@@ -110,7 +121,6 @@ impl RegisterFile {
             r: [0; 15],
             pc: 0xffff_0000 + 8,
             cpsr: init_cpsr,
-            mode: CpuMode::Svc,
             bank: RegisterBank::default(),
             spsr: SavedStatusBank::new(),
         }
@@ -121,20 +131,18 @@ impl RegisterFile {
 impl RegisterFile {
 
     /// Write the current status program register.
-    pub fn write_cpsr(&mut self, val: Psr) { 
-        // If we are moving into a different mode, swap the registers.
-        if self.mode != val.mode() {
-            self.swap_bank(val.mode());
-            self.mode = val.mode();
+    pub fn write_cpsr(&mut self, target: Psr) { 
+        if self.cpsr.mode() != target.mode() {
+            self.swap_bank(target.mode());
         }
-        self.cpsr = val; 
+        //println!("CPU Wrote cpsr={:08x}, mode={:?}", target.0, target.mode());
+        self.cpsr = target;
     }
 
-    /// Read the current status program register.
-    pub fn read_cpsr(&mut self) -> Psr { self.cpsr }
-
-    /// Read the SPSR associated with the current CPU mode.
-    pub fn read_current_spsr(&self) -> Psr { self.spsr.read(self.mode) }
+    /// Save the current CPSR to some mode's SPSR.
+    pub fn save_cpsr(&mut self, target_mode: CpuMode) {
+        self.spsr.write(target_mode, self.cpsr);
+    }
 }
 
 
@@ -147,19 +155,15 @@ impl RegisterFile {
     }
 
     /// Save active registers to the bank for the current mode.
-    pub fn save_current_bank(&mut self) {
-        let mut iter = self.bank.get_mode_iter(self.mode);
-        for i in 0..15 {
-            *iter.next().unwrap() = self.r[i];
-        }
+    fn save_current_bank(&mut self) {
+        let mut iter = self.bank.get_mode_iter(self.cpsr.mode());
+        for i in 0..15 { *iter.next().unwrap() = self.r[i]; }
     }
 
     /// Load the bank for the provided mode into the active registers.
-    pub fn load_bank(&mut self, target_mode: CpuMode) {
+    fn load_bank(&mut self, target_mode: CpuMode) {
         let mut iter = self.bank.get_mode_iter(target_mode);
-        for i in 0..15 {
-            self.r[i] = *iter.next().unwrap();
-        }
+        for i in 0..15 { self.r[i] = *iter.next().unwrap(); }
     }
 }
 
@@ -208,7 +212,6 @@ impl std::ops::IndexMut<u32> for RegisterFile {
         }
     }
 }
-
 impl std::ops::Index<u16> for RegisterFile {
     type Output = u32;
     fn index(&self, index: u16) -> &u32 {
@@ -226,7 +229,6 @@ impl std::ops::IndexMut<u16> for RegisterFile {
         }
     }
 }
-
 impl std::ops::Index<Reg> for RegisterFile {
     type Output = u32;
     fn index(&self, index: Reg) -> &u32 {
@@ -267,95 +269,4 @@ impl std::fmt::Debug for RegisterFile {
 
 
 
-/// Condition field used when decoding instructions.
-#[derive(Debug, PartialEq, Eq)]
-pub enum Cond {
-    EQ = 0b0000, NE = 0b0001,
-    CS = 0b0010, CC = 0b0011,
-    MI = 0b0100, PL = 0b0101,
-    VS = 0b0110, VC = 0b0111,
-    HI = 0b1000, LS = 0b1001,
-    GE = 0b1010, LT = 0b1011,
-    GT = 0b1100, LE = 0b1101,
-    AL = 0b1110,
-}
-impl From<u32> for Cond {
-    fn from(x: u32) -> Self {
-        use Cond::*;
-        match x {
-            0b0000 => EQ, 0b0001 => NE,
-            0b0010 => CS, 0b0011 => CC,
-            0b0100 => MI, 0b0101 => PL,
-            0b0110 => VS, 0b0111 => VC,
-            0b1000 => HI, 0b1001 => LS,
-            0b1010 => GE, 0b1011 => LT,
-            0b1100 => GT, 0b1101 => LE,
-            0b1110 => AL,
-            _ => panic!("Invalid condition bits {:08x}", x),
-        }
-    }
-}
-
-/// CPU operating mode.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CpuMode { 
-    Usr = 0b10000, 
-    Fiq = 0b10001, 
-    Irq = 0b10010, 
-    Svc = 0b10011, 
-    Abt = 0b10111, 
-    Und = 0b11011, 
-    Sys = 0b11111,
-}
-impl CpuMode {
-    pub fn is_exception(self) -> bool { self != CpuMode::Usr && self != CpuMode::Sys }
-    pub fn is_privileged(self) -> bool { self != CpuMode::Usr }
-}
-impl From<u32> for CpuMode {
-    fn from(x: u32) -> Self {
-        use CpuMode::*;
-        match x {
-            0b10000 => Usr,
-            0b10001 => Fiq,
-            0b10010 => Irq,
-            0b10011 => Svc,
-            0b10111 => Abt,
-            0b11011 => Und,
-            0b11111 => Sys,
-            _ => panic!("Invalid mode bits {:08x}", x),
-        }
-    }
-}
-
-/// Program status register.
-#[derive(Debug, Copy, Clone, PartialEq)]
-#[repr(transparent)]
-pub struct Psr(pub u32);
-impl Psr {
-    fn set_bit(&mut self, idx: usize, val: bool) {
-        self.0 = (self.0 & !(1 << idx)) | (val as u32) << idx
-    }
-
-    pub fn mode(&self) -> CpuMode { CpuMode::from(self.0 & 0x1f) }
-    pub fn thumb(&self) -> bool { (self.0 & 0x0000_0020) != 0 }
-    pub fn fiq_disable(&self) -> bool { (self.0 & 0x0000_0040) != 0 }
-    pub fn irq_disable(&self) -> bool { (self.0 & 0x0000_0080) != 0 }
-
-    pub fn q(&self) -> bool { (self.0 & 0x0800_0000) != 0 }
-    pub fn v(&self) -> bool { (self.0 & 0x1000_0000) != 0 }
-    pub fn c(&self) -> bool { (self.0 & 0x2000_0000) != 0 }
-    pub fn z(&self) -> bool { (self.0 & 0x4000_0000) != 0 }
-    pub fn n(&self) -> bool { (self.0 & 0x8000_0000) != 0 }
-
-    pub fn set_mode(&mut self, mode: CpuMode) { self.0 = (self.0 & !0x1f) | mode as u32 }
-    pub fn set_thumb(&mut self, val: bool) { self.set_bit(5, val); }
-    pub fn set_fiq_disable(&mut self, val: bool) { self.set_bit(6, val); }
-    pub fn set_irq_disable(&mut self, val: bool) { self.set_bit(7, val); }
-
-    pub fn set_q(&mut self, val: bool) { self.set_bit(27, val); }
-    pub fn set_v(&mut self, val: bool) { self.set_bit(28, val); }
-    pub fn set_c(&mut self, val: bool) { self.set_bit(29, val); }
-    pub fn set_z(&mut self, val: bool) { self.set_bit(30, val); }
-    pub fn set_n(&mut self, val: bool) { self.set_bit(31, val); }
-}
 

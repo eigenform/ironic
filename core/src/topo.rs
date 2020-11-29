@@ -104,26 +104,33 @@ impl EmuThreadContext {
     pub fn syscall_log(&mut self, opcd: u32) {
         println!("IOS syscall {:08x}, lr={:08x}", opcd, self.cpu.reg[Reg::Lr]);
     }
+}
+
+impl EmuThreadContext {
 
     /// Run the emulator thread for some number of steps (currently, Bus steps
     /// are interleaved with CPU steps).
     pub fn run_slice(&mut self, num_steps: usize) {
         use ExceptionType::*;
-        for _i in 0..num_steps {
+
+        for step_idx in 0..num_steps {
+            {
+                let mut bus = self.bus.write().unwrap();
+                bus.step();
+                self.cpu.irq_input = bus.irq_line();
+            }
+
             let res = self.cpu.step();
             match res {
-                CpuRes::StepOk => { 
-                    self.bus.write().unwrap().step(); 
-                },
+                CpuRes::StepOk => {},
+                CpuRes::HaltEmulation => break,
                 CpuRes::StepException(e) => {
                     match e {
                         Swi => self.svc_read(),
                         Undef(_) => {},
-                        //Undef(opcd) => self.syscall_log(opcd),
                         _ => panic!("Unimplemented exception type"),
                     }
                 },
-                CpuRes::HaltEmulation => break,
             }
         }
         println!("CPU slice finished pc={:08x}", self.cpu.read_fetch_pc());

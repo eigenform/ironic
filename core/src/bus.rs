@@ -79,6 +79,8 @@ pub struct Bus {
 
     /// Queue for pending work on I/O devices.
     pub tasks: Vec<BusTask>,
+
+    pub task_queue: Vec<Task>,
 }
 impl Bus {
     pub fn new(dbg: DbgRef, mem: MemRef, dev: DevRef)-> Self {
@@ -87,6 +89,7 @@ impl Bus {
             rom_disabled: false,
             mirror_enabled: false,
             tasks: Vec::new(),
+            task_queue: Vec::new()
         }
     }
 }

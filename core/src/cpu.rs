@@ -1,7 +1,10 @@
 
 pub mod coproc;
 pub mod excep;
+
 pub mod reg;
+pub mod psr;
+
 pub mod mmu;
 pub mod exec;
 pub mod lut;
@@ -15,12 +18,7 @@ use crate::cpu::lut::*;
 use crate::cpu::reg::*;
 use crate::cpu::excep::*;
 use crate::cpu::coproc::CoprocTask;
-
-use crate::cpu::exec::DispatchRes;
-
-use crate::cpu::exec::arm;
-use crate::cpu::exec::thumb;
-
+use crate::cpu::exec::{arm, thumb, DispatchRes};
 use crate::cpu::exec::arm::decode::ArmInst;
 use crate::cpu::exec::thumb::decode::ThumbInst;
 
@@ -71,8 +69,12 @@ pub struct Cpu {
     /// Current stage in the boot process.
     pub boot_status: BootStatus,
 
-    /// NOTE: Hacky scratch register, for dealing with Thumb BL instructions
     pub scratch: u32,
+    pub dbg_on: bool,
+    pub dbg_steps: u32,
+
+    /// Whether or not an interrupt request is currently asserted.
+    pub irq_input: bool,
 
     /// Some shared state with the UI thread.
     pub dbg: Arc<RwLock<Debugger>>,
@@ -85,7 +87,10 @@ impl Cpu {
             lut: CpuLut::new(),
             mmu: mmu::Mmu::new(bus),
             scratch: 0,
+            irq_input: false,
             boot_status: BootStatus::Boot0,
+            dbg_on: false,
+            dbg_steps: 1_000_000,
             dbg
         };
         log(&cpu.dbg, LogLevel::Cpu, "CPU instantiated");
@@ -130,61 +135,17 @@ impl Cpu {
     }
 }
 
-/// These are functions that define the behavior for dealing with the current
-/// mode and behavior for implementing exceptions.
 impl Cpu {
-
+    /// Set the current CPU mode.
     pub fn set_mode(&mut self, target_mode: CpuMode) {
-        if target_mode == self.reg.mode { return; }
+        if target_mode == self.reg.cpsr.mode() { 
+            panic!("");
+        }
+
+        //println!("CPU switching mode to {:?}", target_mode);
         self.reg.swap_bank(target_mode);
         self.reg.cpsr.set_mode(target_mode);
-        self.reg.mode = target_mode;
         self.mmu.cpu_mode = target_mode;
-    }
-
-    /// Cause the CPU to take some exception.
-    pub fn generate_exception(&mut self, e: ExceptionType) {
-        let current_mode = self.reg.cpsr.mode();
-        assert_eq!(current_mode, self.reg.mode);
-
-        let target_mode = CpuMode::from(e);
-        let target_pc = ExceptionType::get_vector(e);
-        let return_pc = self.read_fetch_pc()
-            .wrapping_add(ExceptionType::get_pc_off(e, self.reg.cpsr.thumb()));
-
-        // Just log syscalls here, for now
-        match e {
-            ExceptionType::Undef(opcd) => {
-                ios::resolve_syscall(self, opcd);
-                //ios::log_syscall(opcd, self.read_fetch_pc(), self.reg[Reg::Lr]); 
-            },
-            _ => {},
-        }
-
-        // Save the CPSR to the target SPSR, then change mode
-        let cpsr = self.reg.read_cpsr();
-        self.reg.spsr.write(target_mode, cpsr);
-        self.set_mode(target_mode);
-
-        self.reg.cpsr.set_thumb(false);
-        if e == ExceptionType::Fiq {
-            self.reg.cpsr.set_fiq_disable(true);
-        }
-        self.reg.cpsr.set_irq_disable(true);
-        self.reg[Reg::Lr] = return_pc;
-        self.write_exec_pc(target_pc);
-    }
-
-    /// Return from an exception.
-    pub fn exception_return(&mut self, dest_pc: u32) {
-        assert_ne!(self.reg.mode, CpuMode::Usr);
-        assert_ne!(self.reg.mode, CpuMode::Sys);
-
-        let current_mode = self.reg.mode;
-        let current_spsr = self.reg.spsr.read(self.reg.mode);
-
-        self.reg.write_cpsr(current_spsr);
-        self.write_exec_pc(dest_pc & 0xffff_fffe);
     }
 }
 
@@ -218,27 +179,31 @@ impl Cpu {
 /// either the ARM or Thumb lookup table.
 
 impl Cpu {
+    fn dbg_print(&mut self) {
+        let pc = self.read_fetch_pc();
+        if self.dbg_on && self.dbg_steps > 0 {
+            if self.reg.cpsr.thumb() {
+                let opcd = self.mmu.read16(pc);
+                let inst = ThumbInst::decode(opcd);
+                match inst {
+                    ThumbInst::BlImmSuffix => return,
+                    _ => {}
+                }
+                let name = format!("{:?}", ThumbInst::decode(opcd));
+                println!("({:08x}) {:12} {:x?}", opcd, name, self.reg);
+            } else {
+                let opcd = self.mmu.read32(pc);
+                let name = format!("{:?}", ArmInst::decode(opcd));
+                println!("({:08x}) {:12} {:x?}", opcd, name, self.reg);
+            };
+            self.dbg_steps -= 1;
+        }
+    }
+
     /// Decode and dispatch an ARM instruction.
     pub fn exec_arm(&mut self) -> DispatchRes {
+        //self.dbg_print();
         let opcd = self.mmu.read32(self.read_fetch_pc());
-
-        //if self.boot_status == BootStatus::Boot2 {
-        //    let pc = self.read_fetch_pc();
-        //    let opname = format!("{:?}", ArmInst::decode(opcd));
-        //    println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
-        //}
-
-        //if self.boot_status == BootStatus::Boot2 {
-        //    match ArmInst::decode(opcd) {
-        //        ArmInst::BlImm => {
-        //            let pc = self.read_fetch_pc();
-        //            let opname = format!("{:?}", ArmInst::decode(opcd));
-        //            println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
-        //        }
-        //        _ => {},
-        //    }
-        //}
-
         if self.reg.cond_pass(opcd) {
             let func = self.lut.arm.lookup(opcd);
             func.0(self, opcd)
@@ -249,25 +214,8 @@ impl Cpu {
 
     /// Decode and dispatch a Thumb instruction.
     pub fn exec_thumb(&mut self) -> DispatchRes {
+        //self.dbg_print();
         let opcd = self.mmu.read16(self.read_fetch_pc());
-
-        //if self.boot_status == BootStatus::Boot2 {
-        //    match ThumbInst::decode(opcd) {
-        //        ThumbInst::BlPrefix => {
-        //            let pc = self.read_fetch_pc();
-        //            let opname = format!("{:?}", ThumbInst::decode(opcd));
-        //            println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
-        //        },
-        //        _ => {},
-        //    }
-        //}
-
-        //if self.boot_status == BootStatus::Boot2 {
-        //    let pc = self.read_fetch_pc();
-        //    let opname = format!("{:?}", ThumbInst::decode(opcd));
-        //    println!("({:08x}) {:12} {:x?}", opcd, opname, self.reg);
-        //}
-
         let func = self.lut.thumb.lookup(opcd);
         func.0(self, opcd)
     }
@@ -303,6 +251,15 @@ impl Cpu {
     pub fn step(&mut self) -> CpuRes {
         assert!((self.read_fetch_pc() & 1) == 0);
 
+        let fpc = self.read_fetch_pc();
+        if fpc == 0x20000e38 { self.dbg_on = true; }
+
+        // Sample the IRQ line at the start of each step
+        if !self.reg.cpsr.irq_disable() && self.irq_input {
+            self.generate_exception(ExceptionType::Irq);
+        }
+
+        // Fetch/dispatch/execute/writeback an instruction
         let disp_res = if self.reg.cpsr.thumb() {
             self.exec_thumb()
         } else {

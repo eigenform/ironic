@@ -40,7 +40,8 @@ pub struct TimerInterface {
 }
 impl TimerInterface {
     pub fn step(&mut self) {
-        self.timer = self.timer.wrapping_add(0x10);
+        //self.timer = self.timer.wrapping_add(0x10);
+        self.timer = self.timer.wrapping_add(0x1);
         if self.alarm_set {
             if self.timer == self.alarm {
                 println!("HLWD alarm interrupt {:08x} == {:08x}", 
@@ -54,18 +55,14 @@ impl TimerInterface {
 /// Various clocking registers.
 #[derive(Default, Debug, Clone)]
 pub struct ClockInterface {
-    pub sys: u32, 
-    pub sys_ext: u32,
-
-    pub ddr: u32, 
-    pub ddr_ext: u32,
-
-    pub vi_ext: u32,
-
-    pub ai: u32, 
-    pub ai_ext: u32,
-
-    pub usb_ext: u32,
+    pub sys: u32,       // 0x1b0
+    pub sys_ext: u32,   // 0x1b4
+    pub ddr: u32,       // 0x1bc
+    pub ddr_ext: u32,   // 0x1c0
+    pub vi_ext: u32,    // 0x1c8
+    pub ai: u32,        // 0x1cc
+    pub ai_ext: u32,    // 0x1d0
+    pub usb_ext: u32,   // 0x1d8
 }
 
 /// Various bus control registers (?)
@@ -85,7 +82,7 @@ impl MmioDevice for AhbInterface {
     type Width = u32;
     fn read(&mut self, off: usize) -> BusPacket {
         let val = match off {
-            0x08 => self.unk_08,
+            0x08 => 0,
             0x10 => self.unk_10,
             _ => panic!("AHB read to undefined offset {:x}", off),
         };
@@ -93,7 +90,9 @@ impl MmioDevice for AhbInterface {
     }
     fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
         match off {
-            0x08 => self.unk_08 = val,
+            0x08 => {
+                self.unk_08 = val;
+            },
             0x10 => self.unk_10 = val,
             _ => panic!("AHB write {:08x} to undefined offset {:x}", val, off),
         }
@@ -135,7 +134,7 @@ pub struct Hollywood {
 impl Hollywood {
     pub fn new(dbg: Arc<RwLock<Debugger>>) -> Self {
         // TODO: Where do the initial values for these registers matter?
-        Hollywood {
+        let mut res = Hollywood {
             dbg, 
             task: None,
             ipc: IpcInterface::default(),
@@ -160,7 +159,9 @@ impl Hollywood {
             spare1: 0,
             io_str_ctrl0: 0,
             io_str_ctrl1: 0,
-        }
+        };
+        res.arb_cfg_m[0xc] = 0x400;
+        res
     }
 }
 
@@ -199,6 +200,7 @@ impl MmioDevice for Hollywood {
             0x214           => 0x0000_0000,
             _ => panic!("Unimplemented Hollywood read at {:x}", off),
         };
+        //println!("HLWD read {:08x} at off {:03x}", val, off);
         BusPacket::Word(val)
     }
 

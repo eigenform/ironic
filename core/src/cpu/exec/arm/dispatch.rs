@@ -14,7 +14,8 @@ pub struct ArmFn(pub fn(&mut Cpu, u32) -> DispatchRes);
 /// that aren't used for IOS syscalls.
 pub fn unimpl_instr(cpu: &mut Cpu, op: u32) -> DispatchRes {
     if (op & 0xe600_0000) != 0xe600_0000 {
-        println!("Undefined ARM instr {:08x}", op);
+        println!("Couldn't dispatch instruction {:08x} ({:?})",
+            op, ArmInst::decode(op));
         return DispatchRes::FatalErr;
     }
     DispatchRes::Exception(ExceptionType::Undef(op))
@@ -78,6 +79,7 @@ impl InstLutEntry for ArmFn {
             OrrReg      => ArmFn(cfn!(dataproc::orr_reg)),
             EorReg      => ArmFn(cfn!(dataproc::eor_reg)),
             AndImm      => ArmFn(cfn!(dataproc::and_imm)),
+            AndReg      => ArmFn(cfn!(dataproc::and_reg)),
             CmnImm      => ArmFn(cfn!(dataproc::cmn_imm)),
             CmpImm      => ArmFn(cfn!(dataproc::cmp_imm)),
             CmpReg      => ArmFn(cfn!(dataproc::cmp_reg)),

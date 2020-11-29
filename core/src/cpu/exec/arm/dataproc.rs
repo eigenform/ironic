@@ -19,14 +19,18 @@ pub fn add_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
         imm12: op.imm12(), c_in: cpu.reg.cpsr.c()
     });
     let (res, n, z, c, v) = add_generic(cpu.reg[op.rn()], val);
-    if op.s() {
-        set_all_flags!(cpu, n, z, c, v);
-    }
     if op.rd() == 15 {
-        cpu.write_exec_pc(res);
+        if op.s() {
+            cpu.exception_return(res);
+        } else {
+            cpu.write_exec_pc(res);
+        }
         DispatchRes::RetireBranch
     } else {
         cpu.reg[op.rd()] = res;
+        if op.s() {
+            set_all_flags!(cpu, n, z, c, v);
+        }
         DispatchRes::RetireOk
     }
 }
@@ -37,14 +41,18 @@ pub fn add_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
         stype: op.stype(), imm5: op.imm5(), c_in: cpu.reg.cpsr.c()
     });
     let (res, n, z, c, v) = add_generic(cpu.reg[op.rn()], val);
-    if op.s() {
-        set_all_flags!(cpu, n, z, c, v);
-    }
     if op.rd() == 15 {
-        cpu.write_exec_pc(res);
+        if op.s() {
+            cpu.exception_return(res);
+        } else {
+            cpu.write_exec_pc(res);
+        }
         DispatchRes::RetireBranch
     } else {
         cpu.reg[op.rd()] = res;
+        if op.s() {
+            set_all_flags!(cpu, n, z, c, v);
+        }
         DispatchRes::RetireOk
     }
 }
@@ -92,14 +100,18 @@ pub fn sub_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
         imm12: op.imm12(), c_in: cpu.reg.cpsr.c()
     });
     let (res, n, z, c, v) = sub_generic(cpu.reg[op.rn()], val);
-    if op.s() {
-        set_all_flags!(cpu, n, z, c, v);
-    }
     if op.rd() == 15 {
-        cpu.write_exec_pc(res);
+        if op.s() {
+            cpu.exception_return(res);
+        } else {
+            cpu.write_exec_pc(res);
+        }
         DispatchRes::RetireBranch
     } else {
         cpu.reg[op.rd()] = res;
+        if op.s() {
+            set_all_flags!(cpu, n, z, c, v);
+        }
         DispatchRes::RetireOk
     }
 }
@@ -110,14 +122,18 @@ pub fn sub_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
         stype: op.stype(), imm5: op.imm5(), c_in: cpu.reg.cpsr.c()
     });
     let (res, n, z, c, v) = sub_generic(cpu.reg[op.rn()], val);
-    if op.s() {
-        set_all_flags!(cpu, n, z, c, v);
-    }
     if op.rd() == 15 {
-        cpu.write_exec_pc(res);
+        if op.s() {
+            cpu.exception_return(res);
+        } else {
+            cpu.write_exec_pc(res);
+        }
         DispatchRes::RetireBranch
     } else {
         cpu.reg[op.rd()] = res;
+        if op.s() {
+            set_all_flags!(cpu, n, z, c, v);
+        }
         DispatchRes::RetireOk
     }
 
@@ -160,7 +176,7 @@ pub fn mvn_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
 
 pub fn mov_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
     if op.rd() == 15 {
-        return DispatchRes::FatalErr;
+        panic!("Unimpl");
     }
 
     let (res, carry) = barrel_shift(ShiftArgs::Imm { 
@@ -201,25 +217,6 @@ pub fn mov_reg(cpu: &mut Cpu, op: MovRegBits) -> DispatchRes {
 }
 
 
-pub fn orr_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
-    assert_ne!(op.rd(), 15);
-    let (val, carry) = barrel_shift(ShiftArgs::Reg {
-        rm: cpu.reg[op.rm()], 
-        stype: op.stype(), 
-        imm5: op.imm5(), 
-        c_in: cpu.reg.cpsr.c()
-    });
-
-    let res = cpu.reg[op.rn()] | val;
-    if op.s() {
-        cpu.reg.cpsr.set_n((res & 0x8000_0000) != 0);
-        cpu.reg.cpsr.set_z(res == 0);
-        cpu.reg.cpsr.set_c(carry);
-    }
-    cpu.reg[op.rd()] = res;
-    DispatchRes::RetireOk
-}
-
 pub fn orr_rsr(cpu: &mut Cpu, op: DpRsrBits) -> DispatchRes {
     assert_ne!(op.rd(), 15);
 
@@ -241,31 +238,49 @@ pub fn orr_rsr(cpu: &mut Cpu, op: DpRsrBits) -> DispatchRes {
 }
 
 
-
-
-pub fn eor_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
-    assert_ne!(op.rd(), 15);
+fn do_bitwise_reg(cpu: &mut Cpu, rn: u32, rm: u32, rd: u32, imm5: u32, 
+    s: bool, stype: u32, op: BitwiseOp) {
+    assert_ne!(rd, 15);
     let (val, carry) = barrel_shift(ShiftArgs::Reg {
-        rm: cpu.reg[op.rm()], 
-        stype: op.stype(), 
-        imm5: op.imm5(), 
-        c_in: cpu.reg.cpsr.c()
+        rm: cpu.reg[rm], stype, imm5, c_in: cpu.reg.cpsr.c()
     });
-
-    let res = cpu.reg[op.rn()] ^ val;
-    if op.s() {
+    let base = cpu.reg[rn];
+    let res = match op {
+        BitwiseOp::And => base & val,
+        BitwiseOp::Orr => base | val,
+        BitwiseOp::Eor => base ^ val,
+        _ => panic!("ARM reg bitwise {:?} unimpl", op),
+    };
+    if s {
         cpu.reg.cpsr.set_n((res & 0x8000_0000) != 0);
         cpu.reg.cpsr.set_z(res == 0);
         cpu.reg.cpsr.set_c(carry);
     }
-    cpu.reg[op.rd()] = res;
+    cpu.reg[rd] = res;
+}
+pub fn orr_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
+    do_bitwise_reg(cpu, op.rn(), op.rm(), op.rd(), op.imm5(), 
+        op.s(), op.stype(), BitwiseOp::Orr);
+    DispatchRes::RetireOk
+}
+pub fn eor_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
+    do_bitwise_reg(cpu, op.rn(), op.rm(), op.rd(), op.imm5(), 
+        op.s(), op.stype(), BitwiseOp::Eor);
+    DispatchRes::RetireOk
+}
+pub fn and_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
+    do_bitwise_reg(cpu, op.rn(), op.rm(), op.rd(), op.imm5(), 
+        op.s(), op.stype(), BitwiseOp::And);
     DispatchRes::RetireOk
 }
 
 
-fn do_bitwise_imm(cpu: &mut Cpu, rn: u32, rd: u32, imm: u32, s: bool, op: BitwiseOp) {
+fn do_bitwise_imm(cpu: &mut Cpu, rn: u32, rd: u32, imm: u32, 
+    s: bool, op: BitwiseOp) {
     assert_ne!(rd, 15);
-    let (val, carry) = barrel_shift(ShiftArgs::Imm { imm12: imm, c_in: cpu.reg.cpsr.c() });
+    let (val, carry) = barrel_shift(ShiftArgs::Imm { 
+        imm12: imm, c_in: cpu.reg.cpsr.c() 
+    });
     let base = cpu.reg[rn];
     let res = match op {
         BitwiseOp::And => base & val,

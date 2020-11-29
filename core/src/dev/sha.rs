@@ -9,10 +9,12 @@ use crate::bus::task::*;
 
 pub struct ShaCommand {
     len: u32,
+    irq: bool,
 }
 impl From<u32> for ShaCommand {
     fn from(x: u32) -> ShaCommand {
         ShaCommand { 
+            irq: (x & 0x4000_0000) != 0,
             len: (((x & 0x0000_0fff) + 1) * 0x40),
         }
     }
@@ -66,6 +68,7 @@ impl MmioDevice for ShaInterface {
         match off {
             0x00 => {
                 self.ctrl = val;
+                println!("SHA ctrl write {:08x}", val);
                 if (val & 0x8000_0000) != 0 {
                     return Some(BusTask::Sha(val));
                 }
@@ -89,6 +92,7 @@ impl Bus {
         let sha = &mut dev.sha;
 
         let cmd = ShaCommand::from(val);
+        if cmd.irq { panic!("SHA irq unimpl"); }
 
         println!("SHA Digest addr={:08x} len={:08x}", sha.src, cmd.len);
 
@@ -96,12 +100,6 @@ impl Bus {
         self.dma_read(sha.src, &mut sha_buf);
         sha.state.update(&sha_buf);
         sha.src += cmd.len;
-
-        println!("SHA Digest {:08x} {:08x} {:08x} {:08x} {:08x}", 
-            sha.state.digest[0], sha.state.digest[1],
-            sha.state.digest[2], sha.state.digest[3],
-            sha.state.digest[4]);
-
 
         // Mark the command as completed
         sha.ctrl &= 0x7fff_ffff;

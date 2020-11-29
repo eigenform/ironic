@@ -28,12 +28,14 @@ pub struct AesCommand {
     use_aes: bool,
     /// Enable chained IV mode
     chain_iv: bool,
+    irq: bool,
 }
 impl From<u32> for AesCommand {
     fn from(x: u32) -> Self {
         AesCommand {
             len: (((x & 0x0000_0fff) + 1) * 0x10) as usize,
             decrypt: (x & 0x1000_0000) != 0,
+            irq: (x & 0x4000_0000) != 0,
             use_aes: (x & 0x0800_0000) != 0,
             chain_iv: (x & 0x0000_1000) != 0,
         }
@@ -76,6 +78,7 @@ impl MmioDevice for AesInterface {
 
     fn read(&mut self, off: usize) -> BusPacket {
         match off {
+            //0x00 => BusPacket::Word(self.ctrl),
             0x00 => BusPacket::Word(self.ctrl),
             _ => panic!("Unhandled AES interface read {:x}", off),
         }
@@ -120,6 +123,7 @@ impl Bus {
         let aes = &mut dev.aes;
 
         let cmd = AesCommand::from(val);
+        if cmd.irq { panic!("AES irq unimpl"); }
 
         println!("AES Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len);
 
@@ -169,6 +173,7 @@ impl Bus {
 
         // Mark the command as completed
         aes.ctrl &= 0x7fff_ffff;
+
     }
 }
 

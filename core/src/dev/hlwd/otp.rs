@@ -27,7 +27,9 @@ impl OtpInterface {
     fn read(&self, word_idx: usize) -> u32 {
         let off = word_idx * 4;
         assert!(off + 4 <= self.data.len());
-        AccessWidth::from_be_bytes(&self.data[off..off+4])
+        let res = AccessWidth::from_be_bytes(&self.data[off..off+4]);
+        println!("OTP read {:08x} @ idx={:x}", res, word_idx);
+        res
     }
 
     /// Handle a command request.

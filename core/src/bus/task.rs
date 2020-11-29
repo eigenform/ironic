@@ -25,8 +25,14 @@ pub enum BusTask {
     Mi { kind: IndirAccess, data: u16 },
 }
 
+
+pub struct Task {
+    pub kind: BusTask,
+    pub ctr: usize,
+}
+
 /// A queue of tasks to-be-completed by the bus.
-pub struct TaskQueue { pub q: VecDeque<BusTask> }
+pub struct TaskQueue { pub q: VecDeque<Task> }
 impl TaskQueue {
     pub fn new() -> Self { 
         TaskQueue { q: VecDeque::new() } 
