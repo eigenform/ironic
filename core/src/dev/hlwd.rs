@@ -72,6 +72,66 @@ pub struct BusCtrlInterface {
     pub aipprot: u32,
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct ArbCfgInterface {
+    pub m0: u32,
+    pub m1: u32,
+    pub m2: u32,
+    pub m3: u32,
+    pub m4: u32,
+    pub m5: u32,
+    pub m6: u32,
+    pub m7: u32,
+    pub m8: u32,
+    pub m9: u32,
+    pub ma: u32,
+    pub mb: u32,
+    pub mc: u32,
+    pub md: u32,
+    pub me: u32,
+    pub mf: u32,
+    pub cpu: u32,
+    pub dma: u32,
+}
+impl ArbCfgInterface {
+    fn read_handler(&mut self, off: usize) -> u32 {
+        match off {
+            0x00 => self.m0,
+            0x04 => self.m1,
+            0x08 => self.m2,
+            0x0c => self.m3,
+            0x10 => self.m4,
+            0x14 => self.m5,
+            0x18 => self.m6,
+            0x1c => self.m7,
+            0x20 => self.m8,
+            0x24 => self.m9,
+            0x30 => 0x0000_0400,
+            0x34 => self.md,
+            0x38 => 0x0000_0400,
+            _ => panic!("ARB_CFG read to undefined offset {:x}", off),
+        }
+    }
+    fn write_handler(&mut self, off: usize, val: u32) {
+        match off {
+            0x00 => self.m0 = val, 
+            0x04 => self.m1 = val, 
+            0x08 => self.m2 = val, 
+            0x0c => self.m3 = val, 
+            0x10 => self.m4 = val, 
+            0x14 => self.m5 = val, 
+            0x18 => self.m6 = val, 
+            0x1c => self.m7 = val, 
+            0x20 => self.m8 = val, 
+            0x24 => self.m9 = val, 
+            0x30 => {},
+            0x34 => self.md = val, 
+            _ => panic!("ARB_CFG write {:08x} to undefined offset {:x}", val, off),
+        }
+    }
+}
+
+
 /// Unknown interface (probably related to the AHB).
 #[derive(Default, Debug, Clone)]
 pub struct AhbInterface {
@@ -119,7 +179,7 @@ pub struct Hollywood {
     pub ahb: AhbInterface,
     pub ddr: ddr::DdrInterface,
 
-    pub arb_cfg_m: [u32; 0x10],
+    pub arb: ArbCfgInterface,
     pub clocks: u32,
     pub resets: u32,
     pub compat: u32,
@@ -151,7 +211,7 @@ impl Hollywood {
             ddr: ddr::DdrInterface::new(),
 
             usb_frc_rst: 0,
-            arb_cfg_m: [0; 0x10],
+            arb: ArbCfgInterface::default(),
             resets: 0,
             clocks: 0,
             compat: 0,
@@ -160,7 +220,6 @@ impl Hollywood {
             io_str_ctrl0: 0,
             io_str_ctrl1: 0,
         };
-        res.arb_cfg_m[0xc] = 0x400;
         res
     }
 }
@@ -179,7 +238,7 @@ impl MmioDevice for Hollywood {
             0x070           => self.busctrl.aipprot,
             0x0c0..=0x0d8   => self.gpio.ppc.read_handler(off - 0xc0),
             0x0dc..=0x0fc   => self.gpio.arm.read_handler(off - 0xdc),
-            0x100..=0x13c   => self.arb_cfg_m[(off - 0x100) / 4],
+            0x100..=0x13c   => self.arb.read_handler(off - 0x100),
             0x180           => self.compat,
             0x188           => self.spare0,
             0x18c           => self.spare1,
@@ -229,7 +288,7 @@ impl MmioDevice for Hollywood {
             0x0dc..=0x0fc => {
                 self.task = self.gpio.arm.write_handler(off - 0xdc, val);
             },
-            0x100..=0x13c => self.arb_cfg_m[(off - 0x100)/4] = val,
+            0x100..=0x13c => self.arb.write_handler(off - 0x100, val),
             0x180 => self.compat = val,
             0x188 => {
 

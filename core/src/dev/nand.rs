@@ -1,10 +1,12 @@
 
 extern crate pretty_hex;
 use pretty_hex::*;
-
 use std::sync::{Arc, RwLock};
-use crate::dbg::*;
 
+pub mod util;
+use crate::dev::nand::util::*;
+
+use crate::dbg::*;
 use crate::mem::*;
 use crate::bus::*;
 use crate::bus::prim::*;
@@ -14,46 +16,71 @@ use crate::dev::hlwd::irq::*;
 
 /// The length of each page in the NAND flash, in bytes.
 const NAND_PAGE_LEN: usize = 0x0000_0840;
+
 /// The number of pages in the NAND flash.
 const NUM_NAND_PAGES: usize = 0x0040_000;
+
 /// The total length of the NAND flash, in bytes.
 const NAND_SIZE: usize = NAND_PAGE_LEN * NUM_NAND_PAGES;
 
-const NAND_ID: [u8; 5] = [ 0xad, 0xdc, 0x80, 0x95, 0x00 ]; // HY27UF084G2M
+/// NAND device ID.
+const NAND_ID: [u8; 4] = [ 0xad, 0xdc, 0x80, 0x95 ]; // HY27UF084G2M
 
-/// Types of NAND interface commands.
-#[derive(Debug, Clone, Copy)]
-pub enum NandCommand {
-    /// Reset command (idempotent).
-    Reset,
 
-    /// Read some data from memory (used in bootloaders).
-    ReadBoot { ecc: bool, r: bool, w: bool, len: u32 },
-
-    /// Read the NAND chip ID (?).
-    ReadId,
-
-    /// Unknown command (does nothing?)
-    Ignore,
+/// NAND command opcodes.
+#[derive(Debug)]
+pub enum NandOpcd {
+    /// First-cycle prefix command
+    Prefix00    = 0x00,
+    /// Page read command
+    Read        = 0x30,
+    /// Read ID command (manufacturer code, device code, etc).
+    ReadId      = 0x90,
+    /// Reset command
+    Reset       = 0xff,
 }
-impl From<u32> for NandCommand {
-    fn from(x: u32) -> Self {
-        let irq = (x & 0x4000_0000) != 0;
-        let ecc = (x & 0x0000_1000) != 0;
-        let r   = (x & 0x0000_2000) != 0;
-        let w   = (x & 0x0000_4000) != 0;
-        let len =  x & 0x0000_0fff;
 
-        match (x & 0x00ff_0000) >> 16 {
-            0x00 => NandCommand::Ignore,
-            0x30 => NandCommand::ReadBoot { ecc, r, w, len },
-            0x90 => NandCommand::ReadId,
-            0xff => NandCommand::Reset,
-            _ => panic!("Unhandled NandCommand {:08x}", x),
-        }
+/// Represents a NAND command.
+#[derive(Debug)]
+pub struct NandCmd {
+    /// Set when an IRQ should be asserted on command completion.
+    pub irq: bool,
+    pub err: bool,
+    pub addr: u32,
+    /// The type of command.
+    pub opcd: NandOpcd,
+    pub wait: bool,
+    /// Write flag.
+    pub wr: bool,
+    /// Read flag.
+    pub rd: bool,
+    pub ecc: bool,
+    /// Length of the associated read or write.
+    pub len: u32,
+}
+impl NandCmd {
+    pub fn new(x: u32) -> Self {
+        use NandOpcd::*;
+        let irq  = (x & 0x4000_0000) != 0;
+        let err  = (x & 0x2000_0000) != 0;
+        let addr = (x & 0x1f00_0000) >> 24;
+        let opcd = match (x & 0x00ff_0000) >> 16 {
+            0x00 => Prefix00, 
+            0x30 => Read, 
+            0x90 => ReadId, 
+            0xff => Reset,
+            _ => panic!("unhandled NAND opcd"),
+        };
+        let wait = (x & 0x0000_8000) != 0;
+        let wr   = (x & 0x0000_4000) != 0;
+        let rd   = (x & 0x0000_2000) != 0;
+        let ecc  = (x & 0x0000_1000) != 0;
+        let len  =  x & 0x0000_0fff;
+        NandCmd { irq, err, addr, opcd, wait, wr, rd, ecc, len }
     }
 }
 
+/// Set of registers exposed by the NAND interface.
 #[derive(Default, Clone, Copy)]
 pub struct NandRegisters {
     pub ctrl: u32,
@@ -63,12 +90,18 @@ pub struct NandRegisters {
     pub databuf: u32,
     pub eccbuf: u32,
     pub unk: u32,
+
+    /// Naive cycle counter for managing state.
+    pub _cycle: usize,
 }
 
 /// Representing the state of the NAND interface.
 pub struct NandInterface {
+    /// Reference to attached debugger.
     pub dbg: Arc<RwLock<Debugger>>,
+    /// Actual backing data for the NAND flash.
     pub data: Box<BigEndianMemory>,
+    /// Set of registers associated with this interface.
     pub reg: NandRegisters,
 }
 impl NandInterface {
@@ -83,10 +116,9 @@ impl NandInterface {
 }
 
 impl NandInterface {
-    /// Read data from NAND into a buffer, at the offset specified by the
-    /// NAND interface registers.
-    pub fn read_current_page(&self, dst: &mut [u8]) {
-        self.data.read_buf(self.reg.addr2 as usize * NAND_PAGE_LEN, dst);
+    /// Read data from the specified offset in NAND flash into a buffer
+    pub fn read_data(&self, off: usize, dst: &mut [u8]) {
+        self.data.read_buf(off, dst);
     }
 }
 
@@ -114,6 +146,7 @@ impl MmioDevice for NandInterface {
         //println!("NAND write {:08x} @ {:02x}", val, off);
         match off {
             0x00 => {
+                // When this bit is set, emit command to NAND flash
                 if val & 0x8000_0000 != 0 {
                     self.reg.ctrl = val;
                     return Some(BusTask::Nand(val));
@@ -135,107 +168,77 @@ impl MmioDevice for NandInterface {
 }
 
 impl Bus {
+    fn read_nand_regs(&mut self) -> NandRegisters {
+        self.dev.read().unwrap().nand.reg
+    }
+
+    /// Perform a NAND read into memory
+    fn do_nand_dma(&mut self, cmd: &NandCmd, reg: &NandRegisters) {
+        // Read the source data from the NAND
+        let mut local_buf = vec![0; cmd.len as usize];
+
+        let off = reg.addr2 as usize * NAND_PAGE_LEN;
+        self.dev.read().unwrap().nand.read_data(off, &mut local_buf);
+
+        println!("NAND DMA write addr1={:08x} addr2={:08x} data={:08x} ecc={:08x}",
+            reg.addr1, reg.addr2, reg.databuf, reg.eccbuf);
+
+        //let mut tmp = vec![0; 8];
+        //tmp.copy_from_slice(&local_buf[0..8]);
+        //println!("{:?}", local_buf.hex_dump());
+
+        // Do the DMA writes to memory
+        self.dma_write(reg.databuf, &local_buf[..0x800]);
+        self.dma_write(reg.eccbuf, &local_buf[0x800..]);
+
+        // Compute and write the ECC bytes for the data
+        for i in 0..4 {
+            let addr = (reg.eccbuf ^ 0x40) + (i as u32 * 4);
+            let new_ecc = calc_ecc(&mut local_buf[(i * 0x200)..]);
+            //let old_ecc = self.read32(addr);
+            //println!("NAND ECC write addr={:08x} old={:08x} new={:08x}",
+            //    addr, old_ecc, new_ecc);
+            self.write32(addr, new_ecc);
+        }
+    }
+
+    /// Handle a NAND command
     pub fn handle_task_nand(&mut self, val: u32) {
-        let cmd = NandCommand::from(val);
-        let reg = {
-            let dev = self.dev.read().unwrap();
-            dev.nand.reg
-        };
-        //println!("NAND cmd {:08x} addr1={:08x} addr2={:08x} data={:08x} ecc={:08x}", 
-        //    val, reg.addr1, reg.addr2, reg.databuf, reg.eccbuf);
-        match cmd {
-            NandCommand::ReadBoot { ecc, r, w, len } => {
-                assert!(r && ecc && !w);
+        let cmd = NandCmd::new(val);
+        let reg = self.read_nand_regs();
+        assert!(cmd.wr == false);
+        let mut next_cycle = 0;
 
-                // Read data from the NAND, and get a copy of the registers.
-                let mut local_buf = vec![0; len as usize];
-                let reg = {
-                    let dev = self.dev.read().unwrap();
-                    dev.nand.read_current_page(&mut local_buf);
-                    dev.nand.reg
-                };
-
-                //println!("NAND DMA write addr1={:08x} addr2={:08x} data={:08x} ecc={:08x}",
-                //    reg.addr1, reg.addr2, reg.databuf, reg.eccbuf);
-
-                // Do the DMA write
-                self.dma_write(reg.databuf, &local_buf[..0x800]);
-                self.dma_write(reg.eccbuf, &local_buf[0x800..]);
-
-                // Compute and write the ECC bytes for the data.
-                for i in 0..4 {
-                    let addr = (reg.eccbuf ^ 0x40) + (i as u32 * 4);
-                    let old_ecc = self.read32(addr);
-                    let new_ecc = calc_ecc(&mut local_buf[(i * 0x200)..]);
-                    //println!("NAND ECC write addr={:08x} old={:08x} new={:08x}",
-                    //    addr, old_ecc, new_ecc);
-                    self.write32(addr, new_ecc);
+        // Execute a command
+        match reg._cycle {
+            0 => {
+                match cmd.opcd {
+                    NandOpcd::Prefix00 => next_cycle = reg._cycle + 1,
+                    NandOpcd::ReadId => self.dma_write(reg.databuf, &NAND_ID),
+                    NandOpcd::Reset => {},
+                    _ => panic!("NAND unknown cycle 0 opcd {:?}", cmd.opcd),
                 }
             },
-
-            // TODO: Why are these commands submitted with a length?
-            NandCommand::ReadId => {
-                let reg = { 
-                    let dev = self.dev.read().unwrap();
-                    dev.nand.reg
-                };
-                //println!("NAND READ ID to {:08x}", reg.databuf);
-                self.dma_write(reg.databuf, &NAND_ID);
-                //let mut buf = vec![0; 0x40];
-                //self.dma_read(reg.databuf, &mut buf);
-                //println!("{:?}", buf.hex_dump());
+            1 => match cmd.opcd {
+                NandOpcd::Read => self.do_nand_dma(&cmd, &reg),
+                _ => panic!("NAND unknown cycle 1 opcd {:?}", cmd.opcd),
             },
-
-            NandCommand::Ignore => {},
-            NandCommand::Reset => {},
-            _ => panic!("Unhandled NAND command {:?}", val),
+            _ => panic!("NAND desync cycle {}", reg._cycle),
         }
 
-        // NOTE: `skyeye-starlet` always asserts the NAND IRQ line regardless 
-        // of whether or not the command's IRQ bit is set
-        self.dev.write().unwrap().hlwd.irq.assert(HollywoodIrq::Nand);
-
-        // Mark the command as completed.
-        self.dev.write().unwrap().nand.reg.ctrl &= 0x7fff_ffff;
-    }
-}
-
-pub fn parity(input: u8) -> u8 { (input.count_ones() % 2) as u8 }
-
-#[allow(unused_assignments)]
-pub fn calc_ecc(data: &mut [u8]) -> u32 {
-    let mut a = [[0u8; 2]; 12];
-    let mut a0 = 0u32;
-    let mut a1 = 0u32;
-    let mut x = 0u8;
-
-    for i in 0..512 {
-        x = data[i];
-        for j in 0..9 {
-            a[3 + j][(i >> j) & 1] ^= x;
+        // Get a mutable reference to the system devices and commit any state 
+        // that we need to change
+        {
+            let mut dev = self.dev.write().unwrap();
+            // Potentially assert an IRQ
+            if cmd.irq { dev.hlwd.irq.assert(HollywoodIrq::Nand); }
+            // Mark this command as completed
+            dev.nand.reg.ctrl &= 0x7fff_ffff;
+            // Increment cycle counter for NAND state machine
+            dev.nand.reg._cycle = next_cycle;
         }
+
     }
-
-    x = a[3][0] ^ a[3][1];
-    a[0][0] = x & 0x55;
-    a[0][1] = x & 0xaa;
-    a[1][0] = x & 0x33;
-    a[1][1] = x & 0xcc;
-    a[2][0] = x & 0x0f;
-    a[2][1] = x & 0xf0;
-
-    for j in 0..12 {
-        a[j][0] = parity(a[j][0]);
-        a[j][1] = parity(a[j][1]);
-    }
-    for j in 0..12 {
-        a0 |= (a[j][0] as u32) << j;
-        a1 |= (a[j][1] as u32) << j;
-    }
-
-
-    (a0 & 0x0000_00ff) << 24 | (a0 & 0x0000_ff00) << 8 |
-    (a1 & 0x0000_00ff) << 8  | (a1 & 0x0000_ff00) >> 8
 }
 
 
