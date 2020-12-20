@@ -55,18 +55,14 @@ pub mod task;
 use std::sync::{Arc,RwLock};
 
 use crate::topo;
-use crate::dbg;
 
 use crate::bus::task::*;
 
-pub type DbgRef = Arc<RwLock<dbg::Debugger>>;
 pub type MemRef = Arc<RwLock<topo::SystemMemory>>;
 pub type DevRef = Arc<RwLock<topo::SystemDevice>>;
 
 /// Implementation of an emulated bus.
 pub struct Bus {
-    /// Reference to attached [Debugger].
-    pub dbg: DbgRef,
     /// Reference to [SystemMemory].
     pub mem: MemRef,
     /// Reference to [SystemDevice].
@@ -83,9 +79,9 @@ pub struct Bus {
     pub task_queue: Vec<Task>,
 }
 impl Bus {
-    pub fn new(dbg: DbgRef, mem: MemRef, dev: DevRef)-> Self {
+    pub fn new(mem: MemRef, dev: DevRef)-> Self {
         Bus { 
-            dbg, mem, dev,
+            mem, dev,
             rom_disabled: false,
             mirror_enabled: false,
             tasks: Vec::new(),

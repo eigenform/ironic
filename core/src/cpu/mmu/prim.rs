@@ -1,6 +1,5 @@
 
-use crate::cpu::coproc::{ControlRegister, DomainMode};
-use crate::cpu::mmu::Mmu;
+use crate::cpu::coproc::DomainMode;
 
 /// Some kind of memory access (used for determining permissions).
 #[derive(Debug, PartialEq)]
@@ -87,9 +86,9 @@ impl VirtAddr {
     const SECTION_IDX: u32      = 0b0000_0000_0000_1111_1111_1111_1111_1111;
 
     const L2_IDX_COARSE: u32    = 0b0000_0000_0000_1111_1111_0000_0000_0000;
-    const LARGEPAGE_IDX: u32    = 0b0000_0000_0000_0000_1111_1111_1111_1111;
+    //const LARGEPAGE_IDX: u32    = 0b0000_0000_0000_0000_1111_1111_1111_1111;
     const SMALLPAGE_IDX: u32    = 0b0000_0000_0000_0000_0000_1111_1111_1111;
-    const TINYPAGE_IDX: u32     = 0b0000_0000_0000_0000_0000_0011_1111_1111;
+    //const TINYPAGE_IDX: u32     = 0b0000_0000_0000_0000_0000_0011_1111_1111;
 
     pub fn l1_idx(&self) -> u32 { (self.0 & Self::L1_IDX) >> 20 }
     pub fn section_idx(&self) -> u32 { self.0 & Self::SECTION_IDX }

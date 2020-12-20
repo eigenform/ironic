@@ -1,24 +1,12 @@
 
 extern crate pretty_hex;
-use pretty_hex::*;
-
-use std::sync::{Arc,RwLock};
-//use std::thread;
-//use std::sync::mpsc::{channel, Sender, Receiver};
-use crate::dbg::*;
 
 use crate::mem::*;
-use crate::bus::*;
-use crate::cpu::*;
-use crate::cpu::excep::*;
-use crate::cpu::reg::*;
-use crate::cpu::mmu::prim::{TLBReq, Access};
 use crate::dev::hlwd::*;
 use crate::dev::aes::*;
 use crate::dev::sha::*;
 use crate::dev::nand::*;
 use crate::dev::ehci::*;
-
 
 /// Top-level container for system memories.
 ///
@@ -53,10 +41,10 @@ pub struct SystemDevice {
     pub ehci: EhcInterface,
 }
 impl SystemDevice {
-    pub fn new(dbg: Arc<RwLock<Debugger>>) -> Self {
+    pub fn new() -> Self {
         SystemDevice {
-            hlwd: Hollywood::new(dbg.clone()),
-            nand: NandInterface::new(dbg.clone(), "./nand.bin"),
+            hlwd: Hollywood::new(),
+            nand: NandInterface::new("./nand.bin"),
             aes: AesInterface::new(),
             sha: ShaInterface::new(),
             ehci: EhcInterface::new(),
@@ -64,76 +52,4 @@ impl SystemDevice {
     }
 }
 
-/// Context/state associated with some thread responsible for CPU emulation.
-pub struct EmuThreadContext {
-    pub bus: Arc<RwLock<Bus>>,
-    pub dbg: Arc<RwLock<Debugger>>,
-    pub svc_buf: String,
-    pub cpu: Cpu,
-}
-impl EmuThreadContext {
-    pub fn new(dbg: Arc<RwLock<Debugger>>, bus: Arc<RwLock<Bus>>) -> Self {
-        let cpu = Cpu::new(dbg.clone(), bus.clone());
-        EmuThreadContext { bus: bus.clone(), dbg: dbg.clone(), cpu,
-            svc_buf: String::new(),
-        }
-    }
-}
-
-impl EmuThreadContext {
-
-    pub fn svc_read(&mut self) {
-        // We need to use out-of-band requests to the MMU here
-        let r1 = self.cpu.reg.r[1];
-        let paddr = self.cpu.mmu.translate(
-            TLBReq::new(self.cpu.reg.r[1], Access::Debug)
-        );
-
-        let mut line_buf = [0u8; 16];
-        self.bus.write().unwrap().dma_read(paddr, &mut line_buf);
-
-        self.svc_buf += std::str::from_utf8(&line_buf).unwrap();
-        if self.svc_buf.find('\n').is_some() {
-            let string: String = self.svc_buf.chars()
-                .take(self.svc_buf.find('\n').unwrap()).collect();
-            println!("SVC {}", string);
-            self.svc_buf.clear();
-        }
-    }
-
-    pub fn syscall_log(&mut self, opcd: u32) {
-        println!("IOS syscall {:08x}, lr={:08x}", opcd, self.cpu.reg[Reg::Lr]);
-    }
-}
-
-impl EmuThreadContext {
-
-    /// Run the emulator thread for some number of steps (currently, Bus steps
-    /// are interleaved with CPU steps).
-    pub fn run_slice(&mut self, num_steps: usize) {
-        use ExceptionType::*;
-
-        for step_idx in 0..num_steps {
-            {
-                let mut bus = self.bus.write().unwrap();
-                bus.step();
-                self.cpu.irq_input = bus.irq_line();
-            }
-
-            let res = self.cpu.step();
-            match res {
-                CpuRes::StepOk => {},
-                CpuRes::HaltEmulation => break,
-                CpuRes::StepException(e) => {
-                    match e {
-                        Swi => self.svc_read(),
-                        Undef(_) => {},
-                        _ => panic!("Unimplemented exception type"),
-                    }
-                },
-            }
-        }
-        println!("CPU slice finished pc={:08x}", self.cpu.read_fetch_pc());
-    }
-}
 

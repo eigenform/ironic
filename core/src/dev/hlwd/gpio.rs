@@ -1,12 +1,7 @@
 
 pub mod seeprom;
 use crate::dev::hlwd::gpio::seeprom::*;
-
 use crate::dev::hlwd::*;
-use crate::bus::prim::*;
-use crate::bus::mmio::*;
-use crate::bus::task::*;
-
 
 #[repr(u32)]
 pub enum GpioPin {
@@ -81,7 +76,7 @@ impl ArmGpio {
         match off {
             0x00 => self.en = data,
             0x04 => { 
-                let diff = self.output ^ data;
+                //let diff = self.output ^ data;
                 let task = if (self.output ^ data) != 0 {
                     Some(HlwdTask::GpioOutput(data))
                 } else { 

@@ -37,8 +37,8 @@ decl_io_handle!(AHB_HANDLE, Ahb,    0x0000_3fff);
 decl_io_handle!(MI_HANDLE, Mi,      0x0000_01ff);
 decl_io_handle!(DDR_HANDLE, Ddr,    0x0000_01ff);
 decl_io_handle!(DI_HANDLE, Di,      0x0000_03ff);
-decl_io_handle!(SI_HANDLE, Si,      0x0000_03ff);
-decl_io_handle!(EXI_HANDLE, Exi,    0x0000_03ff);
+//decl_io_handle!(SI_HANDLE, Si,      0x0000_03ff);
+//decl_io_handle!(EXI_HANDLE, Exi,    0x0000_03ff);
 
 
 impl Bus {

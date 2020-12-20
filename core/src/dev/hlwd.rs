@@ -1,6 +1,5 @@
 
 use std::sync::{Arc, RwLock};
-use crate::dbg::*;
 
 use crate::bus::*;
 use crate::bus::prim::*;
@@ -163,7 +162,6 @@ impl MmioDevice for AhbInterface {
 
 /// Hollywood memory-mapped registers
 pub struct Hollywood {
-    pub dbg: Arc<RwLock<Debugger>>,
     pub task: Option<HlwdTask>,
 
     pub ipc: IpcInterface,
@@ -192,10 +190,9 @@ pub struct Hollywood {
     pub usb_frc_rst: u32,
 }
 impl Hollywood {
-    pub fn new(dbg: Arc<RwLock<Debugger>>) -> Self {
+    pub fn new() -> Self {
         // TODO: Where do the initial values for these registers matter?
         let mut res = Hollywood {
-            dbg, 
             task: None,
             ipc: IpcInterface::default(),
             busctrl: BusCtrlInterface::default(),

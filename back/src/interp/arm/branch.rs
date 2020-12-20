@@ -1,8 +1,9 @@
 //! Implementation of branching instructions.
 
-use crate::cpu::*;
-use crate::cpu::reg::*;
-use crate::cpu::exec::arm::bits::*;
+use ironic_core::cpu::Cpu;
+use ironic_core::cpu::reg::Reg;
+use crate::bits::arm::*;
+use crate::interp::DispatchRes;
 
 pub fn sign_extend(x: u32, bits: i32) -> i32 {
     if ((x as i32 >> (bits - 1)) & 1) != 0 { 

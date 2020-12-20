@@ -1,6 +1,6 @@
 //! Thumb instruction decoder.
 
-use crate::cpu::lut::*;
+use crate::lut::Instruction;
 
 #[derive(Debug)]
 pub enum ThumbInst {

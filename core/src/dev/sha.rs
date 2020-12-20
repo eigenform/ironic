@@ -2,7 +2,6 @@
 pub mod util;
 
 use crate::bus::*;
-use crate::dbg::*;
 use crate::bus::prim::*;
 use crate::bus::mmio::*;
 use crate::bus::task::*;
@@ -68,7 +67,7 @@ impl MmioDevice for ShaInterface {
         match off {
             0x00 => {
                 self.ctrl = val;
-                println!("SHA ctrl write {:08x}", val);
+                //println!("SHA ctrl write {:08x}", val);
                 if (val & 0x8000_0000) != 0 {
                     return Some(BusTask::Sha(val));
                 }
@@ -94,7 +93,7 @@ impl Bus {
         let cmd = ShaCommand::from(val);
         if cmd.irq { panic!("SHA irq unimpl"); }
 
-        println!("SHA Digest addr={:08x} len={:08x}", sha.src, cmd.len);
+        //println!("SHA Digest addr={:08x} len={:08x}", sha.src, cmd.len);
 
         let mut sha_buf = vec![0u8; cmd.len as usize];
         self.dma_read(sha.src, &mut sha_buf);

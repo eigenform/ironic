@@ -6,40 +6,16 @@ pub mod reg;
 pub mod psr;
 
 pub mod mmu;
-pub mod exec;
 pub mod lut;
 pub mod alu;
 
 use std::sync::{Arc,RwLock};
 
-use crate::dbg::*;
 use crate::bus::*;
 use crate::cpu::lut::*;
 use crate::cpu::reg::*;
 use crate::cpu::excep::*;
 use crate::cpu::coproc::CoprocTask;
-use crate::cpu::exec::{arm, thumb, DispatchRes};
-use crate::cpu::exec::arm::decode::ArmInst;
-use crate::cpu::exec::thumb::decode::ThumbInst;
-
-/// Container for lookup tables
-pub struct CpuLut {
-    /// Lookup table for ARM instructions.
-    pub arm: arm::ArmLut,
-    /// Lookup table for Thumb instructions.
-    pub thumb: thumb::ThumbLut,
-}
-impl CpuLut {
-    pub fn new() -> Self {
-        let arm = arm::ArmLut::create_lut(
-            arm::dispatch::ArmFn(arm::dispatch::unimpl_instr)
-        );
-        let thumb = thumb::ThumbLut::create_lut(
-            thumb::dispatch::ThumbFn(thumb::dispatch::unimpl_instr)
-        );
-        CpuLut { arm, thumb }
-    }
-}
 
 /// Current status of the platform's boot process.
 #[derive(PartialEq)]
@@ -61,8 +37,6 @@ pub struct Cpu {
     pub reg: reg::RegisterFile,
     /// The system control co-processor.
     pub p15: coproc::SystemControl,
-    /// ARM/Thumb lookup tables (for instruction decoding).
-    pub lut: CpuLut,
     /// The CPU's memory management unit.
     pub mmu: mmu::Mmu,
 
@@ -75,25 +49,19 @@ pub struct Cpu {
 
     /// Whether or not an interrupt request is currently asserted.
     pub irq_input: bool,
-
-    /// Some shared state with the UI thread.
-    pub dbg: Arc<RwLock<Debugger>>,
 }
 impl Cpu {
-    pub fn new(dbg: Arc<RwLock<Debugger>>, bus: Arc<RwLock<Bus>>) -> Self { 
+    pub fn new(bus: Arc<RwLock<Bus>>) -> Self { 
         let cpu = Cpu {
             reg: reg::RegisterFile::new(),
             p15: coproc::SystemControl::new(),
-            lut: CpuLut::new(),
             mmu: mmu::Mmu::new(bus),
             scratch: 0,
             irq_input: false,
             boot_status: BootStatus::Boot0,
             dbg_on: false,
             dbg_steps: 1_000_000,
-            dbg
         };
-        log(&cpu.dbg, LogLevel::Cpu, "CPU instantiated");
         cpu
     }
 }
@@ -174,56 +142,8 @@ impl Cpu {
     }
 }
 
-
-/// These are functions for decoding and dispatching an instruction from
-/// either the ARM or Thumb lookup table.
-
 impl Cpu {
-    fn dbg_print(&mut self) {
-        let pc = self.read_fetch_pc();
-        if self.dbg_on && self.dbg_steps > 0 {
-            if self.reg.cpsr.thumb() {
-                let opcd = self.mmu.read16(pc);
-                let inst = ThumbInst::decode(opcd);
-                match inst {
-                    ThumbInst::BlImmSuffix => return,
-                    _ => {}
-                }
-                let name = format!("{:?}", ThumbInst::decode(opcd));
-                println!("({:08x}) {:12} {:x?}", opcd, name, self.reg);
-            } else {
-                let opcd = self.mmu.read32(pc);
-                let name = format!("{:?}", ArmInst::decode(opcd));
-                println!("({:08x}) {:12} {:x?}", opcd, name, self.reg);
-            };
-            self.dbg_steps -= 1;
-        }
-    }
-
-    /// Decode and dispatch an ARM instruction.
-    pub fn exec_arm(&mut self) -> DispatchRes {
-        //self.dbg_print();
-        let opcd = self.mmu.read32(self.read_fetch_pc());
-        if self.reg.cond_pass(opcd) {
-            let func = self.lut.arm.lookup(opcd);
-            func.0(self, opcd)
-        } else {
-            DispatchRes::CondFailed
-        }
-    }
-
-    /// Decode and dispatch a Thumb instruction.
-    pub fn exec_thumb(&mut self) -> DispatchRes {
-        //self.dbg_print();
-        let opcd = self.mmu.read16(self.read_fetch_pc());
-        let func = self.lut.thumb.lookup(opcd);
-        func.0(self, opcd)
-    }
-}
-
-
-impl Cpu {
-    fn check_boot_status(&mut self) {
+    pub fn update_boot_status(&mut self) {
         match self.boot_status {
             BootStatus::Boot0 => {
                 if self.read_fetch_pc() == 0xfff0_0000 { 
@@ -248,45 +168,5 @@ impl Cpu {
     }
 
 
-    pub fn step(&mut self) -> CpuRes {
-        assert!((self.read_fetch_pc() & 1) == 0);
-
-        let fpc = self.read_fetch_pc();
-        if fpc == 0x20000e38 { self.dbg_on = true; }
-
-        // Sample the IRQ line at the start of each step
-        if !self.reg.cpsr.irq_disable() && self.irq_input {
-            self.generate_exception(ExceptionType::Irq);
-        }
-
-        // Fetch/dispatch/execute/writeback an instruction
-        let disp_res = if self.reg.cpsr.thumb() {
-            self.exec_thumb()
-        } else {
-            self.exec_arm()
-        };
-
-        let cpu_res = match disp_res {
-            DispatchRes::RetireOk | DispatchRes::CondFailed => {
-                self.increment_pc(); 
-                CpuRes::StepOk
-            },
-            DispatchRes::RetireBranch => {
-                CpuRes::StepOk
-            },
-            DispatchRes::Exception(e) => {
-                self.generate_exception(e);
-                CpuRes::StepException(e)
-            },
-            DispatchRes::FatalErr => {
-                println!("CPU halted at pc={:08x}", self.read_fetch_pc());
-                CpuRes::HaltEmulation
-            },
-            _ => unreachable!(),
-        };
-
-        self.check_boot_status();
-        cpu_res
-    }
 }
 

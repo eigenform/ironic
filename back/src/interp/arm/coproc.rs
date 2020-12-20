@@ -1,7 +1,8 @@
 //! Implementation of co-processor instructions.
 
-use crate::cpu::*;
-use crate::cpu::exec::arm::bits::*;
+use ironic_core::cpu::Cpu;
+use crate::bits::arm::*;
+use crate::interp::DispatchRes;
 
 pub fn mcr(cpu: &mut Cpu, op: MoveCoprocBits) -> DispatchRes {
     assert_eq!(op.coproc(), 15);

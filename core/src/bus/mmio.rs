@@ -1,9 +1,7 @@
 
 use crate::bus::*;
-use crate::dbg::*;
 use crate::bus::prim::*;
 use crate::bus::task::*;
-use crate::dev::hlwd::irq::*;
 
 /// Interface used by the bus to perform some access on an I/O device.
 pub trait MmioDevice {

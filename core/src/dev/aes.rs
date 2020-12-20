@@ -12,7 +12,6 @@ type Aes128Cbc = Cbc<Aes128, NoPadding>;
 use std::collections::VecDeque;
 
 use crate::bus::*;
-use crate::dbg::*;
 use crate::bus::prim::*;
 use crate::bus::mmio::*;
 use crate::bus::task::*;
@@ -125,7 +124,7 @@ impl Bus {
         let cmd = AesCommand::from(val);
         if cmd.irq { panic!("AES irq unimpl"); }
 
-        println!("AES Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len);
+        //println!("AES Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len);
 
         // Read data from the source address
         let mut aes_inbuf = vec![0u8; cmd.len];
@@ -138,7 +137,6 @@ impl Bus {
         if !cmd.use_aes {
             //println!("AES plain DMA");
             //println!("{:?}", aes_inbuf.hex_dump());
-
             self.dma_write(aes.dst, &aes_inbuf);
             return;
         }

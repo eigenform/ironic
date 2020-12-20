@@ -4,7 +4,7 @@
 pub mod prim;
 
 use std::sync::{Arc, RwLock};
-use crate::cpu::coproc::{ControlRegister, DACRegister, DomainMode};
+use crate::cpu::coproc::{ControlRegister, DACRegister};
 use crate::cpu::mmu::prim::*;
 use crate::cpu::CpuMode;
 use crate::bus::*;
@@ -15,6 +15,7 @@ use crate::bus::*;
 pub struct Mmu {
     /// Reference to the system bus.
     pub bus: Arc<RwLock<Bus>>,
+
     /// MMU-local copy of the translation table base register.
     pub ttbr: u32,
     /// MMU-local copy of the domain access control register.
@@ -67,6 +68,7 @@ impl Mmu {
 }
 
 impl Mmu {
+    /// Resolve a section descriptor, returning a physical address.
     fn resolve_section(&self, req: TLBReq, d: SectionDescriptor) -> u32 {
         let ctx = self.get_ctx(d.domain());
         if ctx.validate(&req, d.ap()) {
@@ -76,6 +78,7 @@ impl Mmu {
         }
     }
 
+    /// Resolve a coarse descriptor, returning a physical address.
     fn resolve_coarse(&self, req: TLBReq, d: CoarseDescriptor) -> u32 {
         let desc = self.l2_fetch(req.vaddr, L1Descriptor::Coarse(d));
         match desc {
@@ -91,10 +94,6 @@ impl Mmu {
                 desc, req.vaddr.0),
         }
     }
-}
-
-
-impl Mmu {
 
     /// Get the context for computing permissions associated with some PTE.
     pub fn get_ctx(&self, dom: u32) -> PermissionContext {
@@ -125,30 +124,19 @@ impl Mmu {
         let val = self.bus.write().unwrap().read32(addr);
         L2Descriptor::from_u32(val)
     }
-}
 
-/// Implement virtual-to-physical translation.
-///
-/// TODO: In reality, I'm pretty sure that the MMU just emits loads in the
-/// same way that normal CPU accesses are performed. Considering that we
-/// have no cache, this will make accesses very slow. Eventually I'll find 
-/// a way to make this faster. 
-
-impl Mmu {
     /// Translate a virtual address into a physical address.
     pub fn translate(&self, req: TLBReq) -> u32 {
-        if !self.ctrl.mmu_enabled() { 
-            return req.vaddr.0; 
+        if self.ctrl.mmu_enabled() {
+            let desc = self.l1_fetch(req.vaddr);
+            match desc {
+                L1Descriptor::Section(entry) => self.resolve_section(req, entry),
+                L1Descriptor::Coarse(entry) => self.resolve_coarse(req, entry),
+                _ => panic!("TLB first-level descriptor {:?} unimplemented", desc),
+            }
+        } else {
+            req.vaddr.0
         }
-
-        let desc = self.l1_fetch(req.vaddr);
-        let paddr = match desc {
-            L1Descriptor::Section(entry) => self.resolve_section(req, entry),
-            L1Descriptor::Coarse(entry) => self.resolve_coarse(req, entry),
-            _ => panic!("TLB first-level descriptor {:?} unimplemented", desc),
-        };
-        //println!("translated vaddr={:08x} -> paddr={:08x}", vaddr.0, paddr);
-        paddr
     }
 }
 

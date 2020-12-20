@@ -1,53 +1,60 @@
 
-use ironic_core::dbg::*;
-use ironic_core::cpu::*;
-use ironic_core::cpu::reg::*;
 use ironic_core::bus::*;
 use ironic_core::topo::*;
 
+use ironic_backend::interp::*;
+use ironic_backend::back::*;
+
 use std::sync::{Arc, RwLock};
 use std::thread::Builder;
+use std::env;
 
-//use std::fs::File;
-//use std::io::Write;
-//use std::time::Instant;
-//use std::sync::mpsc::{channel, Sender, Receiver};
-
+pub enum BackendType {
+    Interpreter,
+    JIT
+}
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("usage: {} {{interp|jit}}", args[0]);
+        return;
+    }
 
-    // These are all resources that might be shared between threads.
-    let dbg = Arc::new(RwLock::new(Debugger::new()));
+    // Let the user specify the backend
+    let backend = match args[1].as_str() {
+        "interp" => BackendType::Interpreter,
+        "jit" => BackendType::JIT,
+        _ => {
+            println!("usage: {} {{interp|jit}}", args[0]);
+            return;
+        },
+    };
+
+    // All of the allocations live here, and we share references
+    // between any threads we spin up.
     let mem = Arc::new(RwLock::new(SystemMemory::new()));
-    let dev = Arc::new(RwLock::new(SystemDevice::new(dbg.clone())));
+    let dev = Arc::new(RwLock::new(SystemDevice::new()));
     let bus = Arc::new(RwLock::new(Bus::new(
-            dbg.clone(), mem.clone(), dev.clone()
+            mem.clone(), dev.clone()
     )));
 
-    // The CPU runs in this thread, using references to the resources above.
-    let emu_dbg = dbg.clone();
+    // Fork off the backend thread
     let emu_bus = bus.clone();
-    let emu_thread = Builder::new().name("EmuThread".to_owned()).spawn(move || {
-        let mut ctx = EmuThreadContext::new(emu_dbg, emu_bus);
-        ctx.run_slice(0x8_000_000);
-    }).unwrap();
-
-    emu_thread.join().unwrap();
-
-    // Drain messages from the log buffer
-
-    let mut loglines = {
-        let mut d = dbg.write().unwrap();
-        std::mem::replace(&mut d.console_buf, Vec::new())
+    let emu_thread = match backend {
+        BackendType::Interpreter => {
+            Builder::new().name("EmuThread".to_owned()).spawn(move || {
+                let mut back = InterpBackend::new(emu_bus);
+                back.run();
+            }).unwrap()
+        },
+        _ => panic!("unimplemented backend"),
     };
-    for line in loglines.drain(..) {
-        println!("[{:?}] {}", line.lvl, line.data);
-    }
+    emu_thread.join().unwrap();
 
     mem.write().unwrap().sram0.dump("/tmp/sram0.bin");
     mem.write().unwrap().sram1.dump("/tmp/sram1.bin");
     mem.write().unwrap().mem1.dump("/tmp/mem1.bin");
     mem.write().unwrap().mem2.dump("/tmp/mem2.bin");
-
 }
 

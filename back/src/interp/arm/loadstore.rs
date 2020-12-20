@@ -1,8 +1,9 @@
 //! Load/store instructions.
 
-use crate::cpu::*;
-use crate::cpu::alu::*;
-use crate::cpu::exec::arm::bits::*;
+use ironic_core::cpu::Cpu;
+use ironic_core::cpu::alu::*;
+use crate::bits::arm::*;
+use crate::interp::DispatchRes;
 
 pub fn do_amode(rn: u32, imm: u32, u: bool, p: bool, w: bool) -> (u32, u32) {
     let res = if u { rn.wrapping_add(imm) } else { rn.wrapping_sub(imm) };
@@ -242,7 +243,7 @@ pub fn stm(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
 
     let reglist = op.register_list();
     let mut addr = cpu.reg[op.rn()];
-    let mut wb_addr = addr + (reglist.count_ones() * 4);
+    let wb_addr = addr + (reglist.count_ones() * 4);
 
     for i in 0..16 {
         if (reglist & (1 << i)) != 0 {

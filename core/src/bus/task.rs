@@ -1,6 +1,5 @@
 
 use std::collections::VecDeque;
-use crate::bus::mmio::MmioDevice;
 
 /// Some type of indirect access (from memory interface to the DDR interface).
 #[derive(Debug)]

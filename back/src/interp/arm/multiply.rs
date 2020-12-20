@@ -1,7 +1,7 @@
 
-use crate::cpu::*;
-use crate::cpu::alu::*;
-use crate::cpu::exec::arm::bits::*;
+use ironic_core::cpu::Cpu;
+use crate::bits::arm::*;
+use crate::interp::DispatchRes;
 
 pub fn umull(cpu: &mut Cpu, op: SignedMlBits) -> DispatchRes {
     let rm_val = cpu.reg[op.rm()] as usize;

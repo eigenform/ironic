@@ -1,9 +1,10 @@
 
-use crate::cpu::*;
-use crate::cpu::reg::*;
-use crate::cpu::psr::*;
-use crate::cpu::alu::*;
-use crate::cpu::exec::arm::bits::*;
+use ironic_core::cpu::Cpu;
+use ironic_core::cpu::reg::CpuMode;
+use ironic_core::cpu::alu::*;
+use ironic_core::cpu::psr::*;
+use crate::bits::arm::*;
+use crate::interp::DispatchRes;
 
 pub fn mrs(cpu: &mut Cpu, op: MrsBits) -> DispatchRes {
     let res = match op.r() {

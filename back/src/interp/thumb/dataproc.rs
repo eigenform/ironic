@@ -1,8 +1,10 @@
 
-use crate::cpu::*;
-use crate::cpu::reg::Reg;
-use crate::cpu::alu::*;
-use crate::cpu::exec::thumb::bits::*;
+use crate::bits::thumb::*;
+use crate::interp::DispatchRes;
+use ironic_core::cpu::Cpu;
+use ironic_core::cpu::alu::*;
+use ironic_core::cpu::reg::Reg;
+
 
 /// Set all of the condition flags.
 macro_rules! set_all_flags { 
@@ -87,10 +89,13 @@ pub fn mov_imm(cpu: &mut Cpu, op: MovImmBits) -> DispatchRes {
 pub fn add_reg_alt(cpu: &mut Cpu, op: AddRegAltBits) -> DispatchRes {
     // ???
     //assert_ne!(op.rm(), 13);
+
     let rd = if op.dn() { op.rdn() | 0x8 } else { op.rdn() };
     let rn = rd;
-    let (alu_out, n, z, c, v) = add_generic(cpu.reg[rn], cpu.reg[op.rm()]);
+    let (alu_out, _n, _z, _c, _v) = add_generic(cpu.reg[rn], cpu.reg[op.rm()]);
     cpu.reg[rd] = alu_out;
+
+    // ???
     //set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }

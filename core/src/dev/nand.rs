@@ -1,12 +1,9 @@
 
 extern crate pretty_hex;
-use pretty_hex::*;
-use std::sync::{Arc, RwLock};
 
 pub mod util;
 use crate::dev::nand::util::*;
 
-use crate::dbg::*;
 use crate::mem::*;
 use crate::bus::*;
 use crate::bus::prim::*;
@@ -97,8 +94,6 @@ pub struct NandRegisters {
 
 /// Representing the state of the NAND interface.
 pub struct NandInterface {
-    /// Reference to attached debugger.
-    pub dbg: Arc<RwLock<Debugger>>,
     /// Actual backing data for the NAND flash.
     pub data: Box<BigEndianMemory>,
     /// Set of registers associated with this interface.
@@ -106,11 +101,10 @@ pub struct NandInterface {
 }
 impl NandInterface {
     /// Create a new instance of the NAND interface.
-    pub fn new(dbg: Arc<RwLock<Debugger>>, filename: &str) -> Self {
+    pub fn new(filename: &str) -> Self {
         NandInterface {
             reg: NandRegisters::default(),
             data: Box::new(BigEndianMemory::new(NAND_SIZE, Some(filename))),
-            dbg, 
         }
     }
 }
@@ -180,8 +174,8 @@ impl Bus {
         let off = reg.addr2 as usize * NAND_PAGE_LEN;
         self.dev.read().unwrap().nand.read_data(off, &mut local_buf);
 
-        println!("NAND DMA write addr1={:08x} addr2={:08x} data={:08x} ecc={:08x}",
-            reg.addr1, reg.addr2, reg.databuf, reg.eccbuf);
+        //println!("NAND DMA write addr1={:08x} addr2={:08x} data={:08x} ecc={:08x}",
+        //  reg.addr1, reg.addr2, reg.databuf, reg.eccbuf);
 
         //let mut tmp = vec![0; 8];
         //tmp.copy_from_slice(&local_buf[0..8]);

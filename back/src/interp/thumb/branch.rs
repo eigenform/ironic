@@ -1,7 +1,8 @@
 
-use crate::cpu::*;
-use crate::cpu::reg::{Cond, Reg};
-use crate::cpu::exec::thumb::bits::*;
+use crate::bits::thumb::*;
+use crate::interp::DispatchRes;
+use ironic_core::cpu::Cpu;
+use ironic_core::cpu::reg::{Reg, Cond};
 
 pub fn sign_extend(x: u32, bits: i32) -> i32 {
     if ((x as i32 >> (bits - 1)) & 1) != 0 { 

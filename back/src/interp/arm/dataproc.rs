@@ -1,8 +1,11 @@
 //! Data-processing instructions.
 
-use crate::cpu::*;
-use crate::cpu::alu::*;
-use crate::cpu::exec::arm::bits::*;
+
+use ironic_core::cpu::Cpu;
+use ironic_core::cpu::alu::*;
+use crate::bits::arm::*;
+use crate::interp::DispatchRes;
+
 
 /// Set all of the condition flags.
 macro_rules! set_all_flags { 
