@@ -1,3 +1,4 @@
+//! Implementation of exception behavior.
 
 use crate::cpu::*;
 use crate::dbg::ios;

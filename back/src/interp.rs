@@ -1,3 +1,5 @@
+//! The interpreter backend.
+
 pub mod arm;
 pub mod thumb;
 pub mod dispatch;
@@ -8,6 +10,7 @@ use std::sync::{Arc, RwLock};
 use crate::lut::*;
 use crate::back::*;
 use crate::interp::lut::*;
+use crate::interp::dispatch::DispatchRes;
 
 use crate::decode::arm::ArmInst;
 use crate::decode::thumb::ThumbInst;
@@ -17,26 +20,26 @@ use ironic_core::cpu::{Cpu, CpuRes};
 use ironic_core::cpu::reg::Reg;
 use ironic_core::cpu::excep::ExceptionType;
 
-/// Result of dispatching an instruction.
-#[derive(Debug)]
-pub enum DispatchRes {
-    /// There was some fatal error dispatching the instruction.
-    FatalErr,
-    /// This instruction was not executed because the condition failed.
-    CondFailed,
-    /// This instruction retired and resulted in a branch.
-    RetireBranch,
-    /// This instruction retired and the PC should be incremented.
-    RetireOk,
-    /// This instruction resulted in an exception.
-    Exception(ExceptionType)
-}
+/// Backend for interpreting-style emulation. 
+///
+/// Right now, the main loop works like this:
+///
+/// - Execute all pending work on the bus
+/// - Update the state of any signals from the bus to the CPU
+/// - Decode/dispatch an instruction, mutating the CPU state
+///
+/// For now it's sufficient to perfectly interleave bus and CPU cycles, but
+/// maybe at some point it will become more efficient to let dispatched
+/// instructions return some hint to the backend (requesting that a bus cycle
+/// should be completed before the next instruction).
 
 pub struct InterpBackend {
-    /// Lookup tables.
+    /// Lookup tables, used to dispatch instructions.
     pub lut: InterpLut,
-    /// Reference to a bus (providing system devices).
+
+    /// Reference to a bus (attached to memories and devices).
     pub bus: Arc<RwLock<Bus>>,
+
     /// The CPU state.
     pub cpu: Cpu,
 
@@ -53,32 +56,6 @@ impl InterpBackend {
         }
     }
 }
-
-impl Backend for InterpBackend {
-    fn run(&mut self) {
-        for _step in 0..0x8000_0000usize {
-            {
-                let mut bus = self.bus.write().unwrap();
-                bus.step();
-                self.cpu.irq_input = bus.irq_line();
-            }
-            let res = self.cpu_step();
-            match res {
-                CpuRes::StepOk => {},
-                CpuRes::HaltEmulation => break,
-                CpuRes::StepException(e) => {
-                    match e {
-                        ExceptionType::Swi => self.svc_read(),
-                        ExceptionType::Undef(_) => {},
-                        _ => panic!("Unimplemented exception type"),
-                    }
-                },
-            }
-        }
-        println!("CPU stopped at pc={:08x}", self.cpu.read_fetch_pc());
-    }
-}
-
 
 impl InterpBackend {
     /// Write semi-hosting debug strings to stdout.
@@ -133,27 +110,6 @@ impl InterpBackend {
         }
     }
 
-
-    /// Decode and dispatch an ARM instruction.
-    pub fn exec_arm(&mut self) -> DispatchRes {
-        self.dbg_print();
-        let opcd = self.cpu.mmu.read32(self.cpu.read_fetch_pc());
-        if self.cpu.reg.cond_pass(opcd) {
-            let func = self.lut.arm.lookup(opcd);
-            func.0(&mut self.cpu, opcd)
-        } else {
-            DispatchRes::CondFailed
-        }
-    }
-
-    /// Decode and dispatch a Thumb instruction.
-    pub fn exec_thumb(&mut self) -> DispatchRes {
-        self.dbg_print();
-        let opcd = self.cpu.mmu.read16(self.cpu.read_fetch_pc());
-        let func = self.lut.thumb.lookup(opcd);
-        func.0(&mut self.cpu, opcd)
-    }
-
     /// Do a single step of the CPU.
     pub fn cpu_step(&mut self) -> CpuRes {
         assert!((self.cpu.read_fetch_pc() & 1) == 0);
@@ -163,15 +119,28 @@ impl InterpBackend {
             self.cpu.generate_exception(ExceptionType::Irq);
         }
 
-        // Fetch/dispatch/execute/writeback an instruction
+        // Fetch/decode/execute an ARM or Thumb instruction depending on
+        // the state of the Thumb flag in the CPSR.
         let disp_res = if self.cpu.reg.cpsr.thumb() {
-            self.exec_thumb()
+            self.dbg_print();
+            let opcd = self.cpu.mmu.read16(self.cpu.read_fetch_pc());
+            let func = self.lut.thumb.lookup(opcd);
+            func.0(&mut self.cpu, opcd)
         } else {
-            self.exec_arm()
+            self.dbg_print();
+            let opcd = self.cpu.mmu.read32(self.cpu.read_fetch_pc());
+            if self.cpu.reg.cond_pass(opcd) {
+                let func = self.lut.arm.lookup(opcd);
+                func.0(&mut self.cpu, opcd)
+            } else {
+                DispatchRes::CondFailed
+            }
         };
 
+        // Depending on the instruction, adjust the program counter
         let cpu_res = match disp_res {
-            DispatchRes::RetireOk | DispatchRes::CondFailed => {
+            DispatchRes::RetireOk | 
+            DispatchRes::CondFailed => {
                 self.cpu.increment_pc(); 
                 CpuRes::StepOk
             },
@@ -193,4 +162,30 @@ impl InterpBackend {
         cpu_res
     }
 }
+
+impl Backend for InterpBackend {
+    fn run(&mut self) {
+        for _step in 0..0x8000_0000usize {
+            {
+                let mut bus = self.bus.write().unwrap();
+                bus.step();
+                self.cpu.irq_input = bus.irq_line();
+            }
+            let res = self.cpu_step();
+            match res {
+                CpuRes::StepOk => {},
+                CpuRes::HaltEmulation => break,
+                CpuRes::StepException(e) => {
+                    match e {
+                        ExceptionType::Swi => self.svc_read(),
+                        ExceptionType::Undef(_) => {},
+                        _ => panic!("Unimplemented exception type"),
+                    }
+                },
+            }
+        }
+        println!("CPU stopped at pc={:08x}", self.cpu.read_fetch_pc());
+    }
+}
+
 

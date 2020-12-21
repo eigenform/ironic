@@ -1,3 +1,4 @@
+//! ARM/Thumb lookup tables for the interpreter backend.
 
 use crate::lut::*;
 use crate::interp::DispatchRes;

@@ -1,3 +1,4 @@
+//! CPU register definitions.
 
 use crate::cpu::psr::*;
 

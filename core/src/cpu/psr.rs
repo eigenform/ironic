@@ -1,3 +1,4 @@
+//! Helpers for dealing with program status registers.
 
 use crate::cpu::reg::CpuMode;
 

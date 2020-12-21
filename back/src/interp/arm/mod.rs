@@ -1,3 +1,5 @@
+//! Implementation of ARM instructions for the interpreter backend.
+
 pub mod loadstore;
 pub mod dataproc;
 pub mod branch;

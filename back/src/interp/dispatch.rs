@@ -1,13 +1,33 @@
+//! ARM/Thumb instruction dispatch for the interpreter backend.
 
 use std::mem::transmute;
 
 use ironic_core::cpu::excep::ExceptionType;
 use ironic_core::cpu::Cpu;
-use crate::interp::{ArmFn, ThumbFn, DispatchRes};
+use crate::interp::{ArmFn, ThumbFn};
 use crate::interp::{arm, thumb};
 use crate::decode::arm::ArmInst;
 use crate::decode::thumb::ThumbInst;
 use crate::lut::*;
+
+/// The result of dispatching an instruction.
+#[derive(Debug)]
+pub enum DispatchRes {
+    /// There was some fatal error dispatching the instruction.
+    /// This probably means that emulation should halt.
+    FatalErr,
+    /// This instruction was not executed because the associated condition 
+    /// could not be met, and the program counter must be incremented. 
+    CondFailed,
+    /// This instruction retired and resulted in a branch, and program counter 
+    /// has already been adjusted to the new value.
+    RetireBranch,
+    /// This instruction retired successfully and the PC must be incremented.
+    RetireOk,
+    /// This instruction resulted in an exception.
+    Exception(ExceptionType)
+}
+
 
 /// Handler for unimplemented ARM instructions.
 pub fn arm_unimpl_instr(cpu: &mut Cpu, op: u32) -> DispatchRes {

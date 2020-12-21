@@ -1,4 +1,4 @@
-
+//! Utilities for implementing different kinds of backends.
 
 /// Common interface implemented by different backends.
 pub trait Backend {

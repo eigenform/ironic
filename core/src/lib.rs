@@ -2,7 +2,6 @@
 /// Emulated system topology.
 pub mod topo;
 
-/// Implementation of an emulated ARM926EJS core.
 pub mod cpu;
 /// Implementation of emulated memories.
 pub mod mem;

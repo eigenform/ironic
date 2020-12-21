@@ -1,3 +1,4 @@
+//! An intermediate representation for dynamically recompiling guest code.
 
 use std::fmt;
 use std::collections::BTreeMap;

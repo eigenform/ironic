@@ -28,7 +28,7 @@ impl OtpInterface {
         let off = word_idx * 4;
         assert!(off + 4 <= self.data.len());
         let res = AccessWidth::from_be_bytes(&self.data[off..off+4]);
-        println!("OTP read {:08x} @ idx={:x}", res, word_idx);
+        //println!("OTP read {:08x} @ idx={:x}", res, word_idx);
         res
     }
 
