@@ -20,7 +20,7 @@ pub fn ldr_lit(cpu: &mut Cpu, op: LoadStoreAltBits) -> DispatchRes {
     let imm = (op.imm8() * 4) as u32;
     let addr = (cpu.read_exec_pc() & 0xffff_fffc).wrapping_add(imm);
 
-    let res = cpu.mmu.read32(addr);
+    let res = cpu.read32(addr);
     if op.rt() == 15 {
         cpu.write_exec_pc(res);
         DispatchRes::RetireBranch
@@ -35,13 +35,13 @@ pub fn ldr_lit(cpu: &mut Cpu, op: LoadStoreAltBits) -> DispatchRes {
 fn load_reg(cpu: &mut Cpu, rn: u16, rm: u16, rt: u16, width: Width) {
     let addr = cpu.reg[rn].wrapping_add(cpu.reg[rm]);
     let res: u32 = match width {
-        Width::Byte => cpu.mmu.read8(addr) as u32,
-        Width::Half => cpu.mmu.read16(addr) as u32,
-        Width::Word => cpu.mmu.read32(addr),
+        Width::Byte => cpu.read8(addr) as u32,
+        Width::Half => cpu.read16(addr) as u32,
+        Width::Word => cpu.read32(addr),
         Width::SignedHalf => 
-            sign_extend(cpu.mmu.read16(addr) as u32, 16) as u32,
+            sign_extend(cpu.read16(addr) as u32, 16) as u32,
         Width::SignedByte => 
-            sign_extend(cpu.mmu.read8(addr) as u32, 8) as u32,
+            sign_extend(cpu.read8(addr) as u32, 8) as u32,
     };
     cpu.reg[rt] = res;
 }
@@ -79,9 +79,9 @@ fn load_imm(cpu: &mut Cpu, rn: u16, rt: u16, imm_n: u32, width: Width) {
 
     let addr = cpu.reg[rn].wrapping_add(imm);
     let res: u32 = match width {
-        Width::Byte => cpu.mmu.read8(addr) as u32,
-        Width::Half => cpu.mmu.read16(addr) as u32,
-        Width::Word => cpu.mmu.read32(addr),
+        Width::Byte => cpu.read8(addr) as u32,
+        Width::Half => cpu.read16(addr) as u32,
+        Width::Word => cpu.read32(addr),
         _ => unreachable!(),
     };
     cpu.reg[rt] = res;
@@ -109,9 +109,9 @@ fn store_reg(cpu: &mut Cpu, rn: u16, rm: u16, rt: u16, width: Width) {
     let addr = cpu.reg[rn].wrapping_add(cpu.reg[rm]);
     let val: u32 = cpu.reg[rt];
     match width {
-        Width::Byte => cpu.mmu.write8(addr, val),
-        Width::Half => cpu.mmu.write16(addr, val),
-        Width::Word => cpu.mmu.write32(addr, val),
+        Width::Byte => cpu.write8(addr, val),
+        Width::Half => cpu.write16(addr, val),
+        Width::Word => cpu.write32(addr, val),
         _ => unreachable!(),
     }
 }
@@ -142,9 +142,9 @@ fn store_imm(cpu: &mut Cpu, rn: u16, rt: u16, imm_n: u32, width: Width) {
     let addr = cpu.reg[rn].wrapping_add(imm);
     let val: u32 = cpu.reg[rt];
     match width {
-        Width::Byte => cpu.mmu.write8(addr, val),
-        Width::Half => cpu.mmu.write16(addr, val),
-        Width::Word => cpu.mmu.write32(addr, val),
+        Width::Byte => cpu.write8(addr, val),
+        Width::Half => cpu.write16(addr, val),
+        Width::Word => cpu.write32(addr, val),
         _ => unreachable!(),
     }
 }
@@ -177,7 +177,7 @@ pub fn ldm(cpu: &mut Cpu, op: LoadStoreMultiBits) -> DispatchRes {
     let mut addr = start_addr;
     for i in 0..8 {
         if (op.register_list() & (1 << i)) != 0 {
-            let val = cpu.mmu.read32(addr);
+            let val = cpu.read32(addr);
             cpu.reg[i as u32] = val;
             addr += 4;
         }
@@ -197,7 +197,7 @@ pub fn stm(cpu: &mut Cpu, op: LoadStoreMultiBits) -> DispatchRes {
     let mut addr = start_addr;
     for i in 0..8 {
         if (op.register_list() & (1 << i)) != 0 {
-            cpu.mmu.write32(addr, cpu.reg[i as u32]);
+            cpu.write32(addr, cpu.reg[i as u32]);
             addr += 4;
         }
     }
@@ -217,12 +217,12 @@ pub fn push(cpu: &mut Cpu, op: PushBits) -> DispatchRes {
     let mut addr = start_addr;
     for i in 0..8 {
         if (op.register_list() & (1 << i)) != 0 {
-            cpu.mmu.write32(addr, cpu.reg[i as u32]);
+            cpu.write32(addr, cpu.reg[i as u32]);
             addr += 4;
         }
     }
     if op.m() {
-        cpu.mmu.write32(addr, cpu.reg[Reg::Lr]);
+        cpu.write32(addr, cpu.reg[Reg::Lr]);
         addr += 4;
     }
     assert!(end_addr == addr - 4);
@@ -242,14 +242,14 @@ pub fn pop(cpu: &mut Cpu, op: PopBits) -> DispatchRes {
     let mut addr = start_addr;
     for i in 0..8 {
         if (op.register_list() & (1 << i)) != 0 {
-            let val = cpu.mmu.read32(addr);
+            let val = cpu.read32(addr);
             cpu.reg[i as u32] = val;
             addr += 4;
         }
     }
 
     let new_pc = if op.p() { 
-        let saved_lr = cpu.mmu.read32(addr);
+        let saved_lr = cpu.read32(addr);
         addr += 4;
         Some(saved_lr)
     } else { 

@@ -1,45 +1,12 @@
-//! Implementation of a memory-management unit.
+//! Implementation of the memory-management unit.
 
-/// Definitions for types related to the MMU/TLB.
 pub mod prim;
 
-use std::sync::{Arc, RwLock};
-use crate::cpu::coproc::{ControlRegister, DACRegister};
 use crate::cpu::mmu::prim::*;
-use crate::cpu::CpuMode;
-use crate::bus::*;
+use crate::cpu::Cpu;
 
-/// State associated with the memory-management unit.
-///
-/// TODO: Don't keep local copies of CPU state, seems hacky.
-pub struct Mmu {
-    /// Reference to the system bus.
-    pub bus: Arc<RwLock<Bus>>,
-
-    /// MMU-local copy of the translation table base register.
-    pub ttbr: u32,
-    /// MMU-local copy of the domain access control register.
-    pub dacr: DACRegister,
-    /// MMU-local copy of the p15 r1 system control register.
-    pub ctrl: ControlRegister,
-    /// The current CPU mode.
-    pub cpu_mode: CpuMode,
-}
-impl Mmu {
-    pub fn new(bus: Arc<RwLock<Bus>>) -> Self {
-        Mmu { 
-            bus, 
-            cpu_mode: CpuMode::Svc,
-            ttbr: 0, 
-            dacr: DACRegister(0),
-            ctrl: ControlRegister(0),
-        }
-    }
-}
-
-/// These are the top-level "public" functions (called in the context of the
-/// CPU) providing read/write access to memories.
-impl Mmu {
+/// These are the top-level "public" functions providing read/write accesses.
+impl Cpu {
     pub fn read32(&self, addr: u32) -> u32 {
         let paddr = self.translate(TLBReq::new(addr, Access::Read));
         self.bus.write().unwrap().read32(paddr)
@@ -67,7 +34,8 @@ impl Mmu {
     }
 }
 
-impl Mmu {
+/// These are the functions used to perform virtual-to-physical translation.
+impl Cpu {
     /// Resolve a section descriptor, returning a physical address.
     fn resolve_section(&self, req: TLBReq, d: SectionDescriptor) -> u32 {
         let ctx = self.get_ctx(d.domain());
@@ -96,18 +64,18 @@ impl Mmu {
     }
 
     /// Get the context for computing permissions associated with some PTE.
-    pub fn get_ctx(&self, dom: u32) -> PermissionContext {
+    fn get_ctx(&self, dom: u32) -> PermissionContext {
         PermissionContext { 
-            domain_mode: self.dacr.domain(dom),
-            is_priv: self.cpu_mode.is_privileged(),
-            sysprot: self.ctrl.sysprot_enabled(),
-            romprot: self.ctrl.romprot_enabled(),
+            domain_mode: self.p15.c3_dacr.domain(dom),
+            is_priv: self.reg.cpsr.mode().is_privileged(),
+            sysprot: self.p15.c1_ctrl.sysprot_enabled(),
+            romprot: self.p15.c1_ctrl.romprot_enabled(),
         }
     }
 
     /// Given some virtual address, return the first-level PTE.
     fn l1_fetch(&self, vaddr: VirtAddr) -> L1Descriptor {
-        let addr = (self.ttbr & 0xffff_c000) | vaddr.l1_idx() << 2;
+        let addr = (self.p15.c2_ttbr0 & 0xffff_c000) | vaddr.l1_idx() << 2;
         let val = self.bus.write().unwrap().read32(addr);
         L1Descriptor::from_u32(val)
     }
@@ -127,7 +95,7 @@ impl Mmu {
 
     /// Translate a virtual address into a physical address.
     pub fn translate(&self, req: TLBReq) -> u32 {
-        if self.ctrl.mmu_enabled() {
+        if self.p15.c1_ctrl.mmu_enabled() {
             let desc = self.l1_fetch(req.vaddr);
             match desc {
                 L1Descriptor::Section(entry) => self.resolve_section(req, entry),
@@ -139,5 +107,4 @@ impl Mmu {
         }
     }
 }
-
 

@@ -66,7 +66,7 @@ impl InterpBackend {
         let r1 = self.cpu.reg.r[1];
 
         // We need to use an out-of-band request to the MMU here
-        let paddr = self.cpu.mmu.translate(
+        let paddr = self.cpu.translate(
             TLBReq::new(self.cpu.reg.r[1], Access::Debug)
         );
 
@@ -93,7 +93,7 @@ impl InterpBackend {
         let pc = self.cpu.read_fetch_pc();
         if self.cpu.dbg_on && self.cpu.dbg_steps > 0 {
             if self.cpu.reg.cpsr.thumb() {
-                let opcd = self.cpu.mmu.read16(pc);
+                let opcd = self.cpu.read16(pc);
                 let inst = ThumbInst::decode(opcd);
                 match inst {
                     ThumbInst::BlImmSuffix => return,
@@ -102,7 +102,7 @@ impl InterpBackend {
                 let name = format!("{:?}", ThumbInst::decode(opcd));
                 println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
             } else {
-                let opcd = self.cpu.mmu.read32(pc);
+                let opcd = self.cpu.read32(pc);
                 let name = format!("{:?}", ArmInst::decode(opcd));
                 println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
             };
@@ -123,12 +123,12 @@ impl InterpBackend {
         // the state of the Thumb flag in the CPSR.
         let disp_res = if self.cpu.reg.cpsr.thumb() {
             self.dbg_print();
-            let opcd = self.cpu.mmu.read16(self.cpu.read_fetch_pc());
+            let opcd = self.cpu.read16(self.cpu.read_fetch_pc());
             let func = self.lut.thumb.lookup(opcd);
             func.0(&mut self.cpu, opcd)
         } else {
             self.dbg_print();
-            let opcd = self.cpu.mmu.read32(self.cpu.read_fetch_pc());
+            let opcd = self.cpu.read32(self.cpu.read_fetch_pc());
             if self.cpu.reg.cond_pass(opcd) {
                 let func = self.lut.arm.lookup(opcd);
                 func.0(&mut self.cpu, opcd)

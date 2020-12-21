@@ -28,12 +28,11 @@ pub enum CpuRes {
 
 /// Container for ARMv5-compatible CPU state.
 pub struct Cpu {
+    pub bus: Arc<RwLock<Bus>>,
     /// The CPU's register file.
     pub reg: reg::RegisterFile,
     /// The system control co-processor.
     pub p15: coproc::SystemControl,
-    /// The CPU's memory management unit.
-    pub mmu: mmu::Mmu,
 
     /// Current stage in the boot process.
     pub boot_status: BootStatus,
@@ -48,9 +47,9 @@ pub struct Cpu {
 impl Cpu {
     pub fn new(bus: Arc<RwLock<Bus>>) -> Self { 
         let cpu = Cpu {
+            bus,
             reg: reg::RegisterFile::new(),
             p15: coproc::SystemControl::new(),
-            mmu: mmu::Mmu::new(bus),
             scratch: 0,
             irq_input: false,
             boot_status: BootStatus::Boot0,
@@ -91,7 +90,6 @@ impl Cpu {
         }
         self.reg.swap_bank(target_mode);
         self.reg.cpsr.set_mode(target_mode);
-        self.mmu.cpu_mode = target_mode;
     }
 }
 
@@ -109,13 +107,7 @@ impl Cpu {
     /// side-effects (specifically, on the MMU) associated with a particular 
     /// change in some register.
     pub fn write_p15(&mut self, val: u32, crn: u32, crm: u32, opcd2: u32) {
-        let res = self.p15.write(val, crn, crm, opcd2);
-        match res {
-            CoprocTask::ControlChange => self.mmu.ctrl = self.p15.c1_ctrl,
-            CoprocTask::TtbrChange => self.mmu.ttbr = self.p15.c2_ttbr0,
-            CoprocTask::DacrChange => self.mmu.dacr = self.p15.c3_dacr,
-            CoprocTask::None => {},
-        }
+        self.p15.write(val, crn, crm, opcd2);
     }
 }
 

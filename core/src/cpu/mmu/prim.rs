@@ -1,3 +1,4 @@
+/// Definitions for types related to the MMU/TLB and address translation.
 
 use crate::cpu::coproc::DomainMode;
 

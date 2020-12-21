@@ -80,10 +80,10 @@ pub fn get_syscall_desc(idx: u32) -> SyscallDef {
 /// 
 /// NOTE: This is not particularly rigorous or safe.
 pub fn read_string(cpu: &Cpu, ptr: u32) -> String {
-    let paddr = cpu.mmu.translate(TLBReq::new(ptr, Access::Debug));
+    let paddr = cpu.translate(TLBReq::new(ptr, Access::Debug));
 
     let mut line_buf = [0u8; 32];
-    cpu.mmu.bus.write().unwrap().dma_read(paddr, &mut line_buf);
+    cpu.bus.write().unwrap().dma_read(paddr, &mut line_buf);
     //println!("{:?}", line_buf.hex_dump());
 
     let mut end: Option<usize> = None;

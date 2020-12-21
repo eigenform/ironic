@@ -28,12 +28,12 @@ pub fn ldrb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     let res = if op.rn() == 15 {
         assert_eq!(op.w(), false);
         let addr = do_amode_lit(cpu.read_exec_pc(), op.imm12(), op.p(), op.u());
-        cpu.mmu.read8(addr)
+        cpu.read8(addr)
     } else {
         let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
             op.imm12(), op.u(), op.p(), op.w());
         cpu.reg[op.rn()] = wb_addr;
-        cpu.mmu.read8(addr)
+        cpu.read8(addr)
     };
     cpu.reg[op.rt()] = res as u32;
     DispatchRes::RetireOk
@@ -43,13 +43,13 @@ pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     let res = if op.rn() == 15 {
         assert_eq!(op.w(), false);
         let addr = do_amode_lit(cpu.read_exec_pc(), op.imm12(), op.p(), op.u());
-        let val = cpu.mmu.read32(addr);
+        let val = cpu.read32(addr);
         val
     } else {
         let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
             op.imm12(), op.u(), op.p(), op.w());
         cpu.reg[op.rn()] = wb_addr;
-        cpu.mmu.read32(addr)
+        cpu.read32(addr)
     };
     if op.rt() == 15 {
         cpu.reg.cpsr.set_thumb(res & 1 != 0);
@@ -69,7 +69,7 @@ pub fn ldr_reg(cpu: &mut Cpu, op: LsRegBits) -> DispatchRes {
     let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
         offset, op.u(), op.p(), op.w()
     );
-    let val = cpu.mmu.read32(addr);
+    let val = cpu.read32(addr);
 
     cpu.reg[op.rn()] = wb_addr;
     if op.rt() == 15 {
@@ -91,7 +91,7 @@ pub fn str_reg(cpu: &mut Cpu, op: LsRegBits) -> DispatchRes {
     );
 
     let val = cpu.reg[op.rt()];
-    cpu.mmu.write32(addr, val);
+    cpu.write32(addr, val);
     cpu.reg[op.rn()] = wb_addr;
     DispatchRes::RetireOk
 }
@@ -103,7 +103,7 @@ pub fn str_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
         op.imm12(), op.u(), op.p(), op.w()
     );
     cpu.reg[op.rn()] = wb_addr;
-    cpu.mmu.write32(addr, cpu.reg[op.rt()]);
+    cpu.write32(addr, cpu.reg[op.rt()]);
     DispatchRes::RetireOk
 }
 pub fn strb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
@@ -111,7 +111,7 @@ pub fn strb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
         op.imm12(), op.u(), op.p(), op.w()
     );
     cpu.reg[op.rn()] = wb_addr;
-    cpu.mmu.write8(addr, cpu.reg[op.rt()]);
+    cpu.write8(addr, cpu.reg[op.rt()]);
     DispatchRes::RetireOk
 }
 
@@ -137,7 +137,7 @@ pub fn stm_user(cpu: &mut Cpu, op: StmRegUserBits) -> DispatchRes {
                 15 => panic!("stm_user r15 load unimplemented"),
                 _ => cpu.reg[i as u32],
             };
-            cpu.mmu.write32(addr, val);
+            cpu.write32(addr, val);
             addr += 4;
         }
     }
@@ -161,7 +161,7 @@ pub fn ldm_user(cpu: &mut Cpu, op: LdmRegUserBits) -> DispatchRes {
 
     for i in 0..16 {
         if (reglist & (1 << i)) != 0 {
-            let val = cpu.mmu.read32(addr);
+            let val = cpu.read32(addr);
 
             match i {
                 13 => cpu.reg.bank.sys[0] = val,
@@ -182,7 +182,7 @@ pub fn ldmib(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
 
     for i in 0..16 {
         if (reglist & (1 << i)) != 0 {
-            cpu.reg[i as u32] = cpu.mmu.read32(addr);
+            cpu.reg[i as u32] = cpu.read32(addr);
             addr += 4;
         }
     }
@@ -202,7 +202,7 @@ pub fn ldmia(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
 
     for i in 0..16 {
         if (reglist & (1 << i)) != 0 {
-            cpu.reg[i as u32] = cpu.mmu.read32(addr);
+            cpu.reg[i as u32] = cpu.read32(addr);
             addr += 4;
         }
     }
@@ -228,7 +228,7 @@ pub fn stmdb(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
             } else {
                 cpu.reg[i as u32]
             };
-            cpu.mmu.write32(addr, val);
+            cpu.write32(addr, val);
             addr += 4;
         }
     }
@@ -252,7 +252,7 @@ pub fn stm(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
             } else {
                 cpu.reg[i as u32]
             };
-            cpu.mmu.write32(addr, val);
+            cpu.write32(addr, val);
             addr += 4;
         }
     }
