@@ -36,7 +36,7 @@ impl From<u32> for CpuMode {
 }
 
 /// Condition field used when decoding instructions.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Cond {
     EQ = 0b0000, NE = 0b0001,
     CS = 0b0010, CC = 0b0011,
@@ -78,22 +78,6 @@ pub struct RegisterBank {
     pub irq: [u32; 2],
     pub fiq: [u32; 8],
 }
-impl RegisterBank {
-    /// Return a mutable iterator over the banks used by the given mode.
-    pub fn get_mode_iter(&mut self, mode: CpuMode) -> impl Iterator<Item=&mut u32> {
-        use CpuMode::*;
-        match mode {
-            Usr | 
-            Sys => self.gen.iter_mut().take(13).chain(self.sys.iter_mut()),
-            Svc => self.gen.iter_mut().take(13).chain(self.svc.iter_mut()),
-            Abt => self.gen.iter_mut().take(13).chain(self.abt.iter_mut()),
-            Und => self.gen.iter_mut().take(13).chain(self.und.iter_mut()),
-            Irq => self.gen.iter_mut().take(13).chain(self.irq.iter_mut()),
-            Fiq => self.gen.iter_mut().take(7).chain(self.fiq.iter_mut()),
-        }
-    }
-}
-
 
 /// Top-level container for register state.
 #[derive(Copy, Clone, PartialEq)]
@@ -117,7 +101,6 @@ impl RegisterFile {
         init_cpsr.set_thumb(false);
         init_cpsr.set_fiq_disable(true);
         init_cpsr.set_irq_disable(true);
-
         RegisterFile {
             r: [0; 15],
             pc: 0xffff_0000 + 8,
@@ -131,18 +114,13 @@ impl RegisterFile {
 /// Functions for dealing with the current program status register.
 impl RegisterFile {
 
-    /// Write the current status program register.
+    /// Replace the current status program register.
     pub fn write_cpsr(&mut self, target: Psr) { 
-        if self.cpsr.mode() != target.mode() {
+        let current_mode = self.cpsr.mode();
+        if current_mode != target.mode() {
             self.swap_bank(target.mode());
         }
-        //println!("CPU Wrote cpsr={:08x}, mode={:?}", target.0, target.mode());
         self.cpsr = target;
-    }
-
-    /// Save the current CPSR to some mode's SPSR.
-    pub fn save_cpsr(&mut self, target_mode: CpuMode) {
-        self.spsr.write(target_mode, self.cpsr);
     }
 }
 
@@ -151,20 +129,72 @@ impl RegisterFile {
 impl RegisterFile {
     /// Swap the currently active registers with some set of banked registers.
     pub fn swap_bank(&mut self, target_mode: CpuMode) {
-        self.save_current_bank();
-        self.load_bank(target_mode);
-    }
+        use CpuMode::*;
+        // Save the current mode's banked registers
+        match self.cpsr.mode() {
+            Usr | Sys => {
+                self.bank.sys[0] = self.r[13];
+                self.bank.sys[1] = self.r[14];
+            },
+            Svc => {
+                self.bank.svc[0] = self.r[13];
+                self.bank.svc[1] = self.r[14];
+            },
+            Abt => {
+                self.bank.abt[0] = self.r[13];
+                self.bank.abt[1] = self.r[14];
+            },
+            Und => {
+                self.bank.und[0] = self.r[13];
+                self.bank.und[1] = self.r[14];
+            },
+            Irq => {
+                self.bank.irq[0] = self.r[13];
+                self.bank.irq[1] = self.r[14];
+            },
+            Fiq => {
+                self.bank.fiq[0] = self.r[8];
+                self.bank.fiq[1] = self.r[9];
+                self.bank.fiq[2] = self.r[10];
+                self.bank.fiq[3] = self.r[11];
+                self.bank.fiq[4] = self.r[12];
+                self.bank.fiq[5] = self.r[13];
+                self.bank.fiq[6] = self.r[14];
+            },
+        }
 
-    /// Save active registers to the bank for the current mode.
-    fn save_current_bank(&mut self) {
-        let mut iter = self.bank.get_mode_iter(self.cpsr.mode());
-        for i in 0..15 { *iter.next().unwrap() = self.r[i]; }
-    }
-
-    /// Load the bank for the provided mode into the active registers.
-    fn load_bank(&mut self, target_mode: CpuMode) {
-        let mut iter = self.bank.get_mode_iter(target_mode);
-        for i in 0..15 { self.r[i] = *iter.next().unwrap(); }
+        // Load the target mode's banked registers
+        match target_mode {
+            Usr | Sys => {
+                self.r[13] = self.bank.sys[0];
+                self.r[14] = self.bank.sys[1];
+            },
+            Svc => {
+                self.r[13] = self.bank.svc[0];
+                self.r[14] = self.bank.svc[1];
+            },
+            Abt => {
+                self.r[13] = self.bank.abt[0];
+                self.r[14] = self.bank.abt[1];
+            },
+            Und => {
+                self.r[13] = self.bank.und[0];
+                self.r[14] = self.bank.und[1];
+            },
+            Irq => {
+                self.r[13] = self.bank.irq[0];
+                self.r[14] = self.bank.irq[1];
+            },
+            Fiq => {
+                self.r[8] = self.bank.fiq[0];
+                self.r[9] = self.bank.fiq[1];
+                self.r[10] = self.bank.fiq[2];
+                self.r[11] = self.bank.fiq[3];
+                self.r[12] = self.bank.fiq[4];
+                self.r[13] = self.bank.fiq[5];
+                self.r[14] = self.bank.fiq[6];
+            },
+        }
     }
 }
 
@@ -267,7 +297,4 @@ impl std::fmt::Debug for RegisterFile {
         Ok(())
     }
 }
-
-
-
 

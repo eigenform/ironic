@@ -1,6 +1,7 @@
 //! Load/store instructions.
 
 use ironic_core::cpu::Cpu;
+use ironic_core::cpu::reg::CpuMode;
 use ironic_core::cpu::alu::*;
 use crate::bits::arm::*;
 use crate::interp::DispatchRes;
@@ -43,13 +44,13 @@ pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     let res = if op.rn() == 15 {
         assert_eq!(op.w(), false);
         let addr = do_amode_lit(cpu.read_exec_pc(), op.imm12(), op.p(), op.u());
-        let val = cpu.read32(addr);
-        val
+        cpu.read32(addr)
     } else {
         let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
             op.imm12(), op.u(), op.p(), op.w());
         cpu.reg[op.rn()] = wb_addr;
-        cpu.read32(addr)
+        let res = cpu.read32(addr);
+        res
     };
     if op.rt() == 15 {
         cpu.reg.cpsr.set_thumb(res & 1 != 0);
@@ -60,6 +61,26 @@ pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
         DispatchRes::RetireOk
     }
 }
+
+pub fn str_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
+    let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
+        op.imm12(), op.u(), op.p(), op.w()
+    );
+    cpu.reg[op.rn()] = wb_addr;
+    cpu.write32(addr, cpu.reg[op.rt()]);
+    DispatchRes::RetireOk
+}
+pub fn strb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
+    let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
+        op.imm12(), op.u(), op.p(), op.w()
+    );
+    cpu.reg[op.rn()] = wb_addr;
+    cpu.write8(addr, cpu.reg[op.rt()]);
+    DispatchRes::RetireOk
+}
+
+
+
 
 pub fn ldr_reg(cpu: &mut Cpu, op: LsRegBits) -> DispatchRes {
     let (offset, _) = barrel_shift(ShiftArgs::Reg { rm: cpu.reg[op.rm()],
@@ -98,25 +119,10 @@ pub fn str_reg(cpu: &mut Cpu, op: LsRegBits) -> DispatchRes {
 
 
 
-pub fn str_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
-    let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
-        op.imm12(), op.u(), op.p(), op.w()
-    );
-    cpu.reg[op.rn()] = wb_addr;
-    cpu.write32(addr, cpu.reg[op.rt()]);
-    DispatchRes::RetireOk
-}
-pub fn strb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
-    let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
-        op.imm12(), op.u(), op.p(), op.w()
-    );
-    cpu.reg[op.rn()] = wb_addr;
-    cpu.write8(addr, cpu.reg[op.rt()]);
-    DispatchRes::RetireOk
-}
-
 
 pub fn stm_user(cpu: &mut Cpu, op: StmRegUserBits) -> DispatchRes {
+    //assert!(cpu.reg.cpsr.mode() != CpuMode::Usr);
+    //assert!(cpu.reg.cpsr.mode() != CpuMode::Sys);
     assert_ne!(op.rn(), 15);
     let reglist = op.register_list();
     let len = reglist.count_ones() * 4;

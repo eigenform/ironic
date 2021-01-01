@@ -51,14 +51,15 @@ macro_rules! scdef {
 
 pub fn get_syscall_desc(idx: u32) -> SyscallDef {
     match idx {
+        0x00 => scdef!("ThreadCreate", Ptr, Ptr, Ptr, Uint, Uint, Uint),
         0x02 => scdef!("ThreadCancel", ),
         0x04 => scdef!("ThreadGetPid", ),
         0x09 => scdef!("ThreadSetPrio", Int, Int),
         0x0a => scdef!("MqueueCreate", Ptr, Int),
         0x0b => scdef!("MqueueDestroy", Ptr),
-        //0x0e => scdef!("MqueueRecv", Ptr, Uint),
+        0x0e => scdef!("MqueueRecv", Ptr, Uint),
         0x0f => scdef!("MqueueRegisterHandler", Int, Int, Uint),
-        //0x10 => scdef!("MqueueDestroyHandler", Ptr, Ptr, Ptr),
+        0x10 => scdef!("MqueueDestroyHandler", Ptr, Ptr, Ptr),
         0x11 => scdef!("TimerCreate", Int, Int, Int, Uint),
         0x18 => scdef!("HeapAlloc", Int, Uint),
         0x1c => scdef!("Open", StrPtr, Int),
@@ -71,7 +72,7 @@ pub fn get_syscall_desc(idx: u32) -> SyscallDef {
         0x3f => scdef!("SyncBeforeRead", Ptr),
         0x4f => scdef!("VirtToPhys", Ptr),
         0x63 => scdef!("IoscGetData", Uint, Uint, Uint),
-        0x6d => scdef!("IoscGenBlockMac", Uint, Uint, Uint),
+        0x6d => scdef!("IoscGenBlockMac", Uint, Uint, Uint, Uint, Uint, Uint),
         _ => panic!("Couldn't resolve syscall idx={:02x}", idx),
     }
 }
@@ -95,7 +96,7 @@ pub fn read_string(cpu: &Cpu, ptr: u32) -> String {
     } else {
         std::str::from_utf8(&line_buf).unwrap()
     };
-    s.to_string()
+    s.trim_matches(char::from(0)).to_string()
 }
 
 

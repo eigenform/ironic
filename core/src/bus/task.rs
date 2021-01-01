@@ -1,6 +1,4 @@
 
-use std::collections::VecDeque;
-
 /// Some type of indirect access (from memory interface to the DDR interface).
 #[derive(Debug)]
 pub enum IndirAccess { Read, Write }
@@ -24,17 +22,9 @@ pub enum BusTask {
     Mi { kind: IndirAccess, data: u16 },
 }
 
-
+/// An entry kept by the [Bus], representing some task to-be-completed.
 pub struct Task {
     pub kind: BusTask,
-    pub ctr: usize,
-}
-
-/// A queue of tasks to-be-completed by the bus.
-pub struct TaskQueue { pub q: VecDeque<Task> }
-impl TaskQueue {
-    pub fn new() -> Self { 
-        TaskQueue { q: VecDeque::new() } 
-    }
+    pub target_cycle: usize,
 }
 

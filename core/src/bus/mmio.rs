@@ -52,35 +52,33 @@ impl Bus {
 
             _ => panic!("Unsupported write {:?} for {:?} at {:x}", msg, dev, off),
         };
+
+        // If the device returned some task, schedule it
         if task.is_some() {
-            self.tasks.push(task.unwrap());
+            let t = task.unwrap();
+            let c = match t {
+                BusTask::Nand(_) => 0,
+                BusTask::Aes(_) => 0,
+                BusTask::Sha(_) => 0,
+
+                BusTask::Mi{..} => 0,
+                BusTask::SetRomDisabled(_) => 0,
+                BusTask::SetMirrorEnabled(_) => 0,
+            };
+            self.tasks.push(Task { kind: t, target_cycle: self.cycle + c });
         }
     }
 }
 
 
 impl Bus {
-
-    //pub fn schedule_task(&mut self, t: BusTask) {
-    //    use BusTask::*;
-    //    let latency = match t {
-    //        Nand(_) | Aes(_) | Sha(_) => 4,
-    //        Mi {..} => 0,
-    //        SetRomDisabled(_) | SetMirrorEnabled(_) => 0,
-    //    };
-    //    self.task_queue.push(Task { kind: t, ctr: latency});
-    //}
-
-
     /// Emulate a slice of work on the system bus.
-    ///
-    /// This drains all pending tasks that have been scheduled on any of the
-    /// I/O devices.
     pub fn step(&mut self) {
         self.handle_step_hlwd();
         if !self.tasks.is_empty() {
             self.drain_tasks();
         }
+        self.cycle += 1;
     }
 
     /// Returns the state of the IRQ input signal attached to the CPU.
@@ -91,22 +89,20 @@ impl Bus {
 
     /// Dispatch all of the pending tasks on the Bus.
     fn drain_tasks(&mut self) {
-        let mut tasks = std::mem::replace(&mut self.tasks, Vec::new());
-        for task in tasks.drain(..) {
-            match task {
-                BusTask::Nand(val) => self.handle_task_nand(val),
-                BusTask::Aes(val) => self.handle_task_aes(val),
-                BusTask::Sha(val) => self.handle_task_sha(val),
-                BusTask::Mi{kind, data} => self.handle_task_mi(kind, data),
-
-                BusTask::SetRomDisabled(x) => {
-                    println!("BUS ROM disabled={:?}", x);
-                    self.rom_disabled = x;
-                },
-                BusTask::SetMirrorEnabled(x) => {
-                    println!("BUS SRAM mirror enabled={:?}", x);
-                    self.mirror_enabled = x;
+        let mut idx = 0;
+        while idx != self.tasks.len() {
+            if self.tasks[idx].target_cycle == self.cycle {
+                let task = self.tasks.remove(idx);
+                match task.kind {
+                    BusTask::Nand(x) => self.handle_task_nand(x),
+                    BusTask::Aes(x) => self.handle_task_aes(x),
+                    BusTask::Sha(x) => self.handle_task_sha(x),
+                    BusTask::Mi{kind, data} => self.handle_task_mi(kind, data),
+                    BusTask::SetRomDisabled(x) => self.rom_disabled = x,
+                    BusTask::SetMirrorEnabled(x) => self.mirror_enabled = x,
                 }
+            } else {
+                idx += 1;
             }
         }
     }

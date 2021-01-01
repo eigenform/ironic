@@ -1,4 +1,3 @@
-//! Emulated CPU state and common operations. 
 
 pub mod coproc;
 pub mod excep;
@@ -9,6 +8,7 @@ pub mod lut;
 pub mod alu;
 
 use std::sync::{Arc,RwLock};
+use std::collections::BTreeMap;
 
 use crate::bus::*;
 use crate::cpu::lut::*;
@@ -24,6 +24,8 @@ pub enum CpuRes {
     StepOk,
     /// We single stepped and took some exception.
     StepException(ExceptionType),
+    /// We caught a Realview Semihosting command.
+    Semihosting,
 }
 
 /// Container for ARMv5-compatible CPU state.
@@ -36,6 +38,8 @@ pub struct Cpu {
 
     /// Current stage in the boot process.
     pub boot_status: BootStatus,
+
+    pub current_exception: Option<ExceptionType>,
 
     pub scratch: u32,
     pub dbg_on: bool,
@@ -53,6 +57,7 @@ impl Cpu {
             scratch: 0,
             irq_input: false,
             boot_status: BootStatus::Boot0,
+            current_exception: None,
             dbg_on: false,
             dbg_steps: 1_000_000,
         };

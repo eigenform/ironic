@@ -52,7 +52,7 @@ impl MmioDevice for ShaInterface {
 
     fn read(&mut self, off: usize) -> BusPacket {
         let val = match off {
-            0x00 => self.ctrl,
+            0x00 => 0, //self.ctrl,
             0x08 => self.state.digest[0],
             0x0c => self.state.digest[1],
             0x10 => self.state.digest[2],
@@ -93,14 +93,16 @@ impl Bus {
         let cmd = ShaCommand::from(val);
         if cmd.irq { panic!("SHA irq unimpl"); }
 
-        //println!("SHA Digest addr={:08x} len={:08x}", sha.src, cmd.len);
 
         let mut sha_buf = vec![0u8; cmd.len as usize];
         self.dma_read(sha.src, &mut sha_buf);
         sha.state.update(&sha_buf);
-        sha.src += cmd.len;
+
+        println!("SHA Digest addr={:08x} len={:08x}", sha.src, cmd.len);
+        println!("SHA buffer {:02x?}", sha.state.digest);
 
         // Mark the command as completed
+        sha.src += cmd.len;
         sha.ctrl &= 0x7fff_ffff;
     }
 }

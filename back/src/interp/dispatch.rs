@@ -1,7 +1,5 @@
 //! ARM/Thumb instruction dispatch for the interpreter backend.
 
-use std::mem::transmute;
-
 use ironic_core::cpu::excep::ExceptionType;
 use ironic_core::cpu::Cpu;
 use crate::interp::{ArmFn, ThumbFn};
@@ -49,12 +47,12 @@ pub fn thumb_unimpl_instr(cpu: &mut Cpu, op: u16) -> DispatchRes {
 // We use these macros to coerce the borrow checker into taking pointers to
 // functions which take a newtype wrapping a u32/u16 (for bitfields).
 macro_rules! afn { ($func:expr) => { unsafe {
-    transmute::<*const fn(), fn(&mut Cpu, u32) -> DispatchRes>
+    std::mem::transmute::<*const fn(), fn(&mut Cpu, u32) -> DispatchRes>
         ($func as *const fn())
 }}}
 
 macro_rules! tfn { ($func:expr) => { unsafe {
-    transmute::<*const fn(), fn(&mut Cpu, u16) -> DispatchRes>
+    std::mem::transmute::<*const fn(), fn(&mut Cpu, u16) -> DispatchRes>
         ($func as *const fn())
 }}}
 

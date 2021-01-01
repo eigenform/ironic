@@ -3,6 +3,7 @@ use ironic_core::bus::*;
 use ironic_core::topo::*;
 
 use ironic_backend::interp::*;
+use ironic_backend::jit::*;
 use ironic_backend::back::*;
 
 use std::sync::{Arc, RwLock};
@@ -45,6 +46,12 @@ fn main() {
         BackendType::Interpreter => {
             Builder::new().name("EmuThread".to_owned()).spawn(move || {
                 let mut back = InterpBackend::new(emu_bus);
+                back.run();
+            }).unwrap()
+        },
+        BackendType::JIT => {
+            Builder::new().name("EmuThread".to_owned()).spawn(move || {
+                let mut back = JitBackend::new(emu_bus);
                 back.run();
             }).unwrap()
         },

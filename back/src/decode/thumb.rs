@@ -2,7 +2,7 @@
 
 use crate::lut::Instruction;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ThumbInst {
     SbcReg, CmpReg, OrrReg, BicReg, TstReg, EorReg, MvnReg, CmnReg, AdcReg,
     AndReg, MovReg, SubReg, AddReg, CmpRegAlt, AddRegAlt, MovRegAlt,

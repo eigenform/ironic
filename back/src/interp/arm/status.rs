@@ -17,6 +17,22 @@ pub fn mrs(cpu: &mut Cpu, op: MrsBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+fn write_spsr(cpu: &mut Cpu, mask: u32, val: u32) {
+    let current_mode = cpu.reg.cpsr.mode();
+    // These modes do not have SPSRs; the behavior is unpredictable 
+    assert_ne!(current_mode, CpuMode::Usr);
+    assert_ne!(current_mode, CpuMode::Sys);
+    let old_spsr = cpu.reg.spsr.read(current_mode);
+    let new_spsr = Psr((old_spsr.0 & !mask) | (val & mask));
+    cpu.reg.spsr.write(current_mode, new_spsr);
+}
+
+fn write_cpsr(cpu: &mut Cpu, mask: u32, val: u32) {
+    let old_cpsr = cpu.reg.cpsr;
+    let new_cpsr = Psr((old_cpsr.0 & !mask) | (val & mask));
+    cpu.reg.write_cpsr(new_cpsr);
+}
+
 pub fn msr_imm(cpu: &mut Cpu, op: MsrImmBits) -> DispatchRes {
     let (val, _) = barrel_shift(ShiftArgs::Imm {
         imm12: op.imm12(), c_in: cpu.reg.cpsr.c()
@@ -28,17 +44,10 @@ pub fn msr_imm(cpu: &mut Cpu, op: MsrImmBits) -> DispatchRes {
     mask |= if (op.mask() & 0b0100) != 0 { 0x00ff_0000 } else { 0 };
     mask |= if (op.mask() & 0b1000) != 0 { 0xff00_0000 } else { 0 };
 
-    let current_mode = cpu.reg.cpsr.mode();
     if op.r() {
-        assert_ne!(current_mode, CpuMode::Usr);
-        assert_ne!(current_mode, CpuMode::Sys);
-        let old_spsr = cpu.reg.spsr.read(current_mode);
-        let new_spsr = Psr((old_spsr.0 & !mask) | (val & mask));
-        cpu.reg.spsr.write(current_mode, new_spsr);
+        write_spsr(cpu, mask, val);
     } else {
-        let old_cpsr = cpu.reg.cpsr;
-        let new_cpsr = Psr((old_cpsr.0 & !mask) | (val & mask));
-        cpu.reg.write_cpsr(new_cpsr);
+        write_cpsr(cpu, mask, val);
     }
     DispatchRes::RetireOk
 }
@@ -51,18 +60,10 @@ pub fn msr_reg(cpu: &mut Cpu, op: MsrRegBits) -> DispatchRes {
     mask |= if (op.mask() & 0b0010) != 0 { 0x0000_ff00 } else { 0 };
     mask |= if (op.mask() & 0b0100) != 0 { 0x00ff_0000 } else { 0 };
     mask |= if (op.mask() & 0b1000) != 0 { 0xff00_0000 } else { 0 };
-
-    let current_mode = cpu.reg.cpsr.mode();
     if op.r() {
-        assert_ne!(current_mode, CpuMode::Usr);
-        assert_ne!(current_mode, CpuMode::Sys);
-        let old_spsr = cpu.reg.spsr.read(current_mode);
-        let new_spsr = Psr((old_spsr.0 & !mask) | (val & mask));
-        cpu.reg.spsr.write(current_mode, new_spsr);
+        write_spsr(cpu, mask, val);
     } else {
-        let old_cpsr = cpu.reg.cpsr;
-        let new_cpsr = Psr((old_cpsr.0 & !mask) | (val & mask));
-        cpu.reg.write_cpsr(new_cpsr);
+        write_cpsr(cpu, mask, val);
     }
     DispatchRes::RetireOk
 }

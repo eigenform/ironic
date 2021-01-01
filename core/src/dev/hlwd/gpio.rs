@@ -76,7 +76,6 @@ impl ArmGpio {
         match off {
             0x00 => self.en = data,
             0x04 => { 
-                //let diff = self.output ^ data;
                 let task = if (self.output ^ data) != 0 {
                     Some(HlwdTask::GpioOutput(data))
                 } else { 
@@ -102,7 +101,7 @@ impl ArmGpio {
             0x08 => self.dir,
             0x0c => self.input,
             0x10 => self.intlvl,
-            0x14 => self.intflag,
+            0x14 => 0x0000_0000, //self.intflag,
             0x18 => self.intmask,
             0x1c => self.straps,
             0x20 => self.owner,

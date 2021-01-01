@@ -3,7 +3,7 @@
 use crate::lut::Instruction;
 
 /// Enumerated type describing different kinds of ARM instruction encodings.
-#[derive(Debug)]
+#[derive(Clone,Debug)]
 pub enum ArmInst {
     AndRegShiftReg, AdcRegShiftReg, MovRegShiftReg, OrrRegShiftReg,
     EorRegShiftReg, RscRegShiftReg, MvnRegShiftReg, SbcRegShiftReg,

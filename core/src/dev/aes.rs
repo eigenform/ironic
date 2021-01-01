@@ -27,6 +27,7 @@ pub struct AesCommand {
     use_aes: bool,
     /// Enable chained IV mode
     chain_iv: bool,
+    /// Fire an IRQ when a command completes
     irq: bool,
 }
 impl From<u32> for AesCommand {
@@ -78,7 +79,7 @@ impl MmioDevice for AesInterface {
     fn read(&mut self, off: usize) -> BusPacket {
         match off {
             //0x00 => BusPacket::Word(self.ctrl),
-            0x00 => BusPacket::Word(self.ctrl),
+            0x00 => BusPacket::Word(0),
             _ => panic!("Unhandled AES interface read {:x}", off),
         }
     }
@@ -122,48 +123,37 @@ impl Bus {
         let aes = &mut dev.aes;
 
         let cmd = AesCommand::from(val);
-        if cmd.irq { panic!("AES irq unimpl"); }
-
-        //println!("AES Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len);
+        assert_eq!(cmd.use_aes, true);
+        assert_ne!(cmd.irq, true);
 
         // Read data from the source address
         let mut aes_inbuf = vec![0u8; cmd.len];
-        let mut next_iv_buffer = vec![0u8; 0x10];
         self.dma_read(aes.src, &mut aes_inbuf);
-        next_iv_buffer.copy_from_slice(&aes_inbuf[(cmd.len - 0x10)..]);
-
-        // If this command is just a DMA transfer without invoking the
-        // AES engine, just write to the destination address
-        if !cmd.use_aes {
-            //println!("AES plain DMA");
-            //println!("{:?}", aes_inbuf.hex_dump());
-            self.dma_write(aes.dst, &aes_inbuf);
-            return;
-        }
 
         // Build the right AES cipher for this request
         let key = aes.key_fifo.as_slices().0;
-        let cipher = if cmd.chain_iv {
-            Aes128Cbc::new_var(&key, &aes.iv_buffer).unwrap()
+        let mut iv = vec![0u8; 0x10];
+        if cmd.chain_iv {
+            iv.copy_from_slice(&aes.iv_buffer);
         } else {
-            let iv = aes.iv_fifo.as_slices().0;
-            Aes128Cbc::new_var(&key, &iv).unwrap()
-        };
+            iv.copy_from_slice(aes.iv_fifo.as_slices().0);
+        }
+        let cipher = Aes128Cbc::new_var(&key, &iv).unwrap();
+
+        println!("AES key={:02x?}", key);
+        println!("AES iv={:02x?}", iv);
+        println!("AES Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len);
 
         // Decrypt/encrypt the data, then DMA write to memory
         if cmd.decrypt {
-            cipher.decrypt(&mut aes_inbuf).unwrap().to_vec();
-
-            //println!("AES decrypt data");
-            //println!("{:?}", aes_inbuf.hex_dump());
-
-            self.dma_write(aes.dst, &aes_inbuf);
+            let aes_outbuf = cipher.decrypt_vec(&aes_inbuf).unwrap();
+            self.dma_write(aes.dst, &aes_outbuf);
         } else {
             panic!("AES encrypt unsupported");
         }
 
         // Update IV buffer with the last 16 bytes of data
-        aes.iv_buffer.copy_from_slice(&next_iv_buffer);
+        aes.iv_buffer.copy_from_slice(&aes_inbuf[(cmd.len - 0x10)..]);
 
         // Update the source/destination registers exposed over MMIO
         aes.dst += cmd.len as u32;

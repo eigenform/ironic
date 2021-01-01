@@ -73,36 +73,49 @@ impl Cpu {
 
     /// Change CPU state to reflect the fact that we've entered an exception.
     pub fn generate_exception(&mut self, e: ExceptionType) {
-        //println!("pc={:08x} Excep {:x?}", self.read_fetch_pc(), e);
+        assert_ne!(e, ExceptionType::Swi);
+        let current_pc = self.read_fetch_pc();
 
+        let old_cpsr = self.reg.cpsr;
         let target_mode = CpuMode::from(e);
-
-        // Get the address of the exception vector
         let target_pc = ExceptionType::get_vector(e);
 
         // Get the address the exception will return to
-        let return_pc = self.read_fetch_pc()
-            .wrapping_add(ExceptionType::get_pc_off(e, self.reg.cpsr.thumb()));
+        let return_pc = self.read_fetch_pc().wrapping_add(
+            ExceptionType::get_pc_off(e, self.reg.cpsr.thumb()));
+
 
         match e {
             ExceptionType::Undef(opcd) => ios::resolve_syscall(self, opcd),
             _ => {},
         }
 
-        // Save the CPSR to the target mode's SPSR, then change mode
-        self.reg.save_cpsr(target_mode);
-        self.set_mode(target_mode);
 
-        // Disable Thumb and IRQs
-        self.reg.cpsr.set_thumb(false);
-        self.reg.cpsr.set_irq_disable(true);
+        // Build the new CPSR for the target mode and swap into it
+        let mut new_cpsr = old_cpsr;
+        new_cpsr.set_mode(target_mode);
+        new_cpsr.set_thumb(false);
+        new_cpsr.set_irq_disable(true);
         if e == ExceptionType::Fiq {
-            self.reg.cpsr.set_fiq_disable(true);
+            new_cpsr.set_fiq_disable(true);
+        }
+        self.reg.write_cpsr(new_cpsr);
+
+        // Save the old CPSR in the exception mode's SPSR bank
+        self.reg.spsr.write(target_mode, old_cpsr);
+
+        // The return value is stored in the target mode's LR
+        self.reg[Reg::Lr] = return_pc;
+        // The exception vector is written to the program counter 
+        self.write_exec_pc(target_pc);
+
+        if self.current_exception.is_none() {
+            self.current_exception = Some(e);
+        } else {
+            panic!("pc={:08x} CPU tried to take {:x?} exception inside {:x?} exception",
+                current_pc, e, self.current_exception.unwrap());
         }
 
-        // Setup the LR and write the new program counter
-        self.reg[Reg::Lr] = return_pc;
-        self.write_exec_pc(target_pc);
     }
 
     /// Return from an exception.
@@ -110,13 +123,16 @@ impl Cpu {
         assert_ne!(self.reg.cpsr.mode(), CpuMode::Usr);
         assert_ne!(self.reg.cpsr.mode(), CpuMode::Sys);
 
-        //println!("pc={:08x} excep return (cpsr={:08x}, new_cpsr={:08x})", 
-        //    self.read_fetch_pc(), self.reg.cpsr.0, 
-        //    self.reg.spsr.read(self.reg.cpsr.mode()).0,
-        //);
-
-        let current_mode_spsr = self.reg.spsr.read(self.reg.cpsr.mode());
-        self.reg.write_cpsr(current_mode_spsr);
+        let current_mode = self.reg.cpsr.mode();
+        let spsr = self.reg.spsr.read(current_mode);
+        let target_mode = spsr.mode();
+        self.reg.write_cpsr(spsr);
         self.write_exec_pc(dest_pc & 0xffff_fffe);
+
+        if self.current_exception.is_some() {
+            self.current_exception = None
+        } else {
+            println!("CPU returned from nonexistent exception");
+        }
     }
 }

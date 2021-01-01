@@ -8,16 +8,12 @@ use crate::bus::task::*;
 
 /// One-time programmable [fused] memory.
 pub mod otp;
-
 /// Interface to GPIO pins.
 pub mod gpio;
-
 /// Flipper-compatible interfaces.
 pub mod compat;
-
 /// GDDR3 interface.
 pub mod ddr;
-
 /// Interrupt controller.
 pub mod irq;
 
@@ -35,18 +31,14 @@ pub struct IpcInterface {
 pub struct TimerInterface {
     pub timer: u32,
     pub alarm: u32,
-    pub alarm_set: bool,
 }
 impl TimerInterface {
     pub fn step(&mut self) {
-        //self.timer = self.timer.wrapping_add(0x10);
-        self.timer = self.timer.wrapping_add(0x1);
-        if self.alarm_set {
-            if self.timer == self.alarm {
-                println!("HLWD alarm interrupt {:08x} == {:08x}", 
-                    self.timer, self.alarm);
-                panic!("Timer/alarm interrupts are unimplemented");
-            }
+        self.timer += 1;
+        if self.timer == self.alarm {
+            println!("HLWD alarm interrupt {:08x} == {:08x}", 
+                self.timer, self.alarm);
+            panic!("Timer/alarm interrupts are unimplemented");
         }
     }
 }
@@ -222,7 +214,6 @@ impl Hollywood {
 }
 
 
-
 impl MmioDevice for Hollywood {
     type Width = u32;
     fn read(&mut self, off: usize) -> BusPacket {
@@ -241,8 +232,8 @@ impl MmioDevice for Hollywood {
             0x18c           => self.spare1,
             0x190           => self.clocks,
             0x194           => self.resets,
-            0x1b0           => self.pll.sys,
-            0x1b4           => self.pll.sys_ext,
+            0x1b0           => 0x0040_11c0, //self.pll.sys,
+            0x1b4           => 0x1800_0018, //self.pll.sys_ext,
             0x1bc           => self.pll.ddr,
             0x1c0           => self.pll.ddr_ext,
             0x1c8           => self.pll.vi_ext,
@@ -266,7 +257,6 @@ impl MmioDevice for Hollywood {
             0x014 => {
                 println!("HLWD alarm set to {:08x}", val);
                 self.timer.alarm = val;
-                self.timer.alarm_set = true;
             },
             0x030..=0x05c => self.irq.write_handler(off - 0x30, val),
             0x060 => {

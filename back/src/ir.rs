@@ -3,14 +3,18 @@
 use std::fmt;
 use std::collections::BTreeMap;
 
+
+// Just going to use this for representing conditions, for now
+use ironic_core::cpu::reg::Cond;
+use crate::decode::arm::ArmInst;
+use crate::decode::thumb::ThumbInst;
+
 /// An abstract representation of a program.
 pub struct IRGraph {
     /// The set of basic blocks associated with this graph.
-    pub blocks: BTreeMap<usize, IRBlock>,
+    pub blocks: BTreeMap<u32, IRBlock>,
     /// Buffer for the state of the current basic block.
     pub current_block: IRBlock,
-    /// The newest block index.
-    pub bidx: usize,
     /// The newest IR index.
     pub ridx: usize,
 }
@@ -19,7 +23,6 @@ impl IRGraph {
         IRGraph { 
             blocks: BTreeMap::new(),
             current_block: IRBlock::new(),
-            bidx: 0,
             ridx: 0,
         }
     }
@@ -72,15 +75,28 @@ impl fmt::Debug for IROp {
     }
 }
 
+#[derive(Clone)]
+pub enum IRInst {
+    Arm(ArmInst, u32),
+    Thumb(ThumbInst, u16),
+}
+
 /// A basic block of computations.
 #[derive(Clone)]
 pub struct IRBlock {
+    pub inst: Vec<IRInst>,
     pub reg: Vec<IRReg>,
     pub expr: Vec<IROp>,
+    pub cond_exit: Option<Cond>,
 }
 impl IRBlock {
     pub fn new() -> Self {
-        IRBlock { reg: Vec::new(), expr: Vec::new() }
+        IRBlock { 
+            inst: Vec::new(),
+            reg: Vec::new(), 
+            expr: Vec::new(),
+            cond_exit: None,
+        }
     }
 }
 

@@ -120,24 +120,25 @@ impl MmioDevice for NandInterface {
     type Width = u32;
     fn read(&mut self, off: usize) -> BusPacket {
         let val = match off { 
-            0x00 => self.reg.ctrl,
+            //0x00 => self.reg.ctrl,
+            0x00 => 0x0000_0001,
             0x04 => self.reg.cfg,
             0x08 => self.reg.addr1,
             0x0c => self.reg.addr2,
             0x10 => self.reg.databuf,
             0x14 => self.reg.eccbuf,
             0x18 => {
-                println!("NAND unimpl read from 0x18");
+                println!("NND unimpl read from 0x18");
                 self.reg.unk
             },
-            _ => panic!("Unhandled NAND read at {:x} ", off),
+            _ => panic!("Unhandled NND read at {:x} ", off),
         };
-        //println!("NAND read {:08x} from {:02x}", val, off);
+        //println!("NND read {:08x} from {:02x}", val, off);
         BusPacket::Word(val)
     }
 
     fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
-        //println!("NAND write {:08x} @ {:02x}", val, off);
+        //println!("NND write {:08x} @ {:02x}", val, off);
         match off {
             0x00 => {
                 // When this bit is set, emit command to NAND flash
@@ -152,7 +153,7 @@ impl MmioDevice for NandInterface {
             0x10 => self.reg.databuf = val,
             0x14 => self.reg.eccbuf = val,
             0x18 => {
-                println!("NAND unimpl write to 0x18");
+                println!("NND unimpl write to 0x18");
                 self.reg.unk = val;
             }
             _ => panic!("Unhandled write32 on {:08x}", off),
@@ -174,7 +175,7 @@ impl Bus {
         let off = reg.addr2 as usize * NAND_PAGE_LEN;
         self.dev.read().unwrap().nand.read_data(off, &mut local_buf);
 
-        //println!("NAND DMA write addr1={:08x} addr2={:08x} data={:08x} ecc={:08x}",
+        //println!("NND DMA write addr1={:08x} addr2={:08x} data={:08x} ecc={:08x}",
         //  reg.addr1, reg.addr2, reg.databuf, reg.eccbuf);
 
         //let mut tmp = vec![0; 8];
@@ -190,7 +191,7 @@ impl Bus {
             let addr = (reg.eccbuf ^ 0x40) + (i as u32 * 4);
             let new_ecc = calc_ecc(&mut local_buf[(i * 0x200)..]);
             //let old_ecc = self.read32(addr);
-            //println!("NAND ECC write addr={:08x} old={:08x} new={:08x}",
+            //println!("NND ECC write addr={:08x} old={:08x} new={:08x}",
             //    addr, old_ecc, new_ecc);
             self.write32(addr, new_ecc);
         }
@@ -202,13 +203,20 @@ impl Bus {
         let reg = self.read_nand_regs();
         assert!(cmd.wr == false);
         let mut next_cycle = 0;
+        
+        //println!("NND cmd {:x?} addr2={:08x}", cmd.opcd, reg.addr2);
 
         // Execute a command
         match reg._cycle {
             0 => {
                 match cmd.opcd {
-                    NandOpcd::Prefix00 => next_cycle = reg._cycle + 1,
-                    NandOpcd::ReadId => self.dma_write(reg.databuf, &NAND_ID),
+                    NandOpcd::Prefix00 => {
+                        next_cycle = reg._cycle + 1;
+                    },
+                    NandOpcd::ReadId => {
+                        //println!("{:?}", cmd);
+                        self.dma_write(reg.databuf, &NAND_ID);
+                    },
                     NandOpcd::Reset => {},
                     _ => panic!("NAND unknown cycle 0 opcd {:?}", cmd.opcd),
                 }
@@ -224,8 +232,16 @@ impl Bus {
         // that we need to change
         {
             let mut dev = self.dev.write().unwrap();
-            // Potentially assert an IRQ
-            if cmd.irq { dev.hlwd.irq.assert(HollywoodIrq::Nand); }
+
+            // NOTE: Skyeye *always* asserts an IRQ?
+            dev.hlwd.irq.assert(HollywoodIrq::Nand);
+
+            // Assert an IRQ if requested in the command
+            //if cmd.irq { 
+            //    println!("NND IRQ assert by cmd {:?}", cmd.opcd);
+            //    dev.hlwd.irq.assert(HollywoodIrq::Nand); 
+            //}
+
             // Mark this command as completed
             dev.nand.reg.ctrl &= 0x7fff_ffff;
             // Increment cycle counter for NAND state machine

@@ -2,14 +2,15 @@
 /// Emulated system topology.
 pub mod topo;
 
+/// Emulated CPU state and common operations.
 pub mod cpu;
 /// Implementation of emulated memories.
 pub mod mem;
 /// Implementation of system devices.
 pub mod dev;
 
-/// Abstractions for implementing a system bus.
+/// Implementation of an abstract system bus.
 pub mod bus;
-/// Abstractions for implementing runtime debugging features.
+/// Implementation of runtime debugging features.
 pub mod dbg;
 

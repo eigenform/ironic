@@ -6,22 +6,32 @@ use crate::mem::*;
 
 /// Set of commands to/states of the SEEPROM state machine.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum SeepromOp { Ewds, Wral, Eral, Ewen, Ext, Write, Read, Erase, Init }
-impl From<u32> for SeepromOp {
-    fn from(x: u32) -> Self {
+pub enum SeepromOp { 
+    Ewds, Wral, Eral, Ewen, Ext, Write, Read, Erase, Init
+}
+impl SeepromOp {
+    pub fn from_initial(x: u32) -> Self {
         use SeepromOp::*;
         match x {
-            0 => Ewds,
-            1 => Wral,
-            2 => Eral,
-            3 => Ewen,
-            4 => Ext,
-            5 => Write,
-            6 => Read,
-            7 => Erase,
+            0b1_00 => Ext,
+            0b1_01 => Write,
+            0b1_10 => Read,
+            0b1_11 => Erase,
             _ => unreachable!(),
         }
     }
+
+    pub fn from_ext(x: u32) -> Self {
+        use SeepromOp::*;
+        match x {
+            0b1_00_00 => Ewds,
+            0b1_00_01 => Wral,
+            0b1_00_10 => Eral,
+            0b1_00_11 => Ewen,
+            _ => unreachable!(),
+        }
+    }
+
 }
 
 /// Container for the state of the emulated SEEPROM device.
@@ -35,18 +45,26 @@ pub struct SeepromState {
     /// The number of bits shifted into the input buffer.
     pub num_bits: u32,
     /// Output buffer.
-    pub out_buf: u16,
+    pub out_buf: Option<u16>,
+
+    pub opcd: SeepromOp,
+
     /// Current command/state.
-    pub state: SeepromOp,
+    pub wren: bool,
+    pub addr: Option<usize>,
+    pub write_buffer: Option<u16>,
 }
 impl SeepromState {
     pub fn new() -> Self {
         SeepromState {
             in_buf: 0,
             num_bits: 0,
-            out_buf: 0,
-            state: SeepromOp::Init,
+            out_buf: None,
+            opcd: SeepromOp::Init,
             data: BigEndianMemory::new(0x100, Some("seeprom.bin")),
+            wren: false,
+            addr: None,
+            write_buffer: None,
         }
     }
 }
@@ -54,9 +72,11 @@ impl SeepromState {
 impl SeepromState {
     pub fn reset(&mut self) {
         self.in_buf = 0;
-        self.out_buf = 0;
+        self.out_buf = None;
         self.num_bits = 0;
-        self.state = SeepromOp::Init;
+        self.opcd = SeepromOp::Init;
+        self.addr = None;
+        self.write_buffer = None;
     }
 
     pub fn step(&mut self, mosi: u32, input: u32) -> Option<u32> {
@@ -66,37 +86,88 @@ impl SeepromState {
         self.in_buf = (self.in_buf << 1) | mosi;
         self.num_bits += 1;
 
-        // Potentially change the state of the machine
+        // Parse the incoming stream of bits
         match self.num_bits {
-            0x03 => {
-                self.state = SeepromOp::from(self.in_buf);
+            // All valid instructions start with 0b1
+            0x01 => if self.in_buf != 0b1 { 
+                self.reset();
+                return Some(input | GpioPin::SeepromMiso as u32);
             },
-            0x05 => if self.state == Ext {
-                self.state = SeepromOp::from(self.in_buf & 0x03);
+
+            // After reading three bits, we can determine the opcode
+            0x03 => self.opcd = SeepromOp::from_initial(self.in_buf),
+
+            // If this an extended opcode, there are no more relevant bits,
+            // so we can just apply whatever side-effects are necessary
+            0x05 => if self.opcd == Ext {
+                let extop = SeepromOp::from_ext(self.in_buf);
+                match extop {
+                    Ewen => self.wren = true,
+                    Ewds => self.wren = false,
+                    _ => panic!("SEEPROM ext. op {:?} unimplemented", extop),
+                }
+                println!("SEEPROM {:?}", extop);
             },
-            0x0b => if self.state == Read {
-                let addr = (self.in_buf & 0x7f) as usize;
-                self.out_buf = self.data.read::<u16>(addr * 2);
-                //println!("SEEPROM read {:04x} from {:x}", self.out_buf, addr);
+
+            // At this point, the last 8 bits represent an address
+            0x0b => match self.opcd {
+                Read | Write | Erase => {
+                    self.addr = Some((self.in_buf & 0b000_11111111) as usize);
+                },
+                _ => {},
             },
-            0x1b => if self.state == Write {
-                let addr = ((self.in_buf >> 16) & 0x7f) as usize;
-                let data = (self.in_buf & 0xffff) as u16;
-                self.data.write::<u16>(addr * 2, data);
-                //println!("SEEPROM write {:04x} to {:x}", data, addr);
+
+            // At this point, the last 16 bits represent data to-be-written
+            0x1b => match self.opcd {
+                Write | Wral => {
+                    self.write_buffer = Some((self.in_buf
+                        & 0b000_00000000_1111111111111111) as u16);
+                },
+                _ => {},
             },
             _ => {},
         }
 
-        // Shift out bits from a read command
-        if self.state == SeepromOp::Read && self.num_bits > 0x0b {
-            if self.out_buf & (0x8000 >> self.num_bits - 0xc) != 0 {
-                Some(input | GpioPin::SeepromMiso as u32)
-            } else {
-                Some(input & !(GpioPin::SeepromMiso as u32))
-            }
-        } else {
-            None
+        // Handle the actual side effects of commands
+        match self.opcd {
+            Read => {
+                // Prepare the bits we're going to shift out next cycle
+                if self.num_bits == 0xb {
+                    let addr = self.addr.unwrap();
+                    let res = self.data.read::<u16>(addr * 2);
+                    self.out_buf = Some(res);
+                    //println!("SEEPROM read {:04x} @ {:02x}", res, addr);
+                    None
+                } 
+                // Shift out bits from the read command
+                else if self.num_bits >= 0x0c {
+                    let out = self.out_buf.unwrap();
+                    let bit_idx = self.num_bits - 0x0c;
+                    if (out & (0x8000 >> bit_idx)) != 0 {
+                        Some(input | GpioPin::SeepromMiso as u32)
+                    } else {
+                        Some(input & !(GpioPin::SeepromMiso as u32))
+                    }
+                } else {
+                    None
+                }
+            },
+            Write => {
+                if self.num_bits == 0x1b {
+                    let val = self.write_buffer.unwrap();
+                    let addr = self.addr.unwrap();
+                    if self.wren {
+                        self.data.write::<u16>(addr * 2, val);
+                        println!("SEEPROM write {:04x} @ {:02x}", val, addr);
+                    } else {
+                        panic!("SEEPROM write {:04x} @ {:02x} without WREN", val, addr);
+                    }
+                    None
+                } else {
+                    None
+                }
+            },
+            _ => None,
         }
     }
 }
@@ -110,6 +181,10 @@ impl GpioInterface {
 
         // When CS is deasserted, the state of the SEEPROM is irrelevant.
         if !cs {
+            //if self.seeprom.num_bits > 0 {
+            //    println!("SEEPROM CS deasserted after {} input bits, {:b}", 
+            //        self.seeprom.num_bits, self.seeprom.in_buf);
+            //}
             self.seeprom.reset();
         } 
 

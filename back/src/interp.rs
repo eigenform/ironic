@@ -6,6 +6,7 @@ pub mod dispatch;
 pub mod lut;
 
 use std::sync::{Arc, RwLock};
+use std::iter::FromIterator;
 
 use crate::lut::*;
 use crate::back::*;
@@ -58,14 +59,13 @@ impl InterpBackend {
 }
 
 impl InterpBackend {
-    /// Write semi-hosting debug strings to stdout.
+    /// Write semihosting debug strings to stdout.
     pub fn svc_read(&mut self) {
         use ironic_core::cpu::mmu::prim::{TLBReq, Access};
 
-        // On this exception, r1 contains a pointer to the buffer
-        let r1 = self.cpu.reg.r[1];
-
-        // We need to use an out-of-band request to the MMU here
+        // On the SVC calls, r1 should contain a pointer to some buffer.
+        // They might be virtual addresses, so we need to do an out-of-band
+        // request to MMU code in order to resolve the actual location.
         let paddr = self.cpu.translate(
             TLBReq::new(self.cpu.reg.r[1], Access::Debug)
         );
@@ -74,7 +74,10 @@ impl InterpBackend {
         let mut line_buf = [0u8; 16];
         self.bus.write().unwrap().dma_read(paddr, &mut line_buf);
 
-        self.svc_buf += std::str::from_utf8(&line_buf).unwrap();
+        let s = std::str::from_utf8(&line_buf).unwrap()
+            .trim_matches(char::from(0));
+        self.svc_buf += s;
+
         if self.svc_buf.find('\n').is_some() {
             let string: String = self.svc_buf.chars()
                 .take(self.svc_buf.find('\n').unwrap()).collect();
@@ -91,7 +94,7 @@ impl InterpBackend {
     /// Write the current instruction to stdout.
     pub fn dbg_print(&mut self) {
         let pc = self.cpu.read_fetch_pc();
-        if self.cpu.dbg_on && self.cpu.dbg_steps > 0 {
+        if self.cpu.dbg_on {
             if self.cpu.reg.cpsr.thumb() {
                 let opcd = self.cpu.read16(pc);
                 let inst = ThumbInst::decode(opcd);
@@ -99,14 +102,15 @@ impl InterpBackend {
                     ThumbInst::BlImmSuffix => return,
                     _ => {}
                 }
-                let name = format!("{:?}", ThumbInst::decode(opcd));
-                println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
+                //let name = format!("{:?}", ThumbInst::decode(opcd));
+                //println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
+                println!("{:?}", self.cpu.reg);
             } else {
-                let opcd = self.cpu.read32(pc);
-                let name = format!("{:?}", ArmInst::decode(opcd));
-                println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
+                //let opcd = self.cpu.read32(pc);
+                //let name = format!("{:?}", ArmInst::decode(opcd));
+                //println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
+                println!("{:?}", self.cpu.reg);
             };
-            self.cpu.dbg_steps -= 1;
         }
     }
 
@@ -114,7 +118,7 @@ impl InterpBackend {
     pub fn cpu_step(&mut self) -> CpuRes {
         assert!((self.cpu.read_fetch_pc() & 1) == 0);
 
-        // Sample the IRQ line at the start of each step
+        // Sample the IRQ line and potentially generate an IRQ exception
         if !self.cpu.reg.cpsr.irq_disable() && self.cpu.irq_input {
             self.cpu.generate_exception(ExceptionType::Irq);
         }
@@ -139,23 +143,29 @@ impl InterpBackend {
 
         // Depending on the instruction, adjust the program counter
         let cpu_res = match disp_res {
+            DispatchRes::RetireBranch => { CpuRes::StepOk },
             DispatchRes::RetireOk | 
             DispatchRes::CondFailed => {
                 self.cpu.increment_pc(); 
                 CpuRes::StepOk
             },
-            DispatchRes::RetireBranch => {
-                CpuRes::StepOk
-            },
+
+            // NOTE: Skyeye doesn't take SWI exceptions at all, but I wonder
+            // why this is permissible. What does the hardware actually do?
             DispatchRes::Exception(e) => {
-                self.cpu.generate_exception(e);
-                CpuRes::StepException(e)
+                if e == ExceptionType::Swi {
+                    self.cpu.increment_pc();
+                    CpuRes::Semihosting
+                } else {
+                    self.cpu.generate_exception(e);
+                    CpuRes::StepException(e)
+                }
             },
+
             DispatchRes::FatalErr => {
                 println!("CPU halted at pc={:08x}", self.cpu.read_fetch_pc());
                 CpuRes::HaltEmulation
             },
-            _ => unreachable!(),
         };
 
         self.cpu.update_boot_status();
@@ -166,22 +176,28 @@ impl InterpBackend {
 impl Backend for InterpBackend {
     fn run(&mut self) {
         for _step in 0..0x8000_0000usize {
+
+            // Take ownership of the bus to deal with any pending tasks
             {
                 let mut bus = self.bus.write().unwrap();
                 bus.step();
                 self.cpu.irq_input = bus.irq_line();
             }
+
             let res = self.cpu_step();
             match res {
                 CpuRes::StepOk => {},
                 CpuRes::HaltEmulation => break,
                 CpuRes::StepException(e) => {
                     match e {
-                        ExceptionType::Swi => self.svc_read(),
                         ExceptionType::Undef(_) => {},
-                        _ => panic!("Unimplemented exception type"),
+                        ExceptionType::Irq => {},
+                        _ => panic!("Unimplemented exception type {:?}", e),
                     }
                 },
+                CpuRes::Semihosting => {
+                    self.svc_read();
+                }
             }
         }
         println!("CPU stopped at pc={:08x}", self.cpu.read_fetch_pc());
