@@ -71,7 +71,7 @@ impl SavedStatusBank {
             Und => self.und = val,
             Irq => self.irq = val,
             Fiq => self.fiq = val,
-            _ => panic!("Invalid mode {:?} for SPSR write", mode),
+            _ => panic!("Invalid mode {:?} has no SPSR to write", mode),
         }
     }
 
@@ -84,7 +84,7 @@ impl SavedStatusBank {
             Und => self.und,
             Irq => self.irq,
             Fiq => self.fiq,
-            _ => panic!("Invalid mode {:?} for SPSR read", mode),
+            _ => panic!("Invalid mode {:?} has no SPSR to read", mode),
         }
     }
 }
