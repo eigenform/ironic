@@ -87,34 +87,8 @@ impl Cpu {
         let pc_inc = if self.reg.cpsr.thumb() { 2 } else { 4 };
         self.reg.pc = self.reg.pc.wrapping_add(pc_inc);
     }
-
-    /// Set the current CPU mode.
-    pub fn set_mode(&mut self, target_mode: CpuMode) {
-        if target_mode == self.reg.cpsr.mode() { 
-            panic!("");
-        }
-        self.reg.swap_bank(target_mode);
-        self.reg.cpsr.set_mode(target_mode);
-    }
 }
 
-
-/// These functions implement the accesses and side-effects associated with
-/// the system control coproessor (p15).
-
-impl Cpu {
-    /// Read from the system control coprocessor.
-    pub fn read_p15(&mut self, crn: u32, crm: u32, opcd2: u32) -> u32 {
-        self.p15.read(crn, crm, opcd2)
-    }
-
-    /// Write to the system control coprocessor, then potentially handle some 
-    /// side-effects (specifically, on the MMU) associated with a particular 
-    /// change in some register.
-    pub fn write_p15(&mut self, val: u32, crn: u32, crm: u32, opcd2: u32) {
-        self.p15.write(val, crn, crm, opcd2);
-    }
-}
 
 /// Current status of the platform's boot process.
 #[derive(PartialEq)]

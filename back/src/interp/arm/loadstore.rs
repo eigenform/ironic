@@ -121,8 +121,9 @@ pub fn str_reg(cpu: &mut Cpu, op: LsRegBits) -> DispatchRes {
 
 
 pub fn stm_user(cpu: &mut Cpu, op: StmRegUserBits) -> DispatchRes {
-    //assert!(cpu.reg.cpsr.mode() != CpuMode::Usr);
-    //assert!(cpu.reg.cpsr.mode() != CpuMode::Sys);
+    // Executing this in Usr/Sys is unpredictable
+    //assert_ne!(cpu.reg.cpsr.mode(), CpuMode::Usr);
+    //assert_ne!(cpu.reg.cpsr.mode(), CpuMode::Sys);
     assert_ne!(op.rn(), 15);
     let reglist = op.register_list();
     let len = reglist.count_ones() * 4;
@@ -135,23 +136,33 @@ pub fn stm_user(cpu: &mut Cpu, op: StmRegUserBits) -> DispatchRes {
         addr += 4;
     }
 
+    let current_mode = cpu.reg.cpsr.mode();
+    if current_mode != CpuMode::Usr { 
+        cpu.reg.swap_bank(current_mode, CpuMode::Usr); 
+    }
     for i in 0..16 {
         if (reglist & (1 << i)) != 0 {
-            let val = match i {
-                13 => cpu.reg.bank.sys[0],
-                14 => cpu.reg.bank.sys[1],
-                15 => panic!("stm_user r15 load unimplemented"),
-                _ => cpu.reg[i as u32],
-            };
+            //let val = match i {
+            //    13 => cpu.reg.bank.sys[0],
+            //    14 => cpu.reg.bank.sys[1],
+            //    15 => panic!("stm_user r15 load unimplemented"),
+            //    _ => cpu.reg[i as u32],
+            //};
+            let val = cpu.reg[i as u32];
             cpu.write32(addr, val);
             addr += 4;
         }
     }
+    if current_mode != CpuMode::Usr { 
+        cpu.reg.swap_bank(CpuMode::Usr, current_mode); 
+    }
     DispatchRes::RetireOk
-
 }
 
 pub fn ldm_user(cpu: &mut Cpu, op: LdmRegUserBits) -> DispatchRes {
+    // Executing this in Usr/Sys is unpredictable
+    assert_ne!(cpu.reg.cpsr.mode(), CpuMode::Usr);
+    assert_ne!(cpu.reg.cpsr.mode(), CpuMode::Sys);
     assert_ne!(op.rn(), 15);
     let reglist = op.register_list();
 

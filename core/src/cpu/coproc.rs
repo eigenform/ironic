@@ -98,6 +98,13 @@ impl From<u32> for SystemControlReg {
     }
 }
 
+pub struct CFlags {
+    pub n: Option<bool>,
+    pub z: Option<bool>,
+    pub c: Option<bool>,
+    pub v: Option<bool>,
+}
+
 
 /// Container for the System Control coprocessor (p15).
 pub struct SystemControl {
@@ -127,6 +134,18 @@ impl SystemControl {
             c5_dfsr: 0,
             c5_ifsr: 0,
             c6_dfar: 0,
+        }
+    }
+
+    pub fn read_alt(&self, reg: u32, crm: u32, opcd2: u32) -> CFlags {
+        use SystemControlReg::*;
+        match SystemControlReg::from(reg) {
+            CacheControl => match (crm, opcd2) {
+                (10, 3) => CFlags { n: None, z: Some(true), c: None, v: None },
+                _ => panic!(""),
+            },
+            _ => panic!("Unimpl p15 read_alt {:?} crm={} opcd2={}", 
+                SystemControlReg::from(reg), crm, opcd2),
         }
     }
     

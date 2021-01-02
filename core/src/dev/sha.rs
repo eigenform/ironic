@@ -5,6 +5,7 @@ use crate::bus::*;
 use crate::bus::prim::*;
 use crate::bus::mmio::*;
 use crate::bus::task::*;
+use crate::dev::hlwd::irq::*;
 
 pub struct ShaCommand {
     len: u32,
@@ -91,8 +92,6 @@ impl Bus {
         let sha = &mut dev.sha;
 
         let cmd = ShaCommand::from(val);
-        if cmd.irq { panic!("SHA irq unimpl"); }
-
 
         let mut sha_buf = vec![0u8; cmd.len as usize];
         self.dma_read(sha.src, &mut sha_buf);
@@ -104,6 +103,10 @@ impl Bus {
         // Mark the command as completed
         sha.src += cmd.len;
         sha.ctrl &= 0x7fff_ffff;
+
+        if cmd.irq { 
+            dev.hlwd.irq.assert(HollywoodIrq::Sha);
+        }
     }
 }
 

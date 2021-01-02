@@ -18,9 +18,6 @@ pub enum CpuMode {
 }
 impl CpuMode {
     pub fn is_privileged(self) -> bool { self != CpuMode::Usr }
-    pub fn is_exception(self) -> bool { 
-        self != CpuMode::Usr && self != CpuMode::Sys 
-    }
 }
 impl From<u32> for CpuMode {
     fn from(x: u32) -> Self {
@@ -64,13 +61,9 @@ impl From<u32> for Cond {
     }
 }
 
-
 /// The set of banked registers for all operating modes.
 #[derive(Debug, Copy, Clone, Default, PartialEq)]
 pub struct RegisterBank {
-    /// General-purpose registers (shared among all modes).
-    pub gen: [u32; 13],
-
     pub sys: [u32; 2],
     pub svc: [u32; 2],
     pub abt: [u32; 2],
@@ -118,7 +111,9 @@ impl RegisterFile {
     pub fn write_cpsr(&mut self, target: Psr) { 
         let current_mode = self.cpsr.mode();
         if current_mode != target.mode() {
-            self.swap_bank(target.mode());
+            //println!("pc={:08x} modeswitch {:?} => {:?}", 
+            //    self.pc, current_mode, target.mode());
+            self.swap_bank(current_mode, target.mode());
         }
         self.cpsr = target;
     }
@@ -128,10 +123,10 @@ impl RegisterFile {
 /// Functions for swapping between active registers and banked registers
 impl RegisterFile {
     /// Swap the currently active registers with some set of banked registers.
-    pub fn swap_bank(&mut self, target_mode: CpuMode) {
+    pub fn swap_bank(&mut self, current_mode: CpuMode, target_mode: CpuMode) {
         use CpuMode::*;
         // Save the current mode's banked registers
-        match self.cpsr.mode() {
+        match current_mode {
             Usr | Sys => {
                 self.bank.sys[0] = self.r[13];
                 self.bank.sys[1] = self.r[14];
