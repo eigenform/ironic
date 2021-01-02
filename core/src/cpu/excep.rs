@@ -131,8 +131,6 @@ impl Cpu {
 
         if self.current_exception.is_some() {
             self.current_exception = None
-        } else {
-            println!("CPU returned from nonexistent exception");
         }
     }
 }

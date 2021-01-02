@@ -15,6 +15,7 @@ use crate::bus::*;
 use crate::bus::prim::*;
 use crate::bus::mmio::*;
 use crate::bus::task::*;
+use crate::dev::hlwd::irq::*;
 
 /// Representing a command to the AES interface.
 #[derive(Debug)]
@@ -96,19 +97,27 @@ impl MmioDevice for AesInterface {
             0x08 => self.dst = val,
             0x0c => {
                 if self.key_fifo.len() == 0x10 {
-                    self.key_fifo.clear();
+                    self.key_fifo.pop_front();
+                    self.key_fifo.pop_front();
+                    self.key_fifo.pop_front();
+                    self.key_fifo.pop_front();
                 }
                 for b in val.to_be_bytes().iter() {
                     self.key_fifo.push_back(*b);
                 }
+                self.key_fifo.make_contiguous();
             },
             0x10 => {
                 if self.iv_fifo.len() == 0x10 {
-                    self.iv_fifo.clear();
+                    self.iv_fifo.pop_front();
+                    self.iv_fifo.pop_front();
+                    self.iv_fifo.pop_front();
+                    self.iv_fifo.pop_front();
                 }
                 for b in val.to_be_bytes().iter() {
                     self.iv_fifo.push_back(*b);
                 }
+                self.iv_fifo.make_contiguous();
             }
             _ => panic!("Unimplemented AES write to offset {:x}", off),
         }
@@ -124,7 +133,6 @@ impl Bus {
 
         let cmd = AesCommand::from(val);
         assert_eq!(cmd.use_aes, true);
-        assert_ne!(cmd.irq, true);
 
         // Read data from the source address
         let mut aes_inbuf = vec![0u8; cmd.len];
@@ -132,7 +140,7 @@ impl Bus {
 
         // Build the right AES cipher for this request
         let key = aes.key_fifo.as_slices().0;
-        let mut iv = vec![0u8; 0x10];
+        let mut iv = [0u8; 0x10];
         if cmd.chain_iv {
             iv.copy_from_slice(&aes.iv_buffer);
         } else {
@@ -140,8 +148,8 @@ impl Bus {
         }
         let cipher = Aes128Cbc::new_var(&key, &iv).unwrap();
 
-        println!("AES key={:02x?}", key);
-        println!("AES iv={:02x?}", iv);
+        //println!("AES key={:02x?}", key);
+        //println!("AES iv={:02x?}", iv);
         println!("AES Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len);
 
         // Decrypt/encrypt the data, then DMA write to memory
@@ -161,6 +169,10 @@ impl Bus {
 
         // Mark the command as completed
         aes.ctrl &= 0x7fff_ffff;
+
+        if cmd.irq { 
+            dev.hlwd.irq.assert(HollywoodIrq::Aes);
+        }
 
     }
 }

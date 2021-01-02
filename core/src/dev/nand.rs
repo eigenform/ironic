@@ -14,6 +14,9 @@ use crate::dev::hlwd::irq::*;
 /// The length of each page in the NAND flash, in bytes.
 const NAND_PAGE_LEN: usize = 0x0000_0840;
 
+/// The length of each block in the NAND flash, in bytes.
+const NAND_BLOCK_LEN: usize = NAND_PAGE_LEN * 64;
+
 /// The number of pages in the NAND flash.
 const NUM_NAND_PAGES: usize = 0x0040_000;
 
@@ -27,14 +30,23 @@ const NAND_ID: [u8; 4] = [ 0xad, 0xdc, 0x80, 0x95 ]; // HY27UF084G2M
 /// NAND command opcodes.
 #[derive(Debug)]
 pub enum NandOpcd {
-    /// First-cycle prefix command
-    Prefix00    = 0x00,
+    /// Page read setup
+    PrefixRead,
     /// Page read command
-    Read        = 0x30,
+    Read,
+
+    /// Read status register
+    ReadStatus,
     /// Read ID command (manufacturer code, device code, etc).
-    ReadId      = 0x90,
+    ReadId,
+
+    /// Block erase setup
+    PrefixErase,
+    /// Block erase
+    Erase,
+
     /// Reset command
-    Reset       = 0xff,
+    Reset,
 }
 
 /// Represents a NAND command.
@@ -62,11 +74,14 @@ impl NandCmd {
         let err  = (x & 0x2000_0000) != 0;
         let addr = (x & 0x1f00_0000) >> 24;
         let opcd = match (x & 0x00ff_0000) >> 16 {
-            0x00 => Prefix00, 
+            0x00 => PrefixRead, 
             0x30 => Read, 
+            0x60 => PrefixErase,
+            0x70 => ReadStatus,
             0x90 => ReadId, 
+            0xd0 => Erase, 
             0xff => Reset,
-            _ => panic!("unhandled NAND opcd"),
+            _ => panic!("unhandled NAND opcd {:02x}", (x & 0x00ff_0000) >> 16),
         };
         let wait = (x & 0x0000_8000) != 0;
         let wr   = (x & 0x0000_4000) != 0;
@@ -107,12 +122,17 @@ impl NandInterface {
             data: Box::new(BigEndianMemory::new(NAND_SIZE, Some(filename))),
         }
     }
-}
-
-impl NandInterface {
-    /// Read data from the specified offset in NAND flash into a buffer
+    /// Read data from the specified offset in the NAND flash into some buffer
     pub fn read_data(&self, off: usize, dst: &mut [u8]) {
         self.data.read_buf(off, dst);
+    }
+    /// Write the provided data to the specified offset in the NAND flash
+    pub fn write_data(&mut self, off: usize, src: &[u8]) {
+        self.data.write_buf(off, src);
+    }
+    /// Zero out the provided region in the NAND flash
+    pub fn clear_data(&mut self, off: usize, len: usize) {
+        self.data.memset(off, len, 0);
     }
 }
 
@@ -167,8 +187,19 @@ impl Bus {
         self.dev.read().unwrap().nand.reg
     }
 
+    fn nand_erase_page(&mut self, cmd: &NandCmd, reg: &NandRegisters) {
+        assert_ne!(cmd.ecc, true);
+        println!("{:?}", cmd);
+        println!("NND erase addr1={:08x} addr2={:08x} data={:08x} ecc={:08x}",
+          reg.addr1, reg.addr2, reg.databuf, reg.eccbuf);
+
+        let off = reg.addr2 as usize * NAND_PAGE_LEN;
+        self.dev.write().unwrap().nand.clear_data(off, NAND_BLOCK_LEN);
+        //panic!("nand erase unimpl");
+    }
+
     /// Perform a NAND read into memory
-    fn do_nand_dma(&mut self, cmd: &NandCmd, reg: &NandRegisters) {
+    fn nand_read_page(&mut self, cmd: &NandCmd, reg: &NandRegisters) {
         // Read the source data from the NAND
         let mut local_buf = vec![0; cmd.len as usize];
 
@@ -199,6 +230,7 @@ impl Bus {
 
     /// Handle a NAND command
     pub fn handle_task_nand(&mut self, val: u32) {
+        use NandOpcd::*;
         let cmd = NandCmd::new(val);
         let reg = self.read_nand_regs();
         assert!(cmd.wr == false);
@@ -210,19 +242,21 @@ impl Bus {
         match reg._cycle {
             0 => {
                 match cmd.opcd {
-                    NandOpcd::Prefix00 => {
-                        next_cycle = reg._cycle + 1;
+                    PrefixRead  => next_cycle = reg._cycle + 1,
+                    PrefixErase => next_cycle = reg._cycle + 1,
+                    ReadId      => self.dma_write(reg.databuf, &NAND_ID),
+                    ReadStatus  => {
+                        // HY27UF084G2M datasheet says this is the reset value?
+                        let status_register: [u8;1] = [0xe0];
+                        self.dma_write(reg.databuf, &status_register);
                     },
-                    NandOpcd::ReadId => {
-                        //println!("{:?}", cmd);
-                        self.dma_write(reg.databuf, &NAND_ID);
-                    },
-                    NandOpcd::Reset => {},
+                    Reset       => {},
                     _ => panic!("NAND unknown cycle 0 opcd {:?}", cmd.opcd),
                 }
             },
             1 => match cmd.opcd {
-                NandOpcd::Read => self.do_nand_dma(&cmd, &reg),
+                Read    => self.nand_read_page(&cmd, &reg),
+                Erase   => self.nand_erase_page(&cmd, &reg),
                 _ => panic!("NAND unknown cycle 1 opcd {:?}", cmd.opcd),
             },
             _ => panic!("NAND desync cycle {}", reg._cycle),

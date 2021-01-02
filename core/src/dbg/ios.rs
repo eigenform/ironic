@@ -62,8 +62,13 @@ pub fn get_syscall_desc(idx: u32) -> SyscallDef {
         0x10 => scdef!("MqueueDestroyHandler", Ptr, Ptr, Ptr),
         0x11 => scdef!("TimerCreate", Int, Int, Int, Uint),
         0x18 => scdef!("HeapAlloc", Int, Uint),
-        0x1c => scdef!("Open", StrPtr, Int),
+        0x1a => scdef!("HeapFree", Int, Ptr),
         0x1b => scdef!("RegisterDevice", StrPtr, Int),
+        0x1c => scdef!("Open", StrPtr, Int),
+        0x1d => scdef!("Close", Int),
+        0x1e => scdef!("Read", Int, Ptr, Uint),
+        0x21 => scdef!("Ioctl", Int, Uint, Ptr, Uint, Ptr, Uint),
+        0x22 => scdef!("Ioctlv", Int, Uint, Uint, Uint, Ptr),
         0x2a => scdef!("ResourceReply", Ptr, Uint),
         0x2b => scdef!("SetUid", Int),
         0x2d => scdef!("SetGid", Int),
@@ -72,7 +77,8 @@ pub fn get_syscall_desc(idx: u32) -> SyscallDef {
         0x3f => scdef!("SyncBeforeRead", Ptr),
         0x4f => scdef!("VirtToPhys", Ptr),
         0x63 => scdef!("IoscGetData", Uint, Uint, Uint),
-        0x6d => scdef!("IoscGenBlockMac", Uint, Uint, Uint, Uint, Uint, Uint),
+        0x6a => scdef!("IoscDecryptAsync", Uint, Uint, Uint, Uint, Uint, Uint),
+        0x6d => scdef!("IoscGenBlockmac", Uint, Uint, Uint, Uint, Uint, Uint),
         _ => panic!("Couldn't resolve syscall idx={:02x}", idx),
     }
 }
@@ -109,6 +115,7 @@ pub fn resolve_syscall(cpu: &mut Cpu, opcd: u32) {
         0x2f | // AhbMemFlush
         0x30 | // CcAhbMemFlush
         0x3f | // SyncBeforeRead
+        0x40 | // SyncAfterWrite
         0x4f => return, // VirtToPhys
         _ => { },
     }

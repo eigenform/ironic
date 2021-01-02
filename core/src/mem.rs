@@ -64,20 +64,22 @@ impl BigEndianMemory {
 impl BigEndianMemory {
     pub fn read_buf(&self, off: usize, dst: &mut [u8]) {
         if off + dst.len() > self.data.len() {
-            panic!(
-                "Out-of-bounds DMA read on BigEndianMemory, offset {:x}",
-                off
-            );
+            panic!("OOB bulk read on BigEndianMemory, offset {:x}", off);
         }
         dst.copy_from_slice(&self.data[off..off + dst.len()]);
     }
     pub fn write_buf(&mut self, off: usize, src: &[u8]) {
         if off + src.len() > self.data.len() {
-            panic!(
-                "Out-of-bounds DMA write on BigEndianMemory, offset {:x}",
-                off
-            );
+            panic!("OOB bulk write on BigEndianMemory, offset {:x}", off);
         }
         self.data[off..off + src.len()].copy_from_slice(src);
+    }
+    pub fn memset(&mut self, off: usize, len: usize, val: u8) {
+        if off + len > self.data.len() {
+            panic!("OOB memset on BigEndianMemory, offset {:x}", off);
+        }
+        for d in &mut self.data[off..off+len] {
+            *d = val;
+        }
     }
 }

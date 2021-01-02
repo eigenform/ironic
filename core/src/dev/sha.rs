@@ -98,7 +98,7 @@ impl Bus {
         sha.state.update(&sha_buf);
 
         println!("SHA Digest addr={:08x} len={:08x}", sha.src, cmd.len);
-        println!("SHA buffer {:02x?}", sha.state.digest);
+        //println!("SHA buffer {:02x?}", sha.state.digest);
 
         // Mark the command as completed
         sha.src += cmd.len;
