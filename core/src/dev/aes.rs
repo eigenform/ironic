@@ -132,36 +132,39 @@ impl Bus {
         let aes = &mut dev.aes;
 
         let cmd = AesCommand::from(val);
-        assert_eq!(cmd.use_aes, true);
 
         // Read data from the source address
         let mut aes_inbuf = vec![0u8; cmd.len];
         self.dma_read(aes.src, &mut aes_inbuf);
 
-        // Build the right AES cipher for this request
-        let key = aes.key_fifo.as_slices().0;
-        let mut iv = [0u8; 0x10];
-        if cmd.chain_iv {
-            iv.copy_from_slice(&aes.iv_buffer);
+        if cmd.use_aes {
+            // Build the right AES cipher for this request
+            let key = aes.key_fifo.as_slices().0;
+            let mut iv = [0u8; 0x10];
+            if cmd.chain_iv {
+                iv.copy_from_slice(&aes.iv_buffer);
+            } else {
+                iv.copy_from_slice(aes.iv_fifo.as_slices().0);
+            }
+            let cipher = Aes128Cbc::new_var(&key, &iv).unwrap();
+
+            //println!("AES key={:02x?}", key);
+            //println!("AES iv={:02x?}", iv);
+            //println!("AES Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len);
+
+            // Decrypt/encrypt the data, then DMA write to memory
+            if cmd.decrypt {
+                let aes_outbuf = cipher.decrypt_vec(&aes_inbuf).unwrap();
+                self.dma_write(aes.dst, &aes_outbuf);
+            } else {
+                panic!("AES encrypt unsupported");
+            }
+
+            // Update IV buffer with the last 16 bytes of data
+            aes.iv_buffer.copy_from_slice(&aes_inbuf[(cmd.len - 0x10)..]);
         } else {
-            iv.copy_from_slice(aes.iv_fifo.as_slices().0);
+            self.dma_write(aes.dst, &aes_inbuf);
         }
-        let cipher = Aes128Cbc::new_var(&key, &iv).unwrap();
-
-        //println!("AES key={:02x?}", key);
-        //println!("AES iv={:02x?}", iv);
-        println!("AES Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len);
-
-        // Decrypt/encrypt the data, then DMA write to memory
-        if cmd.decrypt {
-            let aes_outbuf = cipher.decrypt_vec(&aes_inbuf).unwrap();
-            self.dma_write(aes.dst, &aes_outbuf);
-        } else {
-            panic!("AES encrypt unsupported");
-        }
-
-        // Update IV buffer with the last 16 bytes of data
-        aes.iv_buffer.copy_from_slice(&aes_inbuf[(cmd.len - 0x10)..]);
 
         // Update the source/destination registers exposed over MMIO
         aes.dst += cmd.len as u32;

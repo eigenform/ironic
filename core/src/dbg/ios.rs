@@ -61,24 +61,31 @@ pub fn get_syscall_desc(idx: u32) -> SyscallDef {
         0x0f => scdef!("MqueueRegisterHandler", Int, Int, Uint),
         0x10 => scdef!("MqueueDestroyHandler", Ptr, Ptr, Ptr),
         0x11 => scdef!("TimerCreate", Int, Int, Int, Uint),
-        0x18 => scdef!("HeapAlloc", Int, Uint),
-        0x1a => scdef!("HeapFree", Int, Ptr),
+        //0x18 => scdef!("HeapAlloc", Int, Uint),
+        //0x19 => scdef!("HeapAllocAligned", Int, Uint, Uint),
+        //0x1a => scdef!("HeapFree", Int, Ptr),
         0x1b => scdef!("RegisterDevice", StrPtr, Int),
         0x1c => scdef!("Open", StrPtr, Int),
         0x1d => scdef!("Close", Int),
         0x1e => scdef!("Read", Int, Ptr, Uint),
+        0x1f => scdef!("Write", Int, Ptr, Uint),
         0x21 => scdef!("Ioctl", Int, Uint, Ptr, Uint, Ptr, Uint),
         0x22 => scdef!("Ioctlv", Int, Uint, Uint, Uint, Ptr),
-        0x2a => scdef!("ResourceReply", Ptr, Uint),
+        //0x2a => scdef!("ResourceReply", Ptr, Uint),
         0x2b => scdef!("SetUid", Int),
         0x2d => scdef!("SetGid", Int),
         0x2f => scdef!("AhbMemFlush", Int),
         0x30 => scdef!("CcAhbMemFlush", Int),
         0x3f => scdef!("SyncBeforeRead", Ptr),
+        0x41 => scdef!("PpcBoot", StrPtr),
+        0x47 => scdef!("WhichKernel", Ptr, Ptr),
         0x4f => scdef!("VirtToPhys", Ptr),
+        0x54 => scdef!("SetAhbProt", Uint),
+        0x55 => scdef!("GetBusClock", ),
         0x63 => scdef!("IoscGetData", Uint, Uint, Uint),
-        0x6a => scdef!("IoscDecryptAsync", Uint, Uint, Uint, Uint, Uint, Uint),
-        0x6d => scdef!("IoscGenBlockmac", Uint, Uint, Uint, Uint, Uint, Uint),
+        0x68 => scdef!("IoscEncryptAsync", Uint, Uint, Uint),
+        0x6a => scdef!("IoscDecryptAsync", Uint, Uint, Uint),
+        0x6d => scdef!("IoscGenBlockmac", Uint, Uint, Uint),
         _ => panic!("Couldn't resolve syscall idx={:02x}", idx),
     }
 }
@@ -108,10 +115,14 @@ pub fn read_string(cpu: &Cpu, ptr: u32) -> String {
 
 /// Resolve information about an IOS syscall and its arguments.
 pub fn resolve_syscall(cpu: &mut Cpu, opcd: u32) {
-    // Get the syscall index (and ignore some
+    // Get the syscall index (and ignore some)
     let idx = (opcd & 0x00ff_ffe0) >> 5;
     match idx { 
         0x0e | // MqueueRecv
+        0x18 | // HeapAlloc
+        0x19 | // HeapAllocAligned
+        0x1a | // HeapFree
+        0x2a | // ResourceReply
         0x2f | // AhbMemFlush
         0x30 | // CcAhbMemFlush
         0x3f | // SyncBeforeRead

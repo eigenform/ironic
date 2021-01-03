@@ -60,6 +60,7 @@ pub struct ClockInterface {
 #[derive(Default, Debug, Clone)]
 pub struct BusCtrlInterface {
     pub srnprot: u32,
+    pub ahbprot: u32,
     pub aipprot: u32,
 }
 
@@ -223,6 +224,7 @@ impl MmioDevice for Hollywood {
             0x014           => self.timer.alarm,
             0x030..=0x05c   => self.irq.read_handler(off - 0x30),
             0x060           => self.busctrl.srnprot,
+            0x064           => self.busctrl.ahbprot,
             0x070           => self.busctrl.aipprot,
             0x0c0..=0x0d8   => self.gpio.ppc.read_handler(off - 0xc0),
             0x0dc..=0x0fc   => self.gpio.arm.read_handler(off - 0xdc),
@@ -269,6 +271,7 @@ impl MmioDevice for Hollywood {
                 };
                 return task;
             }
+            0x064 => self.busctrl.ahbprot = val,
             0x070 => self.busctrl.aipprot = val,
             0x088 => self.usb_frc_rst = val,
             0x0c0..=0x0d8 => self.gpio.ppc.write_handler(off - 0xc0, val),
