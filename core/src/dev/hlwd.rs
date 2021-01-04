@@ -222,6 +222,9 @@ impl MmioDevice for Hollywood {
     type Width = u32;
     fn read(&mut self, off: usize) -> BusPacket {
         let val = match off {
+            0x000           => self.ipc.ppc_msg,
+            0x004           => self.ipc.ppc_ctrl,
+            0x008           => self.ipc.arm_msg,
             0x00c           => self.ipc.arm_ctrl,
             0x010           => self.timer.timer,
             0x014           => self.timer.alarm,
@@ -258,7 +261,16 @@ impl MmioDevice for Hollywood {
 
     fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
         match off {
-            0x00c => self.ipc.arm_ctrl = val,
+            0x000 => self.ipc.ppc_msg = val,
+            0x004 => {
+                println!("HLWD IPC PPC CTRL={:08x}", val);
+                self.ipc.ppc_ctrl = val;
+            },
+            0x008 => self.ipc.arm_msg = val,
+            0x00c => {
+                println!("HLWD IPC ARM CTRL={:08x}", val);
+                self.ipc.arm_ctrl = val;
+            }
             0x014 => {
                 println!("HLWD alarm set to {:08x}", val);
                 self.timer.alarm = val;

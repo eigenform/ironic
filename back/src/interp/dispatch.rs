@@ -116,6 +116,7 @@ impl InstLutEntry for ArmFn {
             BicImm      => ArmFn(afn!(arm::dataproc::bic_imm)),
 
             OrrRegShiftReg => ArmFn(afn!(arm::dataproc::orr_rsr)),
+            AndRegShiftReg => ArmFn(afn!(arm::dataproc::and_rsr)),
             _           => ArmFn(arm_unimpl_instr),
         }
     }

@@ -94,7 +94,9 @@ impl InterpBackend {
     /// Write the current instruction to stdout.
     pub fn dbg_print(&mut self) {
         let pc = self.cpu.read_fetch_pc();
-        //if pc == 0x13ed0000 && self.cpu.boot_status == BootStatus::Kernel { self.cpu.dbg_on = true; }
+        //if pc == 0x13ed0000 && self.cpu.boot_status == BootStatus::Kernel { 
+        //    //self.cpu.dbg_on = true; 
+        //}
         if self.cpu.dbg_on {
             if self.cpu.reg.cpsr.thumb() {
                 let opcd = self.cpu.read16(pc);
@@ -112,6 +114,45 @@ impl InterpBackend {
                 //println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
                 println!("{:?}", self.cpu.reg);
             };
+        }
+    }
+
+    // 0:   e3a00000        mov     r0, #0
+    // 4:   e3a01006        mov     r1, #6
+    // 8:   e6000050        .word   0xe6000050
+    // c:   e12fff1e        bx      lr
+    const THREAD_CANCEL_PATCH: [u8; 0x10] = [
+        0xe3, 0xa0, 0x00, 0x00,
+        0xe3, 0xa0, 0x10, 0x06,
+        0xe6, 0x00, 0x00, 0x50,
+        0xe1, 0x2f, 0xff, 0x1e,
+    ];
+
+    /// Skyeye intentionally kills a bunch of threads, presumably to avoid
+    /// having to deal with emulating the WLAN card. Let's do the same.
+    pub fn hotpatch_check(&mut self) {
+        use ironic_core::cpu::mmu::prim::{TLBReq, Access};
+        if self.cpu.boot_status == BootStatus::Kernel {
+            let pc = self.cpu.read_fetch_pc();
+            let vaddr = match pc {
+                // NCD module entrypoint
+                0x13d9_0000 | 
+                // WL module entrypoint
+                0x13ed_0000 |
+                // WD module entrypoint
+                0x13eb_0000 => Some(pc),
+                _ => None
+            };
+            if vaddr.is_none() { 
+                return; 
+            } else {
+                let paddr = self.cpu.translate(
+                    TLBReq::new(vaddr.unwrap(), Access::Debug)
+                );
+                println!("DBG hotpatching {:08x}", paddr);
+                self.bus.write().unwrap().dma_write(paddr, 
+                    &Self::THREAD_CANCEL_PATCH);
+            }
         }
     }
 
@@ -177,6 +218,8 @@ impl InterpBackend {
 impl Backend for InterpBackend {
     fn run(&mut self) {
         for _step in 0..0x8000_0000usize {
+
+            self.hotpatch_check();
 
             // Take ownership of the bus to deal with any pending tasks
             {

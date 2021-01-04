@@ -83,6 +83,12 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
 
     // Ignore some syscalls
     match idx { 
+        0x0a..=0x10 |
+        0x11..=0x13 |
+        0x16 | 0x18 | 0x19 | 0x1a | 
+        0x1d..=0x1f | 0x21 | 0x22 |
+        0x63 | 0x68 | 0x6a | 0x6d |
+        0x2a | 0x2f | 0x3f | 0x30 | 0x40 | 0x4f => return None,
         _ => { },
     }
 
@@ -92,9 +98,11 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
         0x03 => scdef!("ThreadGetID", ),
         0x04 => scdef!("ThreadGetPid", ),
         0x05 => scdef!("ThreadContinue", Uint),
+        0x08 => scdef!("ThreadGetPrio", Uint), 
         0x09 => scdef!("ThreadSetPrio", Int, Int),
         0x0a => scdef!("MqueueCreate", Ptr, Int),
         0x0b => scdef!("MqueueDestroy", Ptr),
+        0x0c => scdef!("MqueueSend", Uint, Uint, Uint),
         0x0e => scdef!("MqueueRecv", Ptr, Uint),
         0x0f => scdef!("MqueueRegisterHandler", Int, Int, Uint),
         0x10 => scdef!("MqueueDestroyHandler", Ptr, Ptr, Ptr),

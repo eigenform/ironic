@@ -223,7 +223,6 @@ pub fn mov_reg(cpu: &mut Cpu, op: MovRegBits) -> DispatchRes {
     });
     if op.rd() == 15 {
         if op.s() { 
-            //println!("movs r{}, r{} res={:08x}", op.rd(), op.rm(), res);
             cpu.exception_return(res); 
         } else { 
             cpu.write_exec_pc(res); 
@@ -239,7 +238,6 @@ pub fn mov_reg(cpu: &mut Cpu, op: MovRegBits) -> DispatchRes {
         DispatchRes::RetireOk
     }
 }
-
 
 pub fn orr_rsr(cpu: &mut Cpu, op: DpRsrBits) -> DispatchRes {
     assert_ne!(op.rd(), 15);
@@ -260,6 +258,27 @@ pub fn orr_rsr(cpu: &mut Cpu, op: DpRsrBits) -> DispatchRes {
     cpu.reg[op.rd()] = res;
     DispatchRes::RetireOk
 }
+pub fn and_rsr(cpu: &mut Cpu, op: DpRsrBits) -> DispatchRes {
+    assert_ne!(op.rd(), 15);
+
+    let (val, carry) = barrel_shift(ShiftArgs::RegShiftReg {
+        rm: cpu.reg[op.rm()], 
+        stype: op.stype(), 
+        rs: cpu.reg[op.rs()],
+        c_in: cpu.reg.cpsr.c()
+    });
+
+    let res = cpu.reg[op.rn()] & val;
+    if op.s() {
+        cpu.reg.cpsr.set_n((res & 0x8000_0000) != 0);
+        cpu.reg.cpsr.set_z(res == 0);
+        cpu.reg.cpsr.set_c(carry);
+    }
+    cpu.reg[op.rd()] = res;
+    DispatchRes::RetireOk
+}
+
+
 
 
 fn do_bitwise_reg(cpu: &mut Cpu, rn: u32, rm: u32, rd: u32, imm5: u32, 
