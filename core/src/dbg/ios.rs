@@ -49,8 +49,46 @@ macro_rules! scdef {
     }
 }
 
-pub fn get_syscall_desc(idx: u32) -> SyscallDef {
-    match idx {
+/// Read a NUL-terminated string from memory.  
+/// 
+/// NOTE: This is not particularly rigorous or safe.
+pub fn read_string(cpu: &Cpu, ptr: u32) -> String {
+    let paddr = cpu.translate(TLBReq::new(ptr, Access::Debug));
+
+    let mut line_buf = [0u8; 64];
+    cpu.bus.write().unwrap().dma_read(paddr, &mut line_buf);
+    //println!("{:?}", line_buf.hex_dump());
+
+    let mut end: Option<usize> = None;
+    for (i, b) in line_buf.iter().enumerate() {
+        if *b == 0x00 { end = Some(i); break; } 
+    }
+    let s = if end.is_some() {
+        std::str::from_utf8(&line_buf[..=end.unwrap()]).unwrap()
+    } else {
+        std::str::from_utf8(&line_buf).unwrap()
+    };
+    s.trim_matches(char::from(0)).to_string()
+}
+
+pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
+
+    match idx { 
+        0x0e | // MqueueRecv
+        0x16 | // HeapCreate
+        0x18 | // HeapAlloc
+        0x19 | // HeapAllocAligned
+        0x1a | // HeapFree
+        0x2a | // ResourceReply
+        0x2f | // AhbMemFlush
+        0x30 | // CcAhbMemFlush
+        0x3f | // SyncBeforeRead
+        0x40 | // SyncAfterWrite
+        0x4f => return None, // VirtToPhys
+        _ => { },
+    }
+
+    let res = Some(match idx {
         0x00 => scdef!("ThreadCreate", Ptr, Ptr, Ptr, Uint, Uint, Uint),
         0x02 => scdef!("ThreadCancel", ),
         0x04 => scdef!("ThreadGetPid", ),
@@ -61,6 +99,7 @@ pub fn get_syscall_desc(idx: u32) -> SyscallDef {
         0x0f => scdef!("MqueueRegisterHandler", Int, Int, Uint),
         0x10 => scdef!("MqueueDestroyHandler", Ptr, Ptr, Ptr),
         0x11 => scdef!("TimerCreate", Int, Int, Int, Uint),
+        //0x16 => scdef!("HeapCreate", Ptr, Int),
         //0x18 => scdef!("HeapAlloc", Int, Uint),
         //0x19 => scdef!("HeapAllocAligned", Int, Uint, Uint),
         //0x1a => scdef!("HeapFree", Int, Ptr),
@@ -78,38 +117,20 @@ pub fn get_syscall_desc(idx: u32) -> SyscallDef {
         0x30 => scdef!("CcAhbMemFlush", Int),
         0x3f => scdef!("SyncBeforeRead", Ptr),
         0x41 => scdef!("PpcBoot", StrPtr),
+        0x42 => scdef!("IosBoot", StrPtr),
         0x47 => scdef!("WhichKernel", Ptr, Ptr),
+        0x4d => scdef!("KernelGetVersion", ),
         0x4f => scdef!("VirtToPhys", Ptr),
         0x54 => scdef!("SetAhbProt", Uint),
         0x55 => scdef!("GetBusClock", ),
+        0x5a => scdef!("LoadModule", StrPtr),
         0x63 => scdef!("IoscGetData", Uint, Uint, Uint),
         0x68 => scdef!("IoscEncryptAsync", Uint, Uint, Uint),
         0x6a => scdef!("IoscDecryptAsync", Uint, Uint, Uint),
         0x6d => scdef!("IoscGenBlockmac", Uint, Uint, Uint),
         _ => panic!("Couldn't resolve syscall idx={:02x}", idx),
-    }
-}
-
-/// Read a NUL-terminated string from memory.  
-/// 
-/// NOTE: This is not particularly rigorous or safe.
-pub fn read_string(cpu: &Cpu, ptr: u32) -> String {
-    let paddr = cpu.translate(TLBReq::new(ptr, Access::Debug));
-
-    let mut line_buf = [0u8; 32];
-    cpu.bus.write().unwrap().dma_read(paddr, &mut line_buf);
-    //println!("{:?}", line_buf.hex_dump());
-
-    let mut end: Option<usize> = None;
-    for (i, b) in line_buf.iter().enumerate() {
-        if *b == 0x00 { end = Some(i); break; } 
-    }
-    let s = if end.is_some() {
-        std::str::from_utf8(&line_buf[..=end.unwrap()]).unwrap()
-    } else {
-        std::str::from_utf8(&line_buf).unwrap()
-    };
-    s.trim_matches(char::from(0)).to_string()
+    });
+    res
 }
 
 
@@ -117,24 +138,11 @@ pub fn read_string(cpu: &Cpu, ptr: u32) -> String {
 pub fn resolve_syscall(cpu: &mut Cpu, opcd: u32) {
     // Get the syscall index (and ignore some)
     let idx = (opcd & 0x00ff_ffe0) >> 5;
-    match idx { 
-        0x0e | // MqueueRecv
-        0x18 | // HeapAlloc
-        0x19 | // HeapAllocAligned
-        0x1a | // HeapFree
-        0x2a | // ResourceReply
-        0x2f | // AhbMemFlush
-        0x30 | // CcAhbMemFlush
-        0x3f | // SyncBeforeRead
-        0x40 | // SyncAfterWrite
-        0x4f => return, // VirtToPhys
-        _ => { },
+    let res = get_syscall_desc(idx);
+    if res.is_none() {
+        return;
     }
-
-    //if idx == 0x02 { cpu.dbg_on = false; }
-    //if idx == 0x6d { cpu.dbg_on = true; }
-
-    let syscall = get_syscall_desc(idx);
+    let syscall = res.unwrap();
     let mut arg_buf = String::new();
     for (idx, arg) in syscall.arg.iter().enumerate() {
         let val = cpu.reg[idx as u32];

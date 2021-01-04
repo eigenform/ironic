@@ -1,11 +1,13 @@
 
 pub mod util;
+extern crate pretty_hex;
 
 use crate::bus::*;
 use crate::bus::prim::*;
 use crate::bus::mmio::*;
 use crate::bus::task::*;
 use crate::dev::hlwd::irq::*;
+use pretty_hex::*;
 
 pub struct ShaCommand {
     len: u32,
@@ -95,6 +97,8 @@ impl Bus {
 
         let mut sha_buf = vec![0u8; cmd.len as usize];
         self.dma_read(sha.src, &mut sha_buf);
+        //println!("{:?}", sha_buf.hex_dump());
+
         sha.state.update(&sha_buf);
 
         //println!("SHA Digest addr={:08x} len={:08x}", sha.src, cmd.len);

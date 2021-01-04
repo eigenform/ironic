@@ -34,11 +34,11 @@ pub struct AesCommand {
 impl From<u32> for AesCommand {
     fn from(x: u32) -> Self {
         AesCommand {
-            len: (((x & 0x0000_0fff) + 1) * 0x10) as usize,
-            decrypt: (x & 0x1000_0000) != 0,
             irq: (x & 0x4000_0000) != 0,
-            use_aes: (x & 0x0800_0000) != 0,
+            use_aes: (x & 0x1000_0000) != 0,
+            decrypt: (x & 0x0800_0000) != 0,
             chain_iv: (x & 0x0000_1000) != 0,
+            len: (((x & 0x0000_0fff) + 1) * 0x10) as usize,
         }
     }
 }
@@ -150,15 +150,15 @@ impl Bus {
 
             //println!("AES key={:02x?}", key);
             //println!("AES iv={:02x?}", iv);
-            //println!("AES Decrypt addr={:08x} len={:08x}", aes.dst, cmd.len);
+            //println!("AES Decrypt src={:08x} dst={:08x} len={:08x}", aes.src, aes.dst, cmd.len);
 
             // Decrypt/encrypt the data, then DMA write to memory
-            if cmd.decrypt {
-                let aes_outbuf = cipher.decrypt_vec(&aes_inbuf).unwrap();
-                self.dma_write(aes.dst, &aes_outbuf);
+            let aes_outbuf = if cmd.decrypt {
+                cipher.decrypt_vec(&aes_inbuf).unwrap()
             } else {
-                panic!("AES encrypt unsupported");
-            }
+                cipher.encrypt_vec(&aes_inbuf)
+            };
+            self.dma_write(aes.dst, &aes_outbuf);
 
             // Update IV buffer with the last 16 bytes of data
             aes.iv_buffer.copy_from_slice(&aes_inbuf[(cmd.len - 0x10)..]);

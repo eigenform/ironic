@@ -77,7 +77,15 @@ impl Cpu {
     fn l1_fetch(&self, vaddr: VirtAddr) -> L1Descriptor {
         let addr = (self.p15.c2_ttbr0 & 0xffff_c000) | vaddr.l1_idx() << 2;
         let val = self.bus.write().unwrap().read32(addr);
-        L1Descriptor::from_u32(val)
+        let res = L1Descriptor::from_u32(val);
+        match res {
+            L1Descriptor::Fault(_) => {
+                panic!("pc={:08x} L1 Fault descriptor unimpl, vaddr={:08x}", 
+                    self.read_fetch_pc(), vaddr.0);
+            },
+            _ => {},
+        }
+        res
     }
 
     /// Given some virtual address and a particular first-level PTE, return

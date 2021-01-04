@@ -101,6 +101,7 @@ impl VirtAddr {
 /// Different types of first-level page table entries.
 #[derive(Debug)]
 pub enum L1Descriptor {
+    Fault(u32),
     //Fault(FaultDescriptor),
     Coarse(CoarseDescriptor),
     Section(SectionDescriptor),
@@ -109,7 +110,7 @@ pub enum L1Descriptor {
 impl L1Descriptor {
     pub fn from_u32(x: u32) -> Self {
         match x & 0b11 {
-            0b00 => panic!("L1 Fault descriptor unimplemented"),
+            0b00 => L1Descriptor::Fault(0),
             0b01 => L1Descriptor::Coarse(CoarseDescriptor(x)),
             0b10 => L1Descriptor::Section(SectionDescriptor(x)),
             0b11 => panic!("L1 Fine-page descriptor unimplemented"),

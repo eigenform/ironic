@@ -32,6 +32,32 @@ impl MmioDevice for DriveInterface {
     }
 }
 
+/// Legacy EXI
+#[derive(Default, Debug, Clone)]
+pub struct EXInterface {
+    /// Buffer for instructions used to bootstrap PPC-world
+    pub ppc_bootstrap: [u32; 0x10],
+}
+impl MmioDevice for EXInterface {
+    type Width = u32;
+    fn read(&mut self, off: usize) -> BusPacket { 
+        let val = match off {
+            0x40..=0x7c => self.ppc_bootstrap[(off - 0x40)/4],
+            _ => panic!("EXI read to undef offset {:x}", off),
+        };
+        println!("EXI read {:08x} from {:x}", val, off);
+        BusPacket::Word(val)
+    }
+    fn write(&mut self, off: usize, val: u32) -> Option<BusTask> { 
+        println!("EXI write {:08x} to {:x}", val, off);
+        match off { 
+            0x40..=0x7c => self.ppc_bootstrap[(off - 0x40)/4] = val,
+            _ => panic!("EXI write {:08x} to {:x}", val, off),
+        }
+        None
+    }
+}
+
 
 /// Legacy memory interface.
 #[derive(Clone)]

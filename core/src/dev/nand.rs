@@ -1,5 +1,6 @@
 
 extern crate pretty_hex;
+use pretty_hex::*;
 
 pub mod util;
 use crate::dev::nand::util::*;
@@ -159,7 +160,7 @@ impl NandInterface {
     }
     /// Zero out the provided region in the NAND flash
     pub fn clear_data(&mut self, off: usize, len: usize) {
-        self.data.memset(off, len, 0);
+        self.data.memset(off, len, 0xff);
     }
 
     pub fn send_addr(&mut self, x: u32) {
@@ -246,6 +247,7 @@ impl Bus {
 
     fn nand_erase_page(&mut self, cmd: &NandCmd, reg: &NandRegisters) {
         assert_ne!(cmd.ecc, true);
+        assert_ne!(cmd.rd, true);
         let off = reg.addr2 as usize * NAND_PAGE_LEN;
         self.dev.write().unwrap().nand.clear_data(off, NAND_BLOCK_LEN);
         //panic!("nand erase unimpl");
@@ -259,6 +261,8 @@ impl Bus {
         let off = reg.addr2 as usize * NAND_PAGE_LEN;
         self.dev.read().unwrap().nand.read_data(off, &mut local_buf);
 
+        //println!("{:?}", local_buf.hex_dump());
+
         // Do the DMA writes to memory
         self.dma_write(reg.databuf, &local_buf[..0x800]);
         self.dma_write(reg.eccbuf, &local_buf[0x800..]);
@@ -267,7 +271,8 @@ impl Bus {
         for i in 0..4 {
             let addr = (reg.eccbuf ^ 0x40) + (i as u32 * 4);
             let new_ecc = calc_ecc(&mut local_buf[(i * 0x200)..]);
-            //let old_ecc = self.read32(addr);
+            let old_ecc = self.read32(addr);
+            //println!("NND old_ecc={:08x} new_ecc={:08x}", old_ecc, new_ecc);
             self.write32(addr, new_ecc);
         }
     }
@@ -281,6 +286,17 @@ impl Bus {
         let off = (reg.current_page as usize * NAND_PAGE_LEN) + 
             reg.current_poff as usize;
         self.dev.write().unwrap().nand.write_data(off, &local_buf);
+
+        if cmd.ecc {
+            assert!(cmd.len == 0x800);
+            for i in 0..4 {
+                let addr = (reg.eccbuf ^ 0x40) + (i as u32 * 4);
+                let new_ecc = calc_ecc(&mut local_buf[(i * 0x200)..]);
+                self.write32(addr, new_ecc);
+            }
+        }
+
+
     }
 
     /// Handle a NAND command
@@ -289,6 +305,9 @@ impl Bus {
         let cmd = NandCmd::new(val);
         let reg = self.read_nand_regs();
         let mut next_cycle = 0;
+
+        //println!("NND cmd={:?} addr={:05b} addr1={:08x} addr2={:08x} databuf={:08x} eccbuf={:08x} len={:08x}",
+        //    cmd.opcd, cmd.addr, reg.addr1, reg.addr2, reg.databuf, reg.eccbuf, cmd.len);
 
         // Execute a NAND command.
         // This is kind of messed up because it's nicer to think about some
@@ -339,6 +358,7 @@ impl Bus {
 
             // NOTE: Skyeye *always* asserts an IRQ?
             dev.hlwd.irq.assert(HollywoodIrq::Nand);
+
             // Assert an IRQ if requested in the command
             //if cmd.irq { 
             //    println!("NND IRQ assert by cmd {:?}", cmd.opcd);

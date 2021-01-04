@@ -165,6 +165,7 @@ pub struct Hollywood {
     pub gpio: gpio::GpioInterface,
     pub irq: irq::IrqInterface,
 
+    pub exi: compat::EXInterface,
     pub di: compat::DriveInterface,
     pub mi: compat::MemInterface,
     pub ahb: AhbInterface,
@@ -197,6 +198,7 @@ impl Hollywood {
 
             ahb: AhbInterface::default(),
             di: compat::DriveInterface::default(),
+            exi: compat::EXInterface::default(),
             mi: compat::MemInterface::new(),
             ddr: ddr::DdrInterface::new(),
 
@@ -262,6 +264,7 @@ impl MmioDevice for Hollywood {
             },
             0x030..=0x05c => self.irq.write_handler(off - 0x30, val),
             0x060 => {
+                println!("HLWD SRNPROT={:08x}", val);
                 let diff = self.busctrl.srnprot ^ val;
                 self.busctrl.srnprot = val;
                 let task = if (diff & 0x0000_0020) != 0 {
@@ -292,6 +295,7 @@ impl MmioDevice for Hollywood {
                 }
             },
             0x18c => {
+                println!("HLWD SPARE1={:08x}", val);
                 // Potentially toggle the boot ROM mapping
                 let diff = self.spare1 ^ val;
                 self.spare1 = val;
@@ -303,7 +307,10 @@ impl MmioDevice for Hollywood {
                 return task;
             },
             0x190 => self.clocks = val,
-            0x194 => self.resets = val,
+            0x194 => {
+                println!("HLWD resets={:08x}", val);
+                self.resets = val;
+            },
             0x1b0 => self.pll.sys = val,
             0x1b4 => self.pll.sys_ext = val,
             0x1bc => self.pll.ddr = val,

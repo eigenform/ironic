@@ -136,15 +136,14 @@ pub fn sub_reg(cpu: &mut Cpu, op: AddSubRegBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
-// NOTE: This might be totally wrong oops
 pub fn sbc_reg(cpu: &mut Cpu, op: BitwiseRegBits) -> DispatchRes {
     let rm = cpu.reg[op.rm()];
-    let (val, _) = barrel_shift(ShiftArgs::Reg { rm, 
+    let (shifted, _) = barrel_shift(ShiftArgs::Reg { rm, 
         stype: ShiftType::Lsl as u32, imm5: 0, c_in: cpu.reg.cpsr.c()
     });
+    let val = if cpu.reg.cpsr.c() { shifted } else { shifted + 1 };
 
-    // ???
-    let (alu_out, n, z, c, v) = sub_generic(cpu.reg[op.rdn()], !val);
+    let (alu_out, n, z, c, v) = sub_generic(cpu.reg[op.rdn()], val);
     cpu.reg[op.rdn()] = alu_out;
     set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk

@@ -28,6 +28,7 @@ impl Bus {
             (BusWidth::W, Hlwd) => dref.hlwd.read(off),
             (BusWidth::W, Ahb)  => dref.hlwd.ahb.read(off),
             (BusWidth::W, Di)   => dref.hlwd.di.read(off),
+            (BusWidth::W, Exi)  => dref.hlwd.exi.read(off),
             (BusWidth::H, Mi)   => dref.hlwd.mi.read(off),
             (BusWidth::H, Ddr)  => dref.hlwd.ddr.read(off),
             _ => panic!("Unsupported read {:?} for {:?} at {:x}", width, dev, off),
@@ -47,6 +48,7 @@ impl Bus {
 
             (Word(val), Hlwd) => dref.hlwd.write(off, val),
             (Word(val), Ahb)  => dref.hlwd.ahb.write(off, val),
+            (Word(val), Exi)  => dref.hlwd.exi.write(off, val),
             (Half(val), Mi)   => dref.hlwd.mi.write(off, val),
             (Half(val), Ddr)  => dref.hlwd.ddr.write(off, val),
 
