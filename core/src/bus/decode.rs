@@ -31,6 +31,8 @@ decl_io_handle!(NAND_HANDLE, Nand,  0x0000_001f);
 decl_io_handle!(AES_HANDLE, Aes,    0x0000_001f);
 decl_io_handle!(SHA_HANDLE, Sha,    0x0000_001f);
 decl_io_handle!(EHCI_HANDLE, Ehci,  0x0000_00ff);
+decl_io_handle!(OHCI0_HANDLE, Ohci0,0x0000_01ff);
+decl_io_handle!(OHCI1_HANDLE, Ohci1,0x0000_01ff);
 
 decl_io_handle!(HLWD_HANDLE, Hlwd,  0x0000_03ff);
 decl_io_handle!(AHB_HANDLE, Ahb,    0x0000_3fff);
@@ -57,6 +59,8 @@ impl Bus {
             0x0d02 => Some(AES_HANDLE),
             0x0d03 => Some(SHA_HANDLE),
             0x0d04 => Some(EHCI_HANDLE),
+            0x0d05 => Some(OHCI0_HANDLE),
+            0x0d06 => Some(OHCI1_HANDLE),
 
             0x0d80 |
             0x0d8b => self.resolve_hlwd(addr),

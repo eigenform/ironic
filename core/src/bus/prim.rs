@@ -126,9 +126,19 @@ pub enum MemDevice { MaskRom, Sram0, Sram1, Mem1, Mem2 }
 /// Different kinds of I/O devices that support physical memory accesses.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum IoDevice {
-    Nand, Aes, Sha, Ehci,
-    Hlwd, Ahb, Ddr,
-    Di, Si, Exi, Mi,
+    Nand, 
+    Aes, 
+    Sha, 
+    Ehci,
+    Ohci0,
+    Ohci1,
+    Hlwd, 
+    Ahb, 
+    Ddr,
+    Di, 
+    Si, 
+    Exi, 
+    Mi,
 }
 
 /// A message on the bus containing some value.

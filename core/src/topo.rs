@@ -7,6 +7,7 @@ use crate::dev::aes::*;
 use crate::dev::sha::*;
 use crate::dev::nand::*;
 use crate::dev::ehci::*;
+use crate::dev::ohci::*;
 
 /// Top-level container for system memories.
 ///
@@ -39,6 +40,8 @@ pub struct SystemDevice {
     pub aes: AesInterface,
     pub sha: ShaInterface,
     pub ehci: EhcInterface,
+    pub ohci0: OhcInterface,
+    pub ohci1: OhcInterface,
 }
 impl SystemDevice {
     pub fn new() -> Self {
@@ -48,6 +51,8 @@ impl SystemDevice {
             aes: AesInterface::new(),
             sha: ShaInterface::new(),
             ehci: EhcInterface::new(),
+            ohci0: OhcInterface { idx: 0, ..Default::default() },
+            ohci1: OhcInterface { idx: 1, ..Default::default() },
         }
     }
 }

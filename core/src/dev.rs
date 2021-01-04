@@ -9,6 +9,7 @@ pub mod aes;
 pub mod sha;
 
 pub mod ehci;
+pub mod ohci;
 
 // Sizes of physical memory devices.
 pub const MEM1_SIZE:    u32 = 0x0180_0000;
