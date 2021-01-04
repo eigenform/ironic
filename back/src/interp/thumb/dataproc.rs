@@ -125,6 +125,7 @@ pub fn add_reg(cpu: &mut Cpu, op: AddSubRegBits) -> DispatchRes {
     set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk
 }
+
 pub fn sub_reg(cpu: &mut Cpu, op: AddSubRegBits) -> DispatchRes {
     let rm = cpu.reg[op.rm()];
     let (val, _) = barrel_shift(ShiftArgs::Reg { rm, 
@@ -144,6 +145,18 @@ pub fn sbc_reg(cpu: &mut Cpu, op: BitwiseRegBits) -> DispatchRes {
     let val = if cpu.reg.cpsr.c() { shifted } else { shifted + 1 };
 
     let (alu_out, n, z, c, v) = sub_generic(cpu.reg[op.rdn()], val);
+    cpu.reg[op.rdn()] = alu_out;
+    set_all_flags!(cpu, n, z, c, v);
+    DispatchRes::RetireOk
+}
+
+pub fn adc_reg(cpu: &mut Cpu, op: BitwiseRegBits) -> DispatchRes {
+    let rm = cpu.reg[op.rm()];
+    let (shifted, _) = barrel_shift(ShiftArgs::Reg { rm, 
+        stype: ShiftType::Lsl as u32, imm5: 0, c_in: cpu.reg.cpsr.c()
+    });
+    let val = if cpu.reg.cpsr.c() { shifted + 1 } else { shifted };
+    let (alu_out, n, z, c, v) = add_generic(cpu.reg[op.rdn()], val);
     cpu.reg[op.rdn()] = alu_out;
     set_all_flags!(cpu, n, z, c, v);
     DispatchRes::RetireOk

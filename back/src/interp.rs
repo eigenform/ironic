@@ -128,19 +128,17 @@ impl InterpBackend {
         0xe1, 0x2f, 0xff, 0x1e,
     ];
 
-    /// Skyeye intentionally kills a bunch of threads, presumably to avoid
-    /// having to deal with emulating the WLAN card. Let's do the same.
+    /// Skyeye intentionally kills a bunch of threads, specifically NCD, KD,
+    /// WL, and WD; presumably to avoid having to deal with emulating WLAN.
     pub fn hotpatch_check(&mut self) {
         use ironic_core::cpu::mmu::prim::{TLBReq, Access};
         if self.cpu.boot_status == BootStatus::Kernel {
             let pc = self.cpu.read_fetch_pc();
             let vaddr = match pc {
-                // NCD module entrypoint
-                0x13d9_0000 | 
-                // WL module entrypoint
-                0x13ed_0000 |
-                // WD module entrypoint
-                0x13eb_0000 => Some(pc),
+                0x13d9_0000 | // NCD
+                0x13db_0000 | // KD
+                0x13ed_0000 | // WL
+                0x13eb_0000 => Some(pc), // WD
                 _ => None
             };
             if vaddr.is_none() { 
@@ -149,7 +147,7 @@ impl InterpBackend {
                 let paddr = self.cpu.translate(
                     TLBReq::new(vaddr.unwrap(), Access::Debug)
                 );
-                println!("DBG hotpatching {:08x}", paddr);
+                println!("DBG hotpatching module entrypoint {:08x}", paddr);
                 self.bus.write().unwrap().dma_write(paddr, 
                     &Self::THREAD_CANCEL_PATCH);
             }

@@ -84,9 +84,9 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
     // Ignore some syscalls
     match idx { 
         0x0a..=0x10 |
-        0x11..=0x13 |
+        //0x11..=0x13 | 0x15 |
         0x16 | 0x18 | 0x19 | 0x1a | 
-        0x1d..=0x1f | 0x21 | 0x22 |
+        //0x1d..=0x1f | 0x21 | 0x22 |
         0x63 | 0x68 | 0x6a | 0x6d |
         0x2a | 0x2f | 0x3f | 0x30 | 0x40 | 0x4f => return None,
         _ => { },
@@ -109,6 +109,7 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
         0x11 => scdef!("TimerCreate", Int, Int, Int, Uint),
         0x12 => scdef!("TimerRestart", Uint, Int, Int),
         0x13 => scdef!("TimerStop", Uint),
+        0x15 => scdef!("TimerNow", ),
         0x16 => scdef!("HeapCreate", Ptr, Int),
         0x18 => scdef!("HeapAlloc", Int, Uint),
         0x19 => scdef!("HeapAllocAligned", Int, Uint, Uint),
@@ -126,6 +127,7 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
         0x2f => scdef!("AhbMemFlush", Int),
         0x30 => scdef!("CcAhbMemFlush", Int),
         0x32 => scdef!("EnableIrqDI", ),
+        0x33 => scdef!("EnableIrqSDHC", ),
         0x34 => scdef!("EnableIrq", ),
         0x35 => scdef!("IobufPoolAccessNOP", ),
         0x3f => scdef!("SyncBeforeRead", Ptr),

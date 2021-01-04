@@ -175,6 +175,7 @@ impl InstLutEntry for ThumbFn {
             OrrReg      => ThumbFn(tfn!(thumb::dataproc::orr_reg)),
             EorReg      => ThumbFn(tfn!(thumb::dataproc::eor_reg)),
             SbcReg      => ThumbFn(tfn!(thumb::dataproc::sbc_reg)),
+            AdcReg      => ThumbFn(tfn!(thumb::dataproc::adc_reg)),
             Mul         => ThumbFn(tfn!(thumb::dataproc::mul_reg)),
 
             BlPrefix    => ThumbFn(tfn!(thumb::branch::bl_prefix)),
