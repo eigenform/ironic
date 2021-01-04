@@ -16,15 +16,8 @@ pub mod compat;
 pub mod ddr;
 /// Interrupt controller.
 pub mod irq;
-
-/// The inter-processor communication interface.
-#[derive(Default, Debug, Clone)]
-pub struct IpcInterface {
-    pub ppc_msg: u32,
-    pub ppc_ctrl: u32,
-    pub arm_msg: u32,
-    pub arm_ctrl: u32,
-}
+/// Inter-processor communication.
+pub mod ipc;
 
 /// The timer/alarm interface.
 #[derive(Default, Debug, Clone)]
@@ -158,7 +151,7 @@ impl MmioDevice for AhbInterface {
 pub struct Hollywood {
     pub task: Option<HlwdTask>,
 
-    pub ipc: IpcInterface,
+    pub ipc: ipc::IpcInterface,
     pub timer: TimerInterface,
     pub busctrl: BusCtrlInterface,
     pub pll: ClockInterface,
@@ -189,7 +182,7 @@ impl Hollywood {
         // TODO: Where do the initial values for these registers matter?
         let mut res = Hollywood {
             task: None,
-            ipc: IpcInterface::default(),
+            ipc: ipc::IpcInterface::new(),
             busctrl: BusCtrlInterface::default(),
             timer: TimerInterface::default(),
             irq: irq::IrqInterface::default(),
@@ -222,10 +215,7 @@ impl MmioDevice for Hollywood {
     type Width = u32;
     fn read(&mut self, off: usize) -> BusPacket {
         let val = match off {
-            0x000           => self.ipc.ppc_msg,
-            0x004           => self.ipc.ppc_ctrl,
-            0x008           => self.ipc.arm_msg,
-            0x00c           => self.ipc.arm_ctrl,
+            0x000..=0x00c   => self.ipc.read_handler(off),
             0x010           => self.timer.timer,
             0x014           => self.timer.alarm,
             0x030..=0x05c   => self.irq.read_handler(off - 0x30),
@@ -255,22 +245,12 @@ impl MmioDevice for Hollywood {
             0x214           => 0x0000_0000,
             _ => panic!("Unimplemented Hollywood read at {:x}", off),
         };
-        //println!("HLWD read {:08x} at off {:03x}", val, off);
         BusPacket::Word(val)
     }
 
     fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
         match off {
-            0x000 => self.ipc.ppc_msg = val,
-            0x004 => {
-                println!("HLWD IPC PPC CTRL={:08x}", val);
-                self.ipc.ppc_ctrl = val;
-            },
-            0x008 => self.ipc.arm_msg = val,
-            0x00c => {
-                println!("HLWD IPC ARM CTRL={:08x}", val);
-                self.ipc.arm_ctrl = val;
-            }
+            0x000..=0x00c => self.ipc.write_handler(off, val),
             0x014 => {
                 println!("HLWD alarm set to {:08x}", val);
                 self.timer.alarm = val;
@@ -297,9 +277,7 @@ impl MmioDevice for Hollywood {
             0x100..=0x13c => self.arb.write_handler(off - 0x100, val),
             0x180 => self.compat = val,
             0x188 => {
-
                 self.spare0 = val;
-
                 // AHB flushing code seems to check these bits?
                 if (val & 0x0001_0000) != 0 {
                     self.spare1 &= 0xffff_fff6;
@@ -356,6 +334,11 @@ impl Bus {
                 HlwdTask::GpioOutput(val) => hlwd.gpio.handle_output(val),
             }
             hlwd.task = None;
+        }
+
+        let ipc_irq = hlwd.ipc.step();
+        if ipc_irq.is_some() {
+            hlwd.irq.assert(ipc_irq.unwrap());
         }
         let timer_irq = hlwd.timer.step();
         if timer_irq {
