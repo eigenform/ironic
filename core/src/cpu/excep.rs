@@ -109,12 +109,12 @@ impl Cpu {
         // The exception vector is written to the program counter 
         self.write_exec_pc(target_pc);
 
-        if self.current_exception.is_none() {
-            self.current_exception = Some(e);
-        } else {
-            panic!("pc={:08x} CPU tried to take {:x?} exception inside {:x?} exception",
-                current_pc, e, self.current_exception.unwrap());
-        }
+        //if self.current_exception.is_none() {
+        //    self.current_exception = Some(e);
+        //} else {
+        //    panic!("pc={:08x} CPU tried to take {:x?} exception inside {:x?} exception",
+        //        current_pc, e, self.current_exception.unwrap());
+        //}
 
     }
 
@@ -129,8 +129,8 @@ impl Cpu {
         self.reg.write_cpsr(spsr);
         self.write_exec_pc(dest_pc & 0xffff_fffe);
 
-        if self.current_exception.is_some() {
-            self.current_exception = None
-        }
+        //if self.current_exception.is_some() {
+        //    self.current_exception = None
+        //}
     }
 }

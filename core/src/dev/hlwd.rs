@@ -33,12 +33,13 @@ pub struct TimerInterface {
     pub alarm: u32,
 }
 impl TimerInterface {
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> bool {
         self.timer += 1;
         if self.timer == self.alarm {
-            println!("HLWD alarm interrupt {:08x} == {:08x}", 
-                self.timer, self.alarm);
-            panic!("Timer/alarm interrupts are unimplemented");
+            println!("HLWD alarm trigger {:08x} == {:08x}", self.timer, self.alarm);
+            true
+        } else {
+            false
         }
     }
 }
@@ -344,7 +345,10 @@ impl Bus {
             }
             hlwd.task = None;
         }
-        hlwd.timer.step();
+        let timer_irq = hlwd.timer.step();
+        if timer_irq {
+            hlwd.irq.assert(irq::HollywoodIrq::Timer);
+        }
     }
 }
 

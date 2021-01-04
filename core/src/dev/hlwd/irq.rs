@@ -59,6 +59,9 @@ pub struct IrqInterface {
     /// Whether or not the IRQ signal to the CPU is asserted.
     pub irq_output: bool,
 
+    pub ppc_irq_status: IrqBits,
+    pub ppc_irq_enable: IrqBits,
+
     pub arm_irq_status: IrqBits,
     pub arm_irq_enable: IrqBits,
 
@@ -75,6 +78,11 @@ impl IrqInterface {
     }
     pub fn write_handler(&mut self, off: usize, val: u32) {
         match off {
+            0x04 => {
+                self.ppc_irq_enable.0 = val;
+                println!("IRQ PPC enable={:08x}", val);
+            },
+
             // CPU writes to this register clear the status bits.
             0x08 => {
                 //println!("IRQ status bits {:08x} cleared", val);

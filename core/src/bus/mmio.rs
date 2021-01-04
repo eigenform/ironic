@@ -53,6 +53,7 @@ impl Bus {
             (Word(val), Hlwd) => dref.hlwd.write(off, val),
             (Word(val), Ahb)  => dref.hlwd.ahb.write(off, val),
             (Word(val), Exi)  => dref.hlwd.exi.write(off, val),
+            (Word(val), Di)  => dref.hlwd.di.write(off, val),
             (Half(val), Mi)   => dref.hlwd.mi.write(off, val),
             (Half(val), Ddr)  => dref.hlwd.ddr.write(off, val),
 

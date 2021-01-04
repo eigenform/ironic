@@ -82,8 +82,12 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
         0x2a | // ResourceReply
         0x2f | // AhbMemFlush
         0x30 | // CcAhbMemFlush
+        0x35 | // Unused/NOP
         0x3f | // SyncBeforeRead
         0x40 | // SyncAfterWrite
+        0x68 | 0x6a | 0x6d | 
+        0x1c | 0x1d | 0x1e | 0x1f | 0x21 | 0x22 |
+        0x0a | 0x0b | 0x0e | 
         0x4f => return None, // VirtToPhys
         _ => { },
     }
@@ -91,7 +95,9 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
     let res = Some(match idx {
         0x00 => scdef!("ThreadCreate", Ptr, Ptr, Ptr, Uint, Uint, Uint),
         0x02 => scdef!("ThreadCancel", ),
+        0x03 => scdef!("ThreadGetID", ),
         0x04 => scdef!("ThreadGetPid", ),
+        0x05 => scdef!("ThreadContinue", Uint),
         0x09 => scdef!("ThreadSetPrio", Int, Int),
         0x0a => scdef!("MqueueCreate", Ptr, Int),
         0x0b => scdef!("MqueueDestroy", Ptr),
@@ -115,16 +121,22 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
         0x2d => scdef!("SetGid", Int),
         0x2f => scdef!("AhbMemFlush", Int),
         0x30 => scdef!("CcAhbMemFlush", Int),
+        0x32 => scdef!("EnableIrqDI", ),
         0x34 => scdef!("EnableIrq", ),
         0x3f => scdef!("SyncBeforeRead", Ptr),
         0x41 => scdef!("PpcBoot", StrPtr),
         0x42 => scdef!("IosBoot", StrPtr),
+        0x46 => scdef!("DIResetCheck", ),
         0x47 => scdef!("WhichKernel", Ptr, Ptr),
         0x4d => scdef!("KernelGetVersion", ),
         0x4f => scdef!("VirtToPhys", Ptr),
+        0x50 => scdef!("DVDVideoSet", Uint),
+        0x51 => scdef!("DVDVideoGet", ),
+        0x52 => scdef!("EXICtrlBit4Toggle", Uint),
         0x54 => scdef!("SetAhbProt", Uint),
         0x55 => scdef!("GetBusClock", ),
         0x56 => scdef!("PokeGpio", Uint, Uint),
+        0x59 => scdef!("LoadPPC", Ptr),
         0x5a => scdef!("LoadModule", StrPtr),
         0x63 => scdef!("IoscGetData", Uint, Uint, Uint),
         0x68 => scdef!("IoscEncryptAsync", Uint, Uint, Uint),
