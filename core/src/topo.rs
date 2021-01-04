@@ -43,8 +43,8 @@ pub struct SystemDevice {
     pub ehci: EhcInterface,
     pub ohci0: OhcInterface,
     pub ohci1: OhcInterface,
-    pub sd0: SDHCInterface,
-    pub sd1: SDHCInterface,
+    pub sd0: SDInterface,
+    pub sd1: WLANInterface,
 }
 impl SystemDevice {
     pub fn new() -> Self {
@@ -56,8 +56,8 @@ impl SystemDevice {
             ehci: EhcInterface::new(),
             ohci0: OhcInterface { idx: 0, ..Default::default() },
             ohci1: OhcInterface { idx: 1, ..Default::default() },
-            sd0: SDHCInterface { idx: 0, ..Default::default() },
-            sd1: SDHCInterface { idx: 1, ..Default::default() },
+            sd0: SDInterface::default(),
+            sd1: WLANInterface::default(),
         }
     }
 }

@@ -94,7 +94,7 @@ impl InterpBackend {
     /// Write the current instruction to stdout.
     pub fn dbg_print(&mut self) {
         let pc = self.cpu.read_fetch_pc();
-        //if pc == 0xffff_678c && self.cpu.boot_status == BootStatus::Kernel { self.cpu.dbg_on = true; }
+        //if pc == 0x13ed0000 && self.cpu.boot_status == BootStatus::Kernel { self.cpu.dbg_on = true; }
         if self.cpu.dbg_on {
             if self.cpu.reg.cpsr.thumb() {
                 let opcd = self.cpu.read16(pc);

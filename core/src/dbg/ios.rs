@@ -81,22 +81,8 @@ pub fn read_string(cpu: &Cpu, ptr: u32) -> String {
 
 pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
 
+    // Ignore some syscalls
     match idx { 
-        0x0e | // MqueueRecv
-        0x16 | // HeapCreate
-        0x18 | // HeapAlloc
-        0x19 | // HeapAllocAligned
-        0x1a | // HeapFree
-        0x2a | // ResourceReply
-        0x2f | // AhbMemFlush
-        0x30 | // CcAhbMemFlush
-        0x35 | // Unused/NOP
-        0x3f | // SyncBeforeRead
-        0x40 | // SyncAfterWrite
-        0x68 | 0x6a | 0x6d | 
-        0x1c | 0x1d | 0x1e | 0x1f | 0x21 | 0x22 |
-        0x0a | 0x0b | 0x0e | 
-        0x4f => return None, // VirtToPhys
         _ => { },
     }
 
@@ -115,10 +101,10 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
         0x11 => scdef!("TimerCreate", Int, Int, Int, Uint),
         0x12 => scdef!("TimerRestart", Uint, Int, Int),
         0x13 => scdef!("TimerStop", Uint),
-        //0x16 => scdef!("HeapCreate", Ptr, Int),
-        //0x18 => scdef!("HeapAlloc", Int, Uint),
-        //0x19 => scdef!("HeapAllocAligned", Int, Uint, Uint),
-        //0x1a => scdef!("HeapFree", Int, Ptr),
+        0x16 => scdef!("HeapCreate", Ptr, Int),
+        0x18 => scdef!("HeapAlloc", Int, Uint),
+        0x19 => scdef!("HeapAllocAligned", Int, Uint, Uint),
+        0x1a => scdef!("HeapFree", Int, Ptr),
         0x1b => scdef!("RegisterDevice", StrPtr, Int),
         0x1c => scdef!("Open", StrPtr, Int),
         0x1d => scdef!("Close", Int),
@@ -126,14 +112,16 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
         0x1f => scdef!("Write", Int, Ptr, Uint),
         0x21 => scdef!("Ioctl", Int, Uint, Ptr, Uint, Ptr, Uint),
         0x22 => scdef!("Ioctlv", Int, Uint, Uint, Uint, Ptr),
-        //0x2a => scdef!("ResourceReply", Ptr, Uint),
+        0x2a => scdef!("ResourceReply", Ptr, Uint),
         0x2b => scdef!("SetUid", Int),
         0x2d => scdef!("SetGid", Int),
         0x2f => scdef!("AhbMemFlush", Int),
         0x30 => scdef!("CcAhbMemFlush", Int),
         0x32 => scdef!("EnableIrqDI", ),
         0x34 => scdef!("EnableIrq", ),
+        0x35 => scdef!("IobufPoolAccessNOP", ),
         0x3f => scdef!("SyncBeforeRead", Ptr),
+        0x40 => scdef!("SyncAfterWrite", Ptr),
         0x41 => scdef!("PpcBoot", StrPtr),
         0x42 => scdef!("IosBoot", StrPtr),
         0x46 => scdef!("DIResetCheck", ),
