@@ -26,6 +26,8 @@ impl Bus {
             (BusWidth::W, Ehci) => dref.ehci.read(off),
             (BusWidth::W, Ohci0) => dref.ohci0.read(off),
             (BusWidth::W, Ohci1) => dref.ohci1.read(off),
+            (BusWidth::W, Sdhc0) => dref.sd0.read(off),
+            (BusWidth::W, Sdhc1) => dref.sd1.read(off),
 
             (BusWidth::W, Hlwd) => dref.hlwd.read(off),
             (BusWidth::W, Ahb)  => dref.hlwd.ahb.read(off),
@@ -49,6 +51,9 @@ impl Bus {
             (Word(val), Ehci)  => dref.ehci.write(off, val),
             (Word(val), Ohci0)  => dref.ohci0.write(off, val),
             (Word(val), Ohci1)  => dref.ohci1.write(off, val),
+            (Word(val), Sdhc0)  => dref.sd0.write(off, val),
+            (Word(val), Sdhc1)  => dref.sd1.write(off, val),
+
 
             (Word(val), Hlwd) => dref.hlwd.write(off, val),
             (Word(val), Ahb)  => dref.hlwd.ahb.write(off, val),

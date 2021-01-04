@@ -93,7 +93,6 @@ impl Cpu {
 /// Current status of the platform's boot process.
 #[derive(PartialEq)]
 pub enum BootStatus { Boot0, Boot1, Boot2Stub, Boot2, Kernel }
-
 impl Cpu {
     pub fn update_boot_status(&mut self) {
         match self.boot_status {
@@ -114,6 +113,13 @@ impl Cpu {
                     println!("Entered boot2");
                     self.boot_status = BootStatus::Boot2;
                 }
+            }
+            BootStatus::Boot2 => {
+                if self.read_fetch_pc() == 0xffff_2224 { 
+                    println!("Entered kernel");
+                    self.boot_status = BootStatus::Kernel;
+                }
+
             }
             _ => {},
         }

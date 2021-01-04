@@ -7,8 +7,8 @@ on Windows/Mac compatibility. It's also probably very slow, sorry.
 ## Quick Roadmap
 - [x] Execution through the boot ROM
 - [x] Execution through first-stage bootloader
-- [ ] Execution through second-stage bootloader
-- [ ] Execution in the kernel
+- [x] Execution through second-stage bootloader
+- [x] Execution in the kernel
 - [ ] Guest debugging functionality (either via GDB or UI)
 - [ ] Go fast (performance optimizations, i.e. a JIT backend, etc)
 - [ ] Other related tools?

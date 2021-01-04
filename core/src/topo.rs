@@ -8,6 +8,7 @@ use crate::dev::sha::*;
 use crate::dev::nand::*;
 use crate::dev::ehci::*;
 use crate::dev::ohci::*;
+use crate::dev::sdhc::*;
 
 /// Top-level container for system memories.
 ///
@@ -42,6 +43,8 @@ pub struct SystemDevice {
     pub ehci: EhcInterface,
     pub ohci0: OhcInterface,
     pub ohci1: OhcInterface,
+    pub sd0: SDHCInterface,
+    pub sd1: SDHCInterface,
 }
 impl SystemDevice {
     pub fn new() -> Self {
@@ -53,6 +56,8 @@ impl SystemDevice {
             ehci: EhcInterface::new(),
             ohci0: OhcInterface { idx: 0, ..Default::default() },
             ohci1: OhcInterface { idx: 1, ..Default::default() },
+            sd0: SDHCInterface { idx: 0, ..Default::default() },
+            sd1: SDHCInterface { idx: 1, ..Default::default() },
         }
     }
 }

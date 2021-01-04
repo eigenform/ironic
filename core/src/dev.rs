@@ -8,8 +8,12 @@ pub mod aes;
 /// The SHA engine interface.
 pub mod sha;
 
+/// USB Enhanced Host Controller interface.
 pub mod ehci;
+/// USB Open Host Controller interface.
 pub mod ohci;
+/// SD Host Controller interface.
+pub mod sdhc;
 
 // Sizes of physical memory devices.
 pub const MEM1_SIZE:    u32 = 0x0180_0000;

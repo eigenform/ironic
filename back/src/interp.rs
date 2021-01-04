@@ -17,7 +17,7 @@ use crate::decode::arm::ArmInst;
 use crate::decode::thumb::ThumbInst;
 
 use ironic_core::bus::*;
-use ironic_core::cpu::{Cpu, CpuRes};
+use ironic_core::cpu::{Cpu, CpuRes, BootStatus};
 use ironic_core::cpu::reg::Reg;
 use ironic_core::cpu::excep::ExceptionType;
 
@@ -94,6 +94,7 @@ impl InterpBackend {
     /// Write the current instruction to stdout.
     pub fn dbg_print(&mut self) {
         let pc = self.cpu.read_fetch_pc();
+        //if pc == 0xffff_678c && self.cpu.boot_status == BootStatus::Kernel { self.cpu.dbg_on = true; }
         if self.cpu.dbg_on {
             if self.cpu.reg.cpsr.thumb() {
                 let opcd = self.cpu.read16(pc);

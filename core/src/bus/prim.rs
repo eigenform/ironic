@@ -132,6 +132,9 @@ pub enum IoDevice {
     Ehci,
     Ohci0,
     Ohci1,
+    Sdhc0,
+    Sdhc1,
+
     Hlwd, 
     Ahb, 
     Ddr,
