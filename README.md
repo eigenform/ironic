@@ -1,8 +1,9 @@
 # ironic
 Research emulator for the ARM9 core in the Nintendo Wii.
 
-Lots of credit is due to the following projects:
+Credit is due to the following projects and resources:
 - [Team Twiizers' fork of Skyeye](https://github.com/marcan/skyeye-starlet)
+- [Wiibrew](https://wiibrew.org)
 - [archshift/llama](https://github.com/archshift/llama)
 - [MerryMage/dynarmic](https://github.com/MerryMage/dynarmic)
 
