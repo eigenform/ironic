@@ -1,17 +1,18 @@
 # ironic
-It's an emulator.
-
-If there end up being features specific to Linux platforms, I am not planning 
-on Windows/Mac compatibility. It's also probably very slow, sorry.
+An emulator for the ARM9 core in the Nintendo Wii.
 
 ## Quick Roadmap
 - [x] Execution through the boot ROM
 - [x] Execution through first-stage bootloader
 - [x] Execution through second-stage bootloader
 - [x] Execution in the kernel
+- [ ] Broadway/PowerPC-world HLE 
 - [ ] Guest debugging functionality (either via GDB or UI)
 - [ ] Go fast (performance optimizations, i.e. a JIT backend, etc)
 - [ ] Other related tools?
+
+If there end up being features specific to Linux platforms, I am not planning 
+on Windows/Mac compatibility. It's also probably very slow, sorry.
 
 ## Contributing
 I am not interested in accepting contributions to this project and I will 
