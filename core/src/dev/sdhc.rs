@@ -4,6 +4,36 @@ use crate::bus::task::*;
 
 #[derive(Default)]
 pub struct SDInterface {
+    /// Destination address for DMA.
+    pub dma_addr: u32,
+    /// SDHC Block Control Register
+    pub bcon: u32,
+    /// SDHC Argument Register
+    pub arg: u32,
+    /// SDHC Mode Register
+    pub mode: u32,
+    /// SDHC Response Register
+    pub resp: [u32; 4],
+    /// SDHC Data Register
+    pub data: u32,
+    /// SDHC Status Register 1
+    pub stat1: u32,
+    /// SDHC Control Register 1
+    pub ctrl1: u32,
+    /// SDHC Control Register 2
+    pub ctrl2: u32,
+    /// SDHC Interrupt Status Register
+    pub intstat: u32,
+    /// SDHC Interrupt Flag Enable Register
+    pub inten: u32,
+    /// SDHC Interrupt Signal Enable Register
+    pub intsen: u32,
+    /// SDHC Status Register 2
+    pub stat2: u32,
+    /// SDHC Capabilities Register
+    pub cap: u32,
+    /// SDHC Maximum Current Capabilities Register 
+    pub maxcap: u32,
 }
 impl MmioDevice for SDInterface {
     type Width = u32;

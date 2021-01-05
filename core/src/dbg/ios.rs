@@ -22,6 +22,9 @@ pub enum ExecutionCtx {
     STM,
     OH0,
     OH1,
+    SO,
+    ETH,
+    SDI,
 }
 impl From<u32> for ExecutionCtx {
     fn from(pc: u32) -> Self {
@@ -30,10 +33,13 @@ impl From<u32> for ExecutionCtx {
             0x1386 => CRY,
             0x138a => OH0,
             0x138b => OH1,
+            0x13aa => ETH,
+            0x13b6 => SO,
             0x2000 => FS,
             0x2010 => ES,
             0x2020 => DIP,
             0x2030 => STM,
+            0x2040 => SDI,
             0xffff => KRN,
             _ => UNK,
         }

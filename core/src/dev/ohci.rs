@@ -21,9 +21,11 @@ impl MmioDevice for OhcInterface {
             0x08 => self.unk_08,
             _ => panic!("OHCI#{} read at {:x} unimpl", self.idx, off),
         };
+        println!("OH{} read {:08x} at {:x}", self.idx, val, off);
         BusPacket::Word(val)
     }
     fn write(&mut self, off: usize, val: u32) -> Option<BusTask> {
+        println!("OH{} write {:08x} at {:x}", self.idx, val, off);
         match off {
             0x08 => self.unk_08 = val,
             0x14 => self.unk_14 = val,

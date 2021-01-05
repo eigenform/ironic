@@ -94,9 +94,6 @@ impl InterpBackend {
     /// Write the current instruction to stdout.
     pub fn dbg_print(&mut self) {
         let pc = self.cpu.read_fetch_pc();
-        //if pc == 0x13ed0000 && self.cpu.boot_status == BootStatus::Kernel { 
-        //    //self.cpu.dbg_on = true; 
-        //}
         if self.cpu.dbg_on {
             if self.cpu.reg.cpsr.thumb() {
                 let opcd = self.cpu.read16(pc);
@@ -117,14 +114,15 @@ impl InterpBackend {
         }
     }
 
-    // 0:   e3a00000        mov     r0, #0
-    // 4:   e3a01006        mov     r1, #6
-    // 8:   e6000050        .word   0xe6000050
-    // c:   e12fff1e        bx      lr
-    const THREAD_CANCEL_PATCH: [u8; 0x10] = [
-        0xe3, 0xa0, 0x00, 0x00,
-        0xe3, 0xa0, 0x10, 0x06,
+    /// Patch containing a call to ThreadCancel()
+    const THREAD_CANCEL_PATCH: [u8; 0x8] = [
+        // e3a00000 mov     r0, #0
+        //0xe3, 0xa0, 0x00, 0x00,
+        // e3a01006 mov     r1, #6
+        //0xe3, 0xa0, 0x10, 0x06,
+        // e6000050 .word   0xe6000050
         0xe6, 0x00, 0x00, 0x50,
+        // e12fff1e bx      lr
         0xe1, 0x2f, 0xff, 0x1e,
     ];
 
@@ -135,10 +133,10 @@ impl InterpBackend {
         if self.cpu.boot_status == BootStatus::Kernel {
             let pc = self.cpu.read_fetch_pc();
             let vaddr = match pc {
-                0x13d9_0000 | // NCD
-                0x13db_0000 | // KD
-                0x13ed_0000 | // WL
-                0x13eb_0000 => Some(pc), // WD
+                0x13d9_0024 | // NCD
+                0x13db_0024 | // KD
+                0x13ed_0024 | // WL
+                0x13eb_0024 => Some(pc), // WD
                 _ => None
             };
             if vaddr.is_none() { 
@@ -148,6 +146,7 @@ impl InterpBackend {
                     TLBReq::new(vaddr.unwrap(), Access::Debug)
                 );
                 println!("DBG hotpatching module entrypoint {:08x}", paddr);
+                println!("{:?}", self.cpu.reg);
                 self.bus.write().unwrap().dma_write(paddr, 
                     &Self::THREAD_CANCEL_PATCH);
             }
