@@ -103,7 +103,7 @@ impl Bus {
     fn drain_tasks(&mut self) {
         let mut idx = 0;
         while idx != self.tasks.len() {
-            if self.tasks[idx].target_cycle == self.cycle {
+            if self.tasks[idx].target_cycle <= self.cycle {
                 let task = self.tasks.remove(idx);
                 match task.kind {
                     BusTask::Nand(x) => self.handle_task_nand(x),

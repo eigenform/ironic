@@ -59,9 +59,10 @@ fn main() {
     };
     emu_thread.join().unwrap();
 
-    mem.write().unwrap().sram0.dump("/tmp/sram0.bin");
-    mem.write().unwrap().sram1.dump("/tmp/sram1.bin");
-    mem.write().unwrap().mem1.dump("/tmp/mem1.bin");
-    mem.write().unwrap().mem2.dump("/tmp/mem2.bin");
+    let mem_ref = mem.write().unwrap();
+    mem_ref.sram0.dump("/tmp/sram0.bin");
+    mem_ref.sram1.dump("/tmp/sram1.bin");
+    mem_ref.mem1.dump("/tmp/mem1.bin");
+    mem_ref.mem2.dump("/tmp/mem2.bin");
 }
 

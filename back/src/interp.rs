@@ -216,8 +216,6 @@ impl Backend for InterpBackend {
     fn run(&mut self) {
         for _step in 0..0x8000_0000usize {
 
-            self.hotpatch_check();
-
             // Take ownership of the bus to deal with any pending tasks
             {
                 let mut bus = self.bus.write().unwrap();
@@ -225,6 +223,7 @@ impl Backend for InterpBackend {
                 self.cpu.irq_input = bus.irq_line();
             }
 
+            self.hotpatch_check();
             let res = self.cpu_step();
             match res {
                 CpuRes::StepOk => {},
