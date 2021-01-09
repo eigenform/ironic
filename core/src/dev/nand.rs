@@ -242,14 +242,14 @@ impl MmioDevice for NandInterface {
 
 impl Bus {
     fn read_nand_regs(&mut self) -> NandRegisters {
-        self.dev.read().unwrap().nand.reg
+        self.nand.reg
     }
 
     fn nand_erase_page(&mut self, cmd: &NandCmd, reg: &NandRegisters) {
         assert_ne!(cmd.ecc, true);
         assert_ne!(cmd.rd, true);
         let off = reg.addr2 as usize * NAND_PAGE_LEN;
-        self.dev.write().unwrap().nand.clear_data(off, NAND_BLOCK_LEN);
+        self.nand.clear_data(off, NAND_BLOCK_LEN);
         //panic!("nand erase unimpl");
     }
 
@@ -259,7 +259,7 @@ impl Bus {
         let mut local_buf = vec![0; cmd.len as usize];
 
         let off = reg.addr2 as usize * NAND_PAGE_LEN;
-        self.dev.read().unwrap().nand.read_data(off, &mut local_buf);
+        self.nand.read_data(off, &mut local_buf);
 
         //println!("{:?}", local_buf.hex_dump());
 
@@ -285,7 +285,7 @@ impl Bus {
 
         let off = (reg.current_page as usize * NAND_PAGE_LEN) + 
             reg.current_poff as usize;
-        self.dev.write().unwrap().nand.write_data(off, &local_buf);
+        self.nand.write_data(off, &local_buf);
 
         if cmd.ecc {
             assert!(cmd.len == 0x800);
@@ -354,10 +354,8 @@ impl Bus {
         // Get a mutable reference to the system devices and commit any state 
         // that we need to change
         {
-            let mut dev = self.dev.write().unwrap();
-
             // NOTE: Skyeye *always* asserts an IRQ?
-            dev.hlwd.irq.assert(HollywoodIrq::Nand);
+            self.hlwd.irq.assert(HollywoodIrq::Nand);
 
             // Assert an IRQ if requested in the command
             //if cmd.irq { 
@@ -366,9 +364,9 @@ impl Bus {
             //}
 
             // Mark this command as completed
-            dev.nand.reg.ctrl &= 0x7fff_ffff;
+            self.nand.reg.ctrl &= 0x7fff_ffff;
             // Increment cycle counter for NAND state machine
-            dev.nand.reg._cycle = next_cycle;
+            self.nand.reg._cycle = next_cycle;
         }
 
     }

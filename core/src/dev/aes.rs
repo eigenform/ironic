@@ -127,30 +127,27 @@ impl MmioDevice for AesInterface {
 
 impl Bus {
     pub fn handle_task_aes(&mut self, val: u32) {
-        let local_ref = self.dev.clone();
-        let mut dev = local_ref.write().unwrap();
-        let aes = &mut dev.aes;
-
         let cmd = AesCommand::from(val);
 
         // Read data from the source address
         let mut aes_inbuf = vec![0u8; cmd.len];
-        self.dma_read(aes.src, &mut aes_inbuf);
+        self.dma_read(self.aes.src, &mut aes_inbuf);
 
         if cmd.use_aes {
             // Build the right AES cipher for this request
-            let key = aes.key_fifo.as_slices().0;
+            let key = self.aes.key_fifo.as_slices().0;
             let mut iv = [0u8; 0x10];
             if cmd.chain_iv {
-                iv.copy_from_slice(&aes.iv_buffer);
+                iv.copy_from_slice(&self.aes.iv_buffer);
             } else {
-                iv.copy_from_slice(aes.iv_fifo.as_slices().0);
+                iv.copy_from_slice(self.aes.iv_fifo.as_slices().0);
             }
             let cipher = Aes128Cbc::new_var(&key, &iv).unwrap();
 
             //println!("AES key={:02x?}", key);
             //println!("AES iv={:02x?}", iv);
-            //println!("AES Decrypt src={:08x} dst={:08x} len={:08x}", aes.src, aes.dst, cmd.len);
+            //println!("AES Decrypt src={:08x} dst={:08x} len={:08x}", 
+            //  self.aes.src, self.aes.dst, cmd.len);
 
             // Decrypt/encrypt the data, then DMA write to memory
             let aes_outbuf = if cmd.decrypt {
@@ -158,23 +155,23 @@ impl Bus {
             } else {
                 cipher.encrypt_vec(&aes_inbuf)
             };
-            self.dma_write(aes.dst, &aes_outbuf);
+            self.dma_write(self.aes.dst, &aes_outbuf);
 
             // Update IV buffer with the last 16 bytes of data
-            aes.iv_buffer.copy_from_slice(&aes_inbuf[(cmd.len - 0x10)..]);
+            self.aes.iv_buffer.copy_from_slice(&aes_inbuf[(cmd.len - 0x10)..]);
         } else {
-            self.dma_write(aes.dst, &aes_inbuf);
+            self.dma_write(self.aes.dst, &aes_inbuf);
         }
 
         // Update the source/destination registers exposed over MMIO
-        aes.dst += cmd.len as u32;
-        aes.src += cmd.len as u32;
+        self.aes.dst += cmd.len as u32;
+        self.aes.src += cmd.len as u32;
 
         // Mark the command as completed
-        aes.ctrl &= 0x7fff_ffff;
+        self.aes.ctrl &= 0x7fff_ffff;
 
         if cmd.irq { 
-            dev.hlwd.irq.assert(HollywoodIrq::Aes);
+            self.hlwd.irq.assert(HollywoodIrq::Aes);
         }
 
     }

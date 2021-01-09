@@ -83,13 +83,12 @@ impl Bus {
     fn do_mem_read(&mut self, dev: MemDevice, off: usize, width: BusWidth) -> BusPacket {
         use MemDevice::*;
         use BusPacket::*;
-        let mem = self.mem.write().unwrap();
         let target_ref = match dev {
-            MaskRom => &mem.mrom,
-            Sram0   => &mem.sram0,
-            Sram1   => &mem.sram1,
-            Mem1    => &mem.mem1,
-            Mem2    => &mem.mem2,
+            MaskRom => &self.mrom,
+            Sram0   => &self.sram0,
+            Sram1   => &self.sram1,
+            Mem1    => &self.mem1,
+            Mem2    => &self.mem2,
         };
         match width {
             BusWidth::W => Word(target_ref.read::<u32>(off)),
@@ -102,13 +101,12 @@ impl Bus {
     fn do_mem_write(&mut self, dev: MemDevice, off: usize, msg: BusPacket) {
         use MemDevice::*;
         use BusPacket::*;
-        let mut mem = self.mem.write().unwrap();
         let target_ref = match dev {
             MaskRom => panic!("Writes on mask ROM are unsupported"),
-            Sram0   => &mut mem.sram0,
-            Sram1   => &mut mem.sram1,
-            Mem1    => &mut mem.mem1,
-            Mem2    => &mut mem.mem2,
+            Sram0   => &mut self.sram0,
+            Sram1   => &mut self.sram1,
+            Mem1    => &mut self.mem1,
+            Mem2    => &mut self.mem2,
         };
         match msg {
             Word(val) => target_ref.write::<u32>(off, val),
@@ -127,14 +125,13 @@ impl Bus {
         );
 
         let off = (addr & handle.mask) as usize;
-        let mut mem = self.mem.write().unwrap();
         match handle.dev {
             Device::Mem(dev) => { match dev {
                 MaskRom => panic!("Bus error: DMA write on mask ROM"),
-                Sram0 => mem.sram0.write_buf(off, buf),
-                Sram1 => mem.sram1.write_buf(off, buf),
-                Mem1 => mem.mem1.write_buf(off, buf),
-                Mem2 => mem.mem2.write_buf(off, buf),
+                Sram0   => self.sram0.write_buf(off, buf),
+                Sram1   => self.sram1.write_buf(off, buf),
+                Mem1    => self.mem1.write_buf(off, buf),
+                Mem2    => self.mem2.write_buf(off, buf),
             }},
             _ => panic!("Bus error: DMA write on memory-mapped I/O region"),
         }
@@ -148,14 +145,13 @@ impl Bus {
         );
 
         let off = (addr & handle.mask) as usize;
-        let mem = self.mem.write().unwrap();
         match handle.dev {
             Device::Mem(dev) => { match dev {
                 MaskRom => panic!("Bus error: DMA read on mask ROM"),
-                Sram0 => mem.sram0.read_buf(off, buf),
-                Sram1 => mem.sram1.read_buf(off, buf),
-                Mem1 => mem.mem1.read_buf(off, buf),
-                Mem2 => mem.mem2.read_buf(off, buf),
+                Sram0   => self.sram0.read_buf(off, buf),
+                Sram1   => self.sram1.read_buf(off, buf),
+                Mem1    => self.mem1.read_buf(off, buf),
+                Mem2    => self.mem2.read_buf(off, buf),
             }},
             _ => panic!("Bus error: DMA read on memory-mapped I/O region"),
         }

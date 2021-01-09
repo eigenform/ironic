@@ -1,7 +1,5 @@
 
 use ironic_core::bus::*;
-use ironic_core::topo::*;
-
 use ironic_backend::interp::*;
 use ironic_backend::jit::*;
 use ironic_backend::back::*;
@@ -34,11 +32,7 @@ fn main() {
 
     // All of the allocations live here, and we share references
     // between any threads we spin up.
-    let mem = Arc::new(RwLock::new(SystemMemory::new()));
-    let dev = Arc::new(RwLock::new(SystemDevice::new()));
-    let bus = Arc::new(RwLock::new(Bus::new(
-            mem.clone(), dev.clone()
-    )));
+    let bus = Arc::new(RwLock::new(Bus::new()));
 
     // Fork off the backend thread
     let emu_bus = bus.clone();
@@ -59,10 +53,10 @@ fn main() {
     };
     emu_thread.join().unwrap();
 
-    let mem_ref = mem.write().unwrap();
-    mem_ref.sram0.dump("/tmp/sram0.bin");
-    mem_ref.sram1.dump("/tmp/sram1.bin");
-    mem_ref.mem1.dump("/tmp/mem1.bin");
-    mem_ref.mem2.dump("/tmp/mem2.bin");
+    let bus_ref = bus.write().unwrap();
+    bus_ref.sram0.dump("/tmp/sram0.bin");
+    bus_ref.sram1.dump("/tmp/sram1.bin");
+    bus_ref.mem1.dump("/tmp/mem1.bin");
+    bus_ref.mem2.dump("/tmp/mem2.bin");
 }
 

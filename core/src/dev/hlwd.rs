@@ -1,6 +1,4 @@
 
-use std::sync::{Arc, RwLock};
-
 use crate::bus::*;
 use crate::bus::prim::*;
 use crate::bus::mmio::*;
@@ -325,24 +323,20 @@ pub enum HlwdTask { GpioOutput(u32) }
 
 impl Bus {
     pub fn handle_step_hlwd(&mut self) {
-        let local_ref = self.dev.clone();
-        let mut dev = local_ref.write().unwrap();
-        let hlwd = &mut dev.hlwd;
-
-        if hlwd.task.is_some() {
-            match hlwd.task.unwrap() {
-                HlwdTask::GpioOutput(val) => hlwd.gpio.handle_output(val),
+        if self.hlwd.task.is_some() {
+            match self.hlwd.task.unwrap() {
+                HlwdTask::GpioOutput(val) => self.hlwd.gpio.handle_output(val),
             }
-            hlwd.task = None;
+            self.hlwd.task = None;
         }
 
-        let ipc_irq = hlwd.ipc.step();
+        let ipc_irq = self.hlwd.ipc.step();
         if ipc_irq.is_some() {
-            hlwd.irq.assert(ipc_irq.unwrap());
+            self.hlwd.irq.assert(ipc_irq.unwrap());
         }
-        let timer_irq = hlwd.timer.step();
+        let timer_irq = self.hlwd.timer.step();
         if timer_irq {
-            hlwd.irq.assert(irq::HollywoodIrq::Timer);
+            self.hlwd.irq.assert(irq::HollywoodIrq::Timer);
         }
     }
 }

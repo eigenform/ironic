@@ -1,6 +1,4 @@
 
-extern crate pretty_hex;
-
 use crate::mem::*;
 use crate::dev::hlwd::*;
 use crate::dev::aes::*;
