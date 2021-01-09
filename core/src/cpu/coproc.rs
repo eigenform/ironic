@@ -1,19 +1,5 @@
 //! Coprocessor register definitions and functionality.
 
-/// Set of potential side effects that p15 writes may elicit.
-#[derive(Debug)]
-pub enum CoprocTask {
-    /// The state of the system control register has changed.
-    ControlChange,
-    /// The state of the translation table base register has changed.
-    TtbrChange,
-    /// The state of the domain access control register has changed.
-    DacrChange,
-    /// No side effects on other parts of the system need to be handled.
-    None,
-}
-
-
 /// The system control register (p15 register 1).
 #[derive(Copy, Clone)]
 #[repr(transparent)]
@@ -70,35 +56,29 @@ impl From<u32> for DomainMode {
 /// Registers in the System control coprocessor.
 #[derive(Debug)]
 pub enum SystemControlReg {
-    Control         = 1,
-    PageControl     = 2,
-    AccessControl   = 3,
-    FaultStatus     = 5,
-    FaultAddress    = 6,
-    CacheControl    = 7,
-    TlbControl      = 8,
-    CacheLockdown   = 9,
-    TlbLockdown     = 10,
+    Control, PageControl, AccessControl,
+    FaultStatus, FaultAddress,
+    CacheControl, TlbControl, CacheLockdown, TlbLockdown,
 }
 impl From<u32> for SystemControlReg {
     fn from(x: u32) -> Self {
         use SystemControlReg::*;
         match x {
-            1   => Control,
-            2   => PageControl,
-            3   => AccessControl,
-            5   => FaultStatus,
-            6   => FaultAddress,
-            7   => CacheControl,
-            8   => TlbControl,
-            9   => CacheLockdown,
-            10  => TlbLockdown,
+            01 => Control,
+            02 => PageControl,
+            03 => AccessControl,
+            05 => FaultStatus,
+            06 => FaultAddress,
+            07 => CacheControl,
+            08 => TlbControl,
+            09 => CacheLockdown,
+            10 => TlbLockdown,
             _ => panic!("Invalid p15 register number {}", x),
         }
     }
 }
 
-pub struct CFlags {
+pub struct FlagRes {
     pub n: Option<bool>,
     pub z: Option<bool>,
     pub c: Option<bool>,
@@ -110,18 +90,14 @@ pub struct CFlags {
 pub struct SystemControl {
     /// System control register
     pub c1_ctrl: ControlRegister,
-
     /// Translation table base register 0
     pub c2_ttbr0: u32,
-
     /// Domain access control register
     pub c3_dacr: DACRegister,
-
     /// Fault status register (data)
     pub c5_dfsr: u32,
     /// Fault status register (instruction)
     pub c5_ifsr: u32,
-
     /// Fault address register (data)
     pub c6_dfar: u32,
 }
@@ -137,18 +113,19 @@ impl SystemControl {
         }
     }
 
-    pub fn read_alt(&self, reg: u32, crm: u32, opcd2: u32) -> CFlags {
+    /// Returns a set of status flags; called by mrc when rt=15.
+    pub fn read_alt(&self, reg: u32, crm: u32, opcd2: u32) -> FlagRes {
         use SystemControlReg::*;
         match SystemControlReg::from(reg) {
             CacheControl => match (crm, opcd2) {
-                (10, 3) => CFlags { n: None, z: Some(true), c: None, v: None },
+                (10, 3) => FlagRes { n: None, z: Some(true), c: None, v: None },
                 _ => panic!(""),
             },
             _ => panic!("Unimpl p15 read_alt {:?} crm={} opcd2={}", 
                 SystemControlReg::from(reg), crm, opcd2),
         }
     }
-    
+
     pub fn read(&self, reg: u32, crm: u32, opcd2: u32) -> u32 {
         use SystemControlReg::*;
         match SystemControlReg::from(reg) {
@@ -162,24 +139,17 @@ impl SystemControl {
         }
     }
 
-    pub fn write(&mut self, val: u32, reg: u32, crm: u32, opcd2: u32) 
-        -> CoprocTask {
+    pub fn write(&mut self, val: u32, reg: u32, crm: u32, opcd2: u32) {
         use SystemControlReg::*;
         match SystemControlReg::from(reg) {
             Control => match (crm, opcd2) {
-                (0, 0) => {
-                    self.c1_ctrl.0 = val;
-                    return CoprocTask::ControlChange;
-                },
+                (0, 0) => self.c1_ctrl.0 = val,
                 _ => panic!("Unimpl P15 write {:08x} {:?} crm={} opcd2={}",
                     val, SystemControlReg::from(reg), crm, opcd2),
             },
 
             PageControl => match (crm, opcd2) {
-                (0, 0) => {
-                    self.c2_ttbr0 = val;
-                    return CoprocTask::TtbrChange;
-                },
+                (0, 0) => self.c2_ttbr0 = val,
                 _ => panic!("Unimpl P15 write {:08x} {:?} crm={} opcd2={}",
                     val, SystemControlReg::from(reg), crm, opcd2),
             },
@@ -187,7 +157,6 @@ impl SystemControl {
             AccessControl => match (crm, opcd2) {
                 (0, 0) => {
                     self.c3_dacr = DACRegister(val);
-                    return CoprocTask::DacrChange;
                 },
                 _ => panic!("Unimpl P15 write {:08x} {:?} crm={} opcd2={}",
                     val, SystemControlReg::from(reg), crm, opcd2),
@@ -206,17 +175,17 @@ impl SystemControl {
             },
 
             CacheControl => match (crm, opcd2) {
-                (5, 0) => {}, //println!("P15 Invalidate entire icache"),
-                (6, 0) => {}, //println!("P15 Invalidate entire dcache"),
-                (6, 1) => {}, //println!("P15 Invalidate dcache line {:08x}", val"),
-                (10, 1) => {}, //println!("P15 Clean dcache line {:08x}", val),
-                (10, 4) => {}, //println!("P15 Drain write buffer"),
+                (5, 0) => {}, // Invalidate entire icache
+                (6, 0) => {}, // Invalidate entire dcache
+                (6, 1) => {}, // Invalidate dcache line
+                (10, 1) => {}, // Clean dcache line
+                (10, 4) => {}, // Drain write buffer
                 _ => panic!("Unimpl P15 write {:08x} {:?} crm={} opcd2={}",
                     val, SystemControlReg::from(reg), crm, opcd2),
             },
 
             TlbControl => match (crm, opcd2) {
-                (7, 0) => {}, //println!("P15 Invalidate entire TLB"),
+                (7, 0) => {}, // Invalidate entire TLB
                 _ => panic!("Unimpl P15 write {:08x} {:?} crm={} opcd2={}",
                     val, SystemControlReg::from(reg), crm, opcd2),
             },
@@ -224,9 +193,6 @@ impl SystemControl {
             _ => panic!("Unimpl P15 write {:08x} {:?} crm={} opcd2={}", 
                 val, SystemControlReg::from(reg), crm, opcd2),
         }
-        CoprocTask::None
     }
 }
-
-
 

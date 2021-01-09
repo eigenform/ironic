@@ -8,13 +8,9 @@ pub mod lut;
 pub mod alu;
 
 use std::sync::{Arc,RwLock};
-use std::collections::BTreeMap;
 
 use crate::bus::*;
-use crate::cpu::lut::*;
-use crate::cpu::reg::*;
 use crate::cpu::excep::*;
-use crate::cpu::coproc::CoprocTask;
 
 /// Result after exiting the emulated CPU.
 pub enum CpuRes {
@@ -82,7 +78,7 @@ impl Cpu {
         self.reg.pc = val.wrapping_add(pc_adj);
     }
 
-    /// Increment the program counter.
+    /// Increment the program counter, depending on the Thumb bit state.
     pub fn increment_pc(&mut self) {
         let pc_inc = if self.reg.cpsr.thumb() { 2 } else { 4 };
         self.reg.pc = self.reg.pc.wrapping_add(pc_inc);
