@@ -4,7 +4,6 @@ pub mod excep;
 pub mod reg;
 pub mod psr;
 pub mod mmu;
-pub mod lut;
 pub mod alu;
 
 use std::sync::{Arc,RwLock};

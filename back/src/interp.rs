@@ -223,7 +223,9 @@ impl Backend for InterpBackend {
                 self.cpu.irq_input = bus.irq_line();
             }
 
+            // Before each CPU step, check if we need to patch any close code
             self.hotpatch_check();
+
             let res = self.cpu_step();
             match res {
                 CpuRes::StepOk => {},
@@ -243,5 +245,4 @@ impl Backend for InterpBackend {
         println!("CPU stopped at pc={:08x}", self.cpu.read_fetch_pc());
     }
 }
-
 

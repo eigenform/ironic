@@ -10,28 +10,31 @@ use crate::cpu::Cpu;
 /// Right now, in order to perform any memory accesses, we must acquire a
 /// mutable reference to the bus. This is expensive.
 impl Cpu {
-    pub fn read32(&self, addr: u32) -> u32 {
+    pub fn read32(&mut self, addr: u32) -> u32 {
         let paddr = self.translate(TLBReq::new(addr, Access::Read));
-        self.bus.write().unwrap().read32(paddr)
+        let res = self.bus.write().unwrap().read32(paddr);
+        res
     }
-    pub fn read16(&self, addr: u32) -> u16 {
+    pub fn read16(&mut self, addr: u32) -> u16 {
         let paddr = self.translate(TLBReq::new(addr, Access::Read));
-        self.bus.write().unwrap().read16(paddr)
+        let res = self.bus.write().unwrap().read16(paddr);
+        res
     }
-    pub fn read8(&self, addr: u32) -> u8 {
+    pub fn read8(&mut self, addr: u32) -> u8 {
         let paddr = self.translate(TLBReq::new(addr, Access::Read));
-        self.bus.write().unwrap().read8(paddr)
+        let res = self.bus.write().unwrap().read8(paddr);
+        res
     }
 
-    pub fn write32(&self, addr: u32, val: u32) {
+    pub fn write32(&mut self, addr: u32, val: u32) {
         let paddr = self.translate(TLBReq::new(addr, Access::Write));
         self.bus.write().unwrap().write32(paddr, val);
     }
-    pub fn write16(&self, addr: u32, val: u32) {
+    pub fn write16(&mut self, addr: u32, val: u32) {
         let paddr = self.translate(TLBReq::new(addr, Access::Write));
         self.bus.write().unwrap().write16(paddr, val as u16);
     }
-    pub fn write8(&self, addr: u32, val: u32) {
+    pub fn write8(&mut self, addr: u32, val: u32) {
         let paddr = self.translate(TLBReq::new(addr, Access::Write));
         self.bus.write().unwrap().write8(paddr, val as u8);
     }
