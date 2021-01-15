@@ -17,9 +17,13 @@ use crate::decode::arm::ArmInst;
 use crate::decode::thumb::ThumbInst;
 
 use ironic_core::bus::*;
-use ironic_core::cpu::{Cpu, CpuRes, BootStatus};
+use ironic_core::cpu::{Cpu, CpuRes};
 use ironic_core::cpu::reg::Reg;
 use ironic_core::cpu::excep::ExceptionType;
+
+/// Current stage in the platform's boot process.
+#[derive(PartialEq)]
+pub enum BootStatus { Boot0, Boot1, Boot2Stub, Boot2, Kernel }
 
 /// Backend for interpreting-style emulation. 
 ///
@@ -44,8 +48,11 @@ pub struct InterpBackend {
     /// The CPU state.
     pub cpu: Cpu,
 
-    /// Buffer for semi-hosting debug writes
+    /// Buffer for semi-hosting debug writes.
     pub svc_buf: String,
+
+    /// Current stage in the platform boot process.
+    pub boot_status: BootStatus,
 }
 impl InterpBackend {
     pub fn new(bus: Arc<RwLock<Bus>>) -> Self {
@@ -53,12 +60,44 @@ impl InterpBackend {
             svc_buf: String::new(),
             lut: InterpLut::new(),
             cpu: Cpu::new(bus.clone()),
+            boot_status: BootStatus::Boot0,
             bus,
         }
     }
 }
 
 impl InterpBackend {
+    /// Check if we need to update the current boot stage.
+    pub fn update_boot_status(&mut self) {
+        match self.boot_status {
+            BootStatus::Boot0 => {
+                if self.cpu.read_fetch_pc() == 0xfff0_0000 { 
+                    println!("Entered boot1");
+                    self.boot_status = BootStatus::Boot1;
+                }
+            }
+            BootStatus::Boot1 => {
+                if self.cpu.read_fetch_pc() == 0xfff0_0058 { 
+                    println!("Entered boot2 stub");
+                    self.boot_status = BootStatus::Boot2Stub;
+                }
+            }
+            BootStatus::Boot2Stub => {
+                if self.cpu.read_fetch_pc() == 0xffff_0000 { 
+                    println!("Entered boot2");
+                    self.boot_status = BootStatus::Boot2;
+                }
+            }
+            BootStatus::Boot2 => {
+                if self.cpu.read_fetch_pc() == 0xffff_2224 { 
+                    println!("Entered kernel");
+                    self.boot_status = BootStatus::Kernel;
+                }
+            }
+            _ => {},
+        }
+    }
+
     /// Write semihosting debug strings to stdout.
     pub fn svc_read(&mut self) {
         use ironic_core::cpu::mmu::prim::{TLBReq, Access};
@@ -130,7 +169,7 @@ impl InterpBackend {
     /// WL, and WD; presumably to avoid having to deal with emulating WLAN.
     pub fn hotpatch_check(&mut self) {
         use ironic_core::cpu::mmu::prim::{TLBReq, Access};
-        if self.cpu.boot_status == BootStatus::Kernel {
+        if self.boot_status == BootStatus::Kernel {
             let pc = self.cpu.read_fetch_pc();
             let vaddr = match pc {
                 0x13d9_0024 | // NCD
@@ -207,7 +246,7 @@ impl InterpBackend {
             },
         };
 
-        self.cpu.update_boot_status();
+        self.update_boot_status();
         cpu_res
     }
 }

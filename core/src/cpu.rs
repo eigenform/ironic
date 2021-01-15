@@ -31,9 +31,6 @@ pub struct Cpu {
     /// The system control co-processor.
     pub p15: coproc::SystemControl,
 
-    /// Current stage in the boot process.
-    pub boot_status: BootStatus,
-
     pub current_exception: Option<ExceptionType>,
 
     pub scratch: u32,
@@ -51,7 +48,6 @@ impl Cpu {
             p15: coproc::SystemControl::new(),
             scratch: 0,
             irq_input: false,
-            boot_status: BootStatus::Boot0,
             current_exception: None,
             dbg_on: false,
             dbg_steps: 1_000_000,
@@ -85,41 +81,4 @@ impl Cpu {
 }
 
 
-/// Current status of the platform's boot process.
-#[derive(PartialEq)]
-pub enum BootStatus { Boot0, Boot1, Boot2Stub, Boot2, Kernel }
-impl Cpu {
-    pub fn update_boot_status(&mut self) {
-        match self.boot_status {
-            BootStatus::Boot0 => {
-                if self.read_fetch_pc() == 0xfff0_0000 { 
-                    println!("Entered boot1");
-                    self.boot_status = BootStatus::Boot1;
-                }
-            }
-            BootStatus::Boot1 => {
-                if self.read_fetch_pc() == 0xfff0_0058 { 
-                    println!("Entered boot2 stub");
-                    self.boot_status = BootStatus::Boot2Stub;
-                }
-            }
-            BootStatus::Boot2Stub => {
-                if self.read_fetch_pc() == 0xffff_0000 { 
-                    println!("Entered boot2");
-                    self.boot_status = BootStatus::Boot2;
-                }
-            }
-            BootStatus::Boot2 => {
-                if self.read_fetch_pc() == 0xffff_2224 { 
-                    println!("Entered kernel");
-                    self.boot_status = BootStatus::Kernel;
-                }
-
-            }
-            _ => {},
-        }
-    }
-
-
-}
 
