@@ -48,7 +48,8 @@ impl Cpu {
         if ctx.validate(&req, d.ap()) {
             d.base_addr() | req.vaddr.section_idx() 
         } else {
-            panic!("Domain access faults are unimplemented");
+            panic!("Domain access faults are unimplemented, vaddr={:08x}",
+                req.vaddr.0);
         }
     }
 
@@ -61,7 +62,8 @@ impl Cpu {
                 if ctx.validate(&req, entry.get_ap(req.vaddr)) {
                     entry.base_addr() | req.vaddr.small_page_idx()
                 } else {
-                    panic!("Domain access faults are unimplemented");
+                    panic!("Domain access faults are unimplemented, vaddr={:08x}",
+                        req.vaddr.0);
                 }
             },
             _ => panic!("L2 descriptor {:?} unimplemented, vaddr={:08x}", 

@@ -28,10 +28,16 @@ pub enum HollywoodIrq {
 #[repr(transparent)]
 pub struct IrqBits(pub u32);
 impl IrqBits {
-    fn set(&mut self, irqnum: HollywoodIrq) { self.0 |= irqnum as u32; }
-    fn toggle(&mut self, irqnum: HollywoodIrq) { self.0 ^= irqnum as u32; }
-    fn unset(&mut self, irqnum: HollywoodIrq) { self.0 &= !(irqnum as u32); }
-    fn is_set(&self, irqnum: HollywoodIrq) -> bool {
+    pub fn set(&mut self, irqnum: HollywoodIrq) { 
+        self.0 |= irqnum as u32; 
+    }
+    pub fn toggle(&mut self, irqnum: HollywoodIrq) { 
+        self.0 ^= irqnum as u32; 
+    }
+    pub fn unset(&mut self, irqnum: HollywoodIrq) { 
+        self.0 &= !(irqnum as u32); 
+    }
+    pub fn is_set(&self, irqnum: HollywoodIrq) -> bool {
         (self.0 & irqnum as u32) != 0
     }
 
@@ -56,8 +62,10 @@ impl IrqBits {
 
 #[derive(Debug, Default, Clone)]
 pub struct IrqInterface {
-    /// Whether or not the IRQ signal to the CPU is asserted.
-    pub irq_output: bool,
+    /// Output IRQ line to the ARM side; set true when any IRQ is asserted
+    pub arm_irq_output: bool,
+    /// Output IRQ line to the PPC side; set true when any IRQ is asserted.
+    pub ppc_irq_output: bool,
 
     pub ppc_irq_status: IrqBits,
     pub ppc_irq_enable: IrqBits,
@@ -76,6 +84,7 @@ impl IrqInterface {
             _ => panic!("Unhandled read on HLWD IRQ interface {:02x}", off),
         }
     }
+
     pub fn write_handler(&mut self, off: usize, val: u32) {
         match off {
             0x04 => {
@@ -83,7 +92,6 @@ impl IrqInterface {
                 println!("IRQ PPC enable={:08x}", val);
             },
 
-            // CPU writes to this register clear the status bits.
             0x08 => {
                 //println!("IRQ status bits {:08x} cleared", val);
                 self.arm_irq_status.0 &= !val;
@@ -101,26 +109,43 @@ impl IrqInterface {
             _ => panic!("Unhandled write {:08x} on HLWD IRQ interface {:02x}", 
                 val, off),
         }
-        self.update_state();
+        self.update_irq_lines();
     }
 }
 
 impl IrqInterface {
-    /// Update the state of the output signal to the CPU.
-    fn update_state(&mut self) {
+    /// Update the state of the output IRQ signal to both CPUs.
+    fn update_irq_lines(&mut self) {
         if (self.arm_irq_status.0 & self.arm_irq_enable.0) == 0 {
-            self.irq_output = false;
+            self.arm_irq_output = false;
         } else {
-            self.irq_output = true;
+            self.arm_irq_output = true;
+        }
+
+        if (self.ppc_irq_status.0 & self.ppc_irq_enable.0) == 0 {
+            self.ppc_irq_output = false;
+        } else {
+            self.ppc_irq_output = true;
         }
     }
 
+    /// Returns true if the given IRQ is asserted on the ARM-side.
+    pub fn arm_irq_pending(&self, irq: HollywoodIrq) -> bool {
+        (self.arm_irq_status.0 & self.arm_irq_enable.0 == 0) &&
+            (self.arm_irq_status.0 & irq as u32) == 0
+    }
+
+    /// Returns true if the given IRQ is asserted on the PPC-side.
+    pub fn ppc_irq_pending(&self, irq: HollywoodIrq) -> bool {
+        (self.ppc_irq_status.0 & self.ppc_irq_enable.0 == 0) &&
+            (self.ppc_irq_status.0 & irq as u32) == 0
+    }
+
+    /// Assert a Hollywood IRQ.
     pub fn assert(&mut self, irq: HollywoodIrq) {
-        if self.arm_irq_enable.is_set(irq) {
-            assert!(!self.arm_irq_status.is_set(irq));
-            self.arm_irq_status.set(irq);
-            self.update_state();
-        }
+        if self.arm_irq_enable.is_set(irq) { self.arm_irq_status.set(irq); }
+        if self.ppc_irq_enable.is_set(irq) { self.ppc_irq_status.set(irq); }
+        self.update_irq_lines();
     }
 }
 

@@ -91,11 +91,6 @@ impl Bus {
         self.cycle += 1;
     }
 
-    /// Returns the state of the IRQ input signal attached to the CPU.
-    pub fn irq_line(&mut self) -> bool {
-        self.hlwd.irq.irq_output
-    }
-
     /// Dispatch all of the pending tasks on the Bus.
     fn drain_tasks(&mut self) {
         let mut idx = 0;

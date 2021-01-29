@@ -196,7 +196,8 @@ impl InterpBackend {
     pub fn cpu_step(&mut self) -> CpuRes {
         assert!((self.cpu.read_fetch_pc() & 1) == 0);
 
-        // Sample the IRQ line and potentially generate an IRQ exception
+        // Sample the IRQ line. If the IRQ line is high and IRQs are not 
+        // disabled in the CPSR, take an IRQ exception. 
         if !self.cpu.reg.cpsr.irq_disable() && self.cpu.irq_input {
             self.cpu.generate_exception(ExceptionType::Irq);
         }
@@ -259,7 +260,7 @@ impl Backend for InterpBackend {
             {
                 let mut bus = self.bus.write().unwrap();
                 bus.step();
-                self.cpu.irq_input = bus.irq_line();
+                self.cpu.irq_input = bus.hlwd.irq.arm_irq_output;
             }
 
             // Before each CPU step, check if we need to patch any close code

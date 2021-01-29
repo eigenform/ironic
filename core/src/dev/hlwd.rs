@@ -27,7 +27,7 @@ impl TimerInterface {
     pub fn step(&mut self) -> bool {
         self.timer += 1;
         if self.timer == self.alarm {
-            println!("HLWD alarm trigger {:08x} == {:08x}", self.timer, self.alarm);
+            println!("HLWD alarm IRQ {:08x}", self.timer);
             true
         } else {
             false
@@ -174,6 +174,7 @@ pub struct Hollywood {
     pub io_str_ctrl1: u32,
 
     pub usb_frc_rst: u32,
+    pub ppc_on: bool,
 }
 impl Hollywood {
     pub fn new() -> Self {
@@ -203,6 +204,7 @@ impl Hollywood {
             spare1: 0,
             io_str_ctrl0: 0,
             io_str_ctrl1: 0,
+            ppc_on: false,
         };
         res
     }
@@ -250,7 +252,7 @@ impl MmioDevice for Hollywood {
         match off {
             0x000..=0x00c => self.ipc.write_handler(off, val),
             0x014 => {
-                println!("HLWD alarm set to {:08x}", val);
+                println!("HLWD alarm={:08x} (timer={:08x})", val, self.timer.timer);
                 self.timer.alarm = val;
             },
             0x030..=0x05c => self.irq.write_handler(off - 0x30, val),
@@ -297,6 +299,17 @@ impl MmioDevice for Hollywood {
             },
             0x190 => self.clocks = val,
             0x194 => {
+                let diff = self.resets ^ val;
+                if diff & 0x0000_0030 != 0 {
+                    if (val & 0x0000_0020 != 0) && (val & 0x0000_0010 != 0) {
+                        println!("HLWD Broadway power on");
+                        self.ppc_on = true;
+                    } else {
+                        println!("HLWD Broadway power off");
+                        self.ppc_on = false;
+                    }
+                }
+
                 println!("HLWD resets={:08x}", val);
                 self.resets = val;
             },
@@ -319,24 +332,30 @@ impl MmioDevice for Hollywood {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum HlwdTask { GpioOutput(u32) }
+pub enum HlwdTask { 
+    GpioOutput(u32) 
+}
 
 impl Bus {
     pub fn handle_step_hlwd(&mut self) {
+
+        // Potentially assert an IRQ
+        let timer_irq = self.hlwd.timer.step();
+        if timer_irq {
+            self.hlwd.irq.assert(irq::HollywoodIrq::Timer);
+        }
+        if self.hlwd.ipc.assert_ppc_irq() {
+            self.hlwd.irq.assert(irq::HollywoodIrq::PpcIpc);
+        }
+        if self.hlwd.ipc.assert_arm_irq() {
+            self.hlwd.irq.assert(irq::HollywoodIrq::ArmIpc);
+        }
+
         if self.hlwd.task.is_some() {
             match self.hlwd.task.unwrap() {
                 HlwdTask::GpioOutput(val) => self.hlwd.gpio.handle_output(val),
             }
             self.hlwd.task = None;
-        }
-
-        let ipc_irq = self.hlwd.ipc.step();
-        if ipc_irq.is_some() {
-            self.hlwd.irq.assert(ipc_irq.unwrap());
-        }
-        let timer_irq = self.hlwd.timer.step();
-        if timer_irq {
-            self.hlwd.irq.assert(irq::HollywoodIrq::Timer);
         }
     }
 }
