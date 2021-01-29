@@ -26,6 +26,7 @@ impl MmioDevice for EhcInterface {
 
     fn read(&mut self, off: usize) -> BusPacket {
         let val = match off {
+            0xcc => self.unk_cc,
             _ => panic!("Unimplemented EHCI read at offset {:04x}", off),
         };
         BusPacket::Word(val)

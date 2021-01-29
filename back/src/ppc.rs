@@ -283,7 +283,7 @@ impl Backend for PpcBackend {
                 println!("[PPC] Broadway came online");
                 break 'wait_for_broadway;
             } else {
-                thread::sleep(std::time::Duration::from_millis(500));
+                thread::sleep(std::time::Duration::from_millis(50));
             }
         }
 

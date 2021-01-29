@@ -22,16 +22,26 @@ pub mod ipc;
 pub struct TimerInterface {
     pub timer: u32,
     pub alarm: u32,
+
+    pub cpu_cycle_prev: usize,
 }
 impl TimerInterface {
-    pub fn step(&mut self) -> bool {
-        self.timer += 1;
-        if self.timer == self.alarm {
-            println!("HLWD alarm IRQ {:08x}", self.timer);
-            true
-        } else {
-            false
+    /// Timer period (some fraction of the CPU clock).
+    pub const CPU_CLK_DIV: usize = 128;
+
+    pub fn step(&mut self, current_cpu_cycle: usize) -> bool {
+        // Fine as long as bus steps are interleaved with CPU steps I guess?
+        if current_cpu_cycle - self.cpu_cycle_prev >= Self::CPU_CLK_DIV {
+            self.timer += 1;
+            self.cpu_cycle_prev = current_cpu_cycle;
+            if self.timer == self.alarm {
+                println!("HLWD alarm IRQ {:08x}", self.timer);
+                return true;
+            } else {
+                return false;
+            }
         }
+        false
     }
 }
 
@@ -337,10 +347,10 @@ pub enum HlwdTask {
 }
 
 impl Bus {
-    pub fn handle_step_hlwd(&mut self) {
+    pub fn handle_step_hlwd(&mut self, cpu_cycle: usize) {
 
         // Potentially assert an IRQ
-        let timer_irq = self.hlwd.timer.step();
+        let timer_irq = self.hlwd.timer.step(cpu_cycle);
         if timer_irq {
             self.hlwd.irq.assert(irq::HollywoodIrq::Timer);
         }

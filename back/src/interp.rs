@@ -13,8 +13,8 @@ use crate::back::*;
 use crate::interp::lut::*;
 use crate::interp::dispatch::DispatchRes;
 
-use crate::decode::arm::ArmInst;
-use crate::decode::thumb::ThumbInst;
+use crate::decode::arm::*;
+use crate::decode::thumb::*;
 
 use ironic_core::bus::*;
 use ironic_core::cpu::{Cpu, CpuRes};
@@ -48,9 +48,13 @@ pub struct InterpBackend {
     /// The CPU state.
     pub cpu: Cpu,
 
+    /// Number of CPU cycles elapsed.
+    pub cpu_cycle: usize,
+    /// Number of bus cycles elapsed.
+    pub bus_cycle: usize,
+
     /// Buffer for semi-hosting debug writes.
     pub svc_buf: String,
-
     /// Current stage in the platform boot process.
     pub boot_status: BootStatus,
 }
@@ -61,6 +65,8 @@ impl InterpBackend {
             lut: InterpLut::new(),
             cpu: Cpu::new(bus.clone()),
             boot_status: BootStatus::Boot0,
+            cpu_cycle: 0,
+            bus_cycle: 0,
             bus,
         }
     }
@@ -259,7 +265,8 @@ impl Backend for InterpBackend {
             // Take ownership of the bus to deal with any pending tasks
             {
                 let mut bus = self.bus.write().unwrap();
-                bus.step();
+                bus.step(self.cpu_cycle);
+                self.bus_cycle += 1;
                 self.cpu.irq_input = bus.hlwd.irq.arm_irq_output;
             }
 
@@ -281,6 +288,7 @@ impl Backend for InterpBackend {
                     self.svc_read();
                 }
             }
+            self.cpu_cycle += 1;
         }
         println!("CPU stopped at pc={:08x}", self.cpu.read_fetch_pc());
     }
