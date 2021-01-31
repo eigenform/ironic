@@ -14,20 +14,8 @@ pub struct MailboxState {
     pub arm_ack_int: bool,
 }
 
-// skyeye does the following:
-//
-// write x to ppc_ctrl:
-//  clear ppc_ctrl 
-
-
 impl MailboxState {
-
-    // Working on the best way to represent this, this might be wrong
-    // init - set 0x38
-    // sendrequest - set 0x1, clear 0x2,0x4, 0x8
-    // replyhandler - set 0x4, clear 0x1,0x2,0x8; then set 0x8, clear 0x1,0x2,0x4
-    // ackhandler - set 0x2, clear 0x1,0x4,0x8; then set 0x8,clear 0x1,0x2,0x4
-
+    /// Write handler for PPC_CTRL
     pub fn ppc_ctrl_write(&mut self, x: u32) {
         self.arm_req = x & 0x0000_0001 != 0;
         self.arm_ack = x & 0x0000_0008 != 0;
@@ -37,6 +25,8 @@ impl MailboxState {
         self.ppc_ack_int = x & 0x0000_0020 != 0;
         println!("{:?}", self);
     }
+
+    /// Write handler for ARM_CTRL
     pub fn arm_ctrl_write(&mut self, x: u32) {
         self.ppc_req = x & 0x0000_0001 != 0;
         self.ppc_ack = x & 0x0000_0008 != 0;
@@ -47,6 +37,8 @@ impl MailboxState {
         println!("{:?}", self);
 
     }
+
+    /// Read handler for PPC_CTRL.
     pub fn ppc_ctrl_read(&self) -> u32 {
         let mut res = 0;
         res |= (self.arm_req as u32) << 0;
@@ -57,6 +49,8 @@ impl MailboxState {
         res |= (self.ppc_ack_int as u32) << 5;
         res
     }
+
+    /// Read handler for ARM_CTRL.
     pub fn arm_ctrl_read(&self) -> u32 {
         let mut res = 0;
         res |= (self.ppc_req as u32) << 0;
