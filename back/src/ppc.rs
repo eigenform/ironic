@@ -20,13 +20,14 @@ use pretty_hex::*;
 /// A type of command sent over the socket.
 #[derive(Debug)]
 #[repr(u32)]
-pub enum Command { HostWrite, HostRead, Message, Unimpl }
+pub enum Command { HostWrite, HostRead, Message, Ack, Unimpl }
 impl Command {
     fn from_u32(x: u32) -> Self {
         match x {
             1 => Self::HostRead,
             2 => Self::HostWrite,
             3 => Self::Message,
+            4 => Self::Ack,
             _ => Self::Unimpl,
         }
     }
@@ -69,31 +70,20 @@ impl PpcBackend {
             obuf: [0; BUF_LEN],
         }
     }
-}
 
-
-impl PpcBackend {
     fn recv(&mut self, client: &mut UnixStream) -> Option<usize> {
         let res = client.read(&mut self.ibuf);
         match res {
-            Ok(len) => {
-                if len == 0 { 
-                    println!("[PPC] client HUP"); 
-                    None
-                } else {
-                    Some(len)
-                }
-            },
-            Err(e) => {
-                println!("[PPC] IO error {:?}", e);
-                None
-            }
+            Ok(len) => if len == 0 { None } else { Some(len) },
+            Err(_) => None
         }
     }
 }
 
 
 impl PpcBackend {
+
+    /// Handle clients connected to the socket.
     pub fn server_loop(&mut self, sock: UnixListener) {
         loop {
             let res = sock.accept();
@@ -105,124 +95,75 @@ impl PpcBackend {
                 }
             };
 
-            if self.wait_for_broadway(&mut client) {
-                self.handle_client(&mut client);
-                client.shutdown(Shutdown::Both).unwrap();
-            } else {
-                client.shutdown(Shutdown::Both).unwrap();
-            }
-        }
-    }
+            'handle_client: loop {
+                println!("[PPC] waiting for command ...");
 
-    fn wait_for_broadway(&mut self, client: &mut UnixStream) -> bool {
-        loop {
-            if self.bus.read().unwrap().hlwd.ppc_on {
-                let res = client.write("READY".as_bytes());
-                match res {
-                    Ok(_) => return true,
-                    Err(_) => return false,
-                }
-            } else {
-                thread::sleep(std::time::Duration::from_millis(500));
-            }
-        }
-    }
-
-    fn handle_ppc_irq(&mut self) -> Option<u32> {
-        let mut bus = self.bus.write().unwrap();
-        if bus.hlwd.irq.ppc_irq_pending(HollywoodIrq::PpcIpc) {
-
-            // ARM-world ACK'ed our message, so clear it
-            if bus.hlwd.ipc.state.ppc_ack {
-                bus.hlwd.ipc.state.ppc_ack = false;
-            }
-
-            // ARM-world sent us a message, so ACK it
-            if bus.hlwd.ipc.state.ppc_req {
-                bus.hlwd.ipc.state.arm_ack = true;
-
-                let msg = bus.hlwd.ipc.arm_msg;
-                bus.hlwd.ipc.state.ppc_req = false;
-
-                bus.hlwd.irq.ppc_irq_status.unset(HollywoodIrq::PpcIpc);
-                return Some(msg);
-            }
-        }
-        None
-    }
-
-    pub fn handle_client(&mut self, client: &mut UnixStream) {
-        loop {
-
-            let msg = self.handle_ppc_irq();
-            if msg.is_some() {
-                println!("[PPC] got message {:08x} from ARM", msg.unwrap());
-                panic!("unimpl");
-            }
-
-            println!("[PPC] waiting for command ...");
-            let res = self.wait_for_command(client);
-            let wait_for_int = match res {
-                Err(_) => break,
-                Ok(block) => block,
-            };
-            if wait_for_int {
-                println!("[PPC] waiting for ARM to ack ...");
-                loop {
-                    let asserted = self.bus.read().unwrap().hlwd.irq
-                        .ppc_irq_pending(HollywoodIrq::PpcIpc);
-                    if asserted {
-                        let mut bus = self.bus.write().unwrap();
-                        if bus.hlwd.ipc.state.ppc_ack {
-                            bus.hlwd.ipc.state.ppc_ack = false;
-                            let arm_msg = bus.hlwd.ipc.arm_msg;
-                            client.write("ACK".as_bytes()).unwrap();
-                            println!("[PPC] ARM acked");
-                            break;
+                let res = self.wait_for_request(&mut client);
+                let req = if res.is_none() { break; } else { res.unwrap() };
+                match req.cmd {
+                    Command::Ack => self.handle_ack(req),
+                    Command::HostRead => self.handle_read(&mut client, req),
+                    Command::HostWrite => self.handle_write(&mut client, req),
+                    Command::Message => {
+                        self.handle_message(&mut client, req);
+                        if self.wait_for_ack() {
+                            let armmsg = self.bus.read().unwrap().hlwd.ipc.arm_msg;
+                            client.write(&u32::to_le_bytes(armmsg)).unwrap();
                         }
-                        bus.hlwd.irq.ppc_irq_status.unset(HollywoodIrq::PpcIpc);
-                    } else {
-                        thread::sleep(std::time::Duration::from_millis(100));
-                    }
+                    },
+                    Command::Unimpl => break,
                 }
+            }
+            client.shutdown(Shutdown::Both).unwrap();
+        }
+    }
+
+    /// Block until we get a response from ARM-world.
+    fn wait_for_ack(&mut self) -> bool {
+        println!("[PPC] waiting for ACK ...");
+        loop {
+            if self.bus.read().unwrap().hlwd.irq.ppc_irq_output {
+                println!("[PPC] got irq");
+                let mut res = false;
+                let mut bus = self.bus.write().unwrap();
+
+                if bus.hlwd.ipc.state.ppc_ack {
+                    bus.hlwd.ipc.state.ppc_ack = false;
+                    println!("[PPC] got extra ACK");
+                }
+                if bus.hlwd.ipc.state.ppc_req {
+                    let armmsg = bus.hlwd.ipc.arm_msg;
+                    println!("[PPC] Got message from ARM {:08x}", armmsg);
+                    bus.hlwd.ipc.state.ppc_req = false;
+                    bus.hlwd.ipc.state.arm_ack = true;
+                    res = true;
+                }
+
+                println!("[PPC] cleared irq");
+                bus.hlwd.irq.ppc_irq_status.unset(HollywoodIrq::PpcIpc);
+                return res;
+            } else {
+                thread::sleep(std::time::Duration::from_millis(10));
             }
         }
     }
-}
 
-/// Functions for handling particular commands from a client.
-impl PpcBackend {
-    fn wait_for_command(&mut self, client: &mut UnixStream) -> Result<bool, ()> {
+    /// Block until we receive some command message from a client.
+    fn wait_for_request(&mut self, client: &mut UnixStream) -> Option<SocketReq> {
         let res = self.recv(client);
         if res.is_none() {
-            return Err(());
+            return None;
         }
         let req = SocketReq::from_buf(
             &self.ibuf[0..0xc].try_into().unwrap()
         );
         if req.len as usize > BUF_LEN - 0xc {
-            println!("[PPC] request overflow len={:08x}", req.len);
-            return Err(());
+            return None;
         }
-        match req.cmd {
-            Command::HostRead => {
-                self.handle_read(client, req);
-                return Ok(false);
-            },
-            Command::HostWrite => {
-                self.handle_write(client, req);
-                return Ok(false);
-            },
-            Command::Message => {
-                self.handle_message(req);
-                return Ok(true);
-            },
-            Command::Unimpl => {
-                return Err(());
-            }
-        }
+        Some(req)
     }
 
+    /// Read from physical memory.
     pub fn handle_read(&mut self, client: &mut UnixStream, req: SocketReq) {
         println!("[PPC] read {:x} bytes at {:08x}", req.len, req.addr);
         self.bus.write().unwrap().dma_read(req.addr, 
@@ -230,75 +171,75 @@ impl PpcBackend {
         client.write(&self.obuf[0..req.len as usize]).unwrap();
     }
 
+    /// Write to physical memory.
     pub fn handle_write(&mut self, client: &mut UnixStream, req: SocketReq) {
         println!("[PPC] write {:x} bytes at {:08x}", req.len, req.addr);
         let data = &self.ibuf[0xc..(0xc + req.len as usize)];
         self.bus.write().unwrap().dma_write(req.addr, data);
         client.write("OK".as_bytes()).unwrap();
     }
-    pub fn handle_message(&mut self, req: SocketReq) {
+
+    /// Tell ARM-world that an IPC request is ready at the location indicated
+    /// by the pointer in PPC_MSG.
+    pub fn handle_message(&mut self, client: &mut UnixStream, req: SocketReq) {
         let mut bus = self.bus.write().unwrap();
         bus.hlwd.ipc.ppc_msg = req.addr;
         bus.hlwd.ipc.state.arm_req = true;
+        bus.hlwd.ipc.state.arm_ack = true;
+        client.write("OK".as_bytes()).unwrap();
+    }
+
+    pub fn handle_ack(&mut self, req: SocketReq) {
+        let mut bus = self.bus.write().unwrap();
+        let ppc_ctrl = bus.hlwd.ipc.read_handler(4) & 0x3c;
+        bus.hlwd.ipc.write_handler(4, ppc_ctrl | 0x8);
     }
 
 }
 
-///// Top-level loop for this backend.
-//impl Backend for PpcBackend {
-//    fn run(&mut self) {
-//        println!("[PPC] thread started");
-//
-//        // Try binding to a UNIX socket
-//        let res = std::fs::remove_file(IPC_SOCK);
-//        match res {
-//            Ok(_) => {},
-//            Err(e) => {},
-//        }
-//        let res = UnixListener::bind(IPC_SOCK);
-//        let sock = match res {
-//            Ok(sock) => Some(sock),
-//            Err(e) => {
-//                println!("[PPC] Couldn't bind to {},\n{:?}", IPC_SOCK, e);
-//                None
-//            }
-//        };
-//
-//        // If we successfully bind, run the server
-//        if sock.is_some() {
-//            self.server_loop(sock.unwrap());
-//        }
-//
-//        println!("[PPC] thread died");
-//    }
-//}
 
-// NOTE: Temporary 
 impl Backend for PpcBackend {
     fn run(&mut self) {
         println!("[PPC] PPC backend thread started");
+        self.bus.write().unwrap().hlwd.ipc.state.ppc_ctrl_write(0x36);
 
         'wait_for_broadway: loop { 
             if self.bus.read().unwrap().hlwd.ppc_on {
                 println!("[PPC] Broadway came online");
                 break 'wait_for_broadway;
             } else {
-                thread::sleep(std::time::Duration::from_millis(50));
+                thread::sleep(std::time::Duration::from_millis(500));
             }
         }
 
-        'main_loop: loop {
-            if self.bus.read().unwrap().hlwd.irq.ppc_irq_output {
-                let sts = self.bus.read().unwrap().hlwd.irq.ppc_irq_status.0;
-                let en = self.bus.read().unwrap().hlwd.irq.ppc_irq_enable.0;
-                println!("[PPC] irq line high, sts={:08x} en={:08x}", sts, en);
-            }
-            thread::sleep(std::time::Duration::from_millis(500));
-        }
+        // Block until we get an IRQ with an ACK/MSG
+        self.wait_for_ack();
 
+        // Send an extra ACK
+        self.bus.write().unwrap().hlwd.ipc.state.arm_ack = true;
+        thread::sleep(std::time::Duration::from_millis(100));
+
+        // Try binding to the socket
+        let res = std::fs::remove_file(IPC_SOCK);
+        match res {
+            Ok(_) => {},
+            Err(e) => {},
+        }
+        let res = UnixListener::bind(IPC_SOCK);
+        let sock = match res {
+            Ok(sock) => Some(sock),
+            Err(e) => {
+                println!("[PPC] Couldn't bind to {},\n{:?}", IPC_SOCK, e);
+                None
+            }
+        };
+
+        // If we successfully bind, run the server until it exits
+        if sock.is_some() {
+            self.server_loop(sock.unwrap());
+        }
+        println!("[PPC] thread exited");
     }
 }
-
-
 
 

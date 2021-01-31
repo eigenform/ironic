@@ -13,6 +13,13 @@ pub struct MailboxState {
     pub arm_req_int: bool,
     pub arm_ack_int: bool,
 }
+
+// skyeye does the following:
+//
+// write x to ppc_ctrl:
+//  clear ppc_ctrl 
+
+
 impl MailboxState {
 
     // Working on the best way to represent this, this might be wrong
@@ -28,6 +35,7 @@ impl MailboxState {
         if x & 0x0000_0004 != 0 { self.ppc_req = false; }
         self.ppc_req_int = x & 0x0000_0010 != 0;
         self.ppc_ack_int = x & 0x0000_0020 != 0;
+        println!("{:?}", self);
     }
     pub fn arm_ctrl_write(&mut self, x: u32) {
         self.ppc_req = x & 0x0000_0001 != 0;
@@ -36,6 +44,7 @@ impl MailboxState {
         if x & 0x0000_0004 != 0 { self.arm_req = false; }
         self.arm_req_int = x & 0x0000_0010 != 0;
         self.arm_ack_int = x & 0x0000_0020 != 0;
+        println!("{:?}", self);
 
     }
     pub fn ppc_ctrl_read(&self) -> u32 {
