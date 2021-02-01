@@ -127,7 +127,6 @@ class IPCClient(object):
                 raise ValueError("Invalid ioctlv format string")
         return handles
 
-
     def IOSIoctlv(self, fd, cmd, fmt, *args):
         iargs = []
         oargs = []
@@ -163,9 +162,5 @@ class IPCClient(object):
         print(hexdump(msg.to_buffer()))
         res = self.guest_ipc(msg)
         return unpack(">i", res.read()[4:8])[0]
-
-
-
-
 
 

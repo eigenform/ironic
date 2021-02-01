@@ -145,7 +145,6 @@ impl PpcBackend {
         }
     }
 
-
     /// Block until we get an ACK from ARM-world.
     fn wait_for_ack(&mut self) {
         println!("[PPC] waiting for ACK ...");
