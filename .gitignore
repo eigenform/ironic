@@ -7,7 +7,7 @@ Cargo.lock
 /ui/Cargo.lock
 /tui/target
 /tui/Cargo.lock
-bin/__pycache__/
+pyronic/__pycache__/
 *.pyc
 *.bin
 *.sym
