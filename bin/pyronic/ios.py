@@ -2,9 +2,19 @@ from enum import Enum
 from struct import pack, unpack
 
 class IOSErr(Enum):
-    EINVAL      = -4
-    EACCESS     = -102
-    ENOENT      = -106
+    FS_EINVAL       = -4
+    FS_EACCESS      = -102
+    FS_ENOENT       = -106
+    ES_EINVAL       = -1017
+
+
+class ES(Enum):
+    AddTicket       = 0x01
+    LaunchTitle     = 0x08
+    GetTitlesCount  = 0x0e
+    GetTitles       = 0x0f
+    LaunchBC        = 0x25
+
 
 class IPCMsg(object):
     """ A structure representing some PPC-to-ARM IPC message. 

@@ -2,30 +2,49 @@ from struct import pack, unpack
 
 from pyronic.socket import *
 from pyronic.ios import *
+from hexdump import hexdump
+
+class MemHandle(object):
+    """ A handle to some piece of guest memory """
+    def __init__(self, sock, paddr, size):
+        self.__sock = sock
+        self.paddr = paddr
+        self.size = size
+    def read(self, off=0, size=None):
+        return self.__sock.send_guestread(self.paddr, self.size)
+    def write(self, buf, off=0):
+        assert len(buf) <= self.size
+        self.__sock.send_guestwrite(self.paddr, buf)
+        self.data_size = len(buf)
+
 
 class PPCMemory(object):
-    """ Simple book-keeping for guest memory usage """
-    def __init__(self, head=0x01000000, tail=0x01780000):
+    """ The fabled "bump allocator," notoriously difficult to implement """
+    def __init__(self, sock, head=0x01000000, tail=0x01780000):
+        self.__sock = sock
         self.head = head
         self.tail = tail
         self.cursor = head
         self.block_len = 0x40
-        self.allocations = []
 
+    def free(self, paddr): raise ValueError("nah")
     def alloc(self, rsize):
-        assert rsize != 0
+        # Round up the size of an allocation (to the block length)
         if (rsize % self.block_len) == 0: 
             size = rsize
         else: 
             size = (rsize & ~(self.block_len-1)) + self.block_len
-        assert size < self.tail - self.head
+
+        if (size > (self.tail - self.head)):
+            raise ValueError("Allocation too large for bounds")
+
+        # If we run out of room, just go back to the beginning
         if ((self.cursor + size) >= self.tail):
             self.cursor = self.head
-            self.allocations = []
+
         addr = self.cursor
         self.cursor += size
-        self.allocations.append((addr, size))
-        return addr
+        return MemHandle(self.__sock, addr, rsize)
 
 
 class IPCClient(object):
@@ -40,78 +59,113 @@ class IPCClient(object):
 
     def __init__(self, filename="/tmp/ironic.sock"):
         self.sock = IronicSocket()
-        self.mem = PPCMemory()
+        self.mem = PPCMemory(self.sock)
+
+    def alloc_buf(self, buf, paddr=None):
+        """ Return a handle to a piece of memory initialized with 'buf' """
+        if paddr == None:
+            hdl = self.mem.alloc(len(buf))
+        else:
+            hdl = MemHandle(self.sock, paddr, len(buf))
+        hdl.write(buf)
+        return hdl
+
+    def alloc_raw(self, size, paddr=None):
+        """ Return a handle to a piece of uninitialized memory """
+        if paddr == None:
+            return self.mem.alloc(size)
+        else:
+            return MemHandle(self.sock, paddr, size)
 
     def shutdown(self):
-        """ Kill our connection to the server """
+        """ Close our connection to the server """
         self.sock.close()
 
-    def read(self, paddr, size): 
+    def guest_read(self, paddr, size): 
         """ Read some data from guest physical memory """
         return self.sock.send_guestread(paddr, size)
 
-    def write(self, paddr, buf):
+    def guest_write(self, paddr, buf):
         """ Write some data to guest physical memory """
         self.sock.send_guestwrite(paddr, buf)
 
-    def ipc_request(self, ipcmsg: IPCMsg):
-        """ Send some IOS IPC request to ARM-world and wait for the response.
-        Returns the entire response buffer (big-endian binary representation).
-        """
-        req_buf = ipcmsg.to_buffer()
-        req_ptr = self.mem.alloc(len(req_buf))
-        self.write(req_ptr, req_buf)
-
-        self.sock.send_ipcmsg(req_ptr)
-        res_ptr = self.sock.recv_ipcmsg()
-        res_buf = self.read(res_ptr, len(req_buf))
-        return res_buf
+    def guest_ipc(self, ipcmsg: IPCMsg):
+        """ Send an IPC request, block, return a handle to the response """
+        buf = self.alloc_buf(ipcmsg.to_buffer())
+        self.sock.send_ipcmsg(buf.paddr)
+        response_ptr = self.sock.recv_ipcmsg()
+        return MemHandle(self.sock, response_ptr, 0x20)
 
     def IOSOpen(self, inpath, mode=0):
-        path_buf = inpath.encode('utf-8') + b'\x00'
-        path_buf_ptr = self.mem.alloc(len(path_buf))
-        self.write(path_buf_ptr, path_buf)
-
-        msg = IPCMsg(self.IPC_OPEN, fd=0, args=[path_buf_ptr, mode])
-        res_buf = self.ipc_request(msg)
-        return unpack(">i", res_buf[4:8])[0]
+        buf = self.alloc_buf(inpath.encode('utf-8') + b'\x00')
+        msg = IPCMsg(self.IPC_OPEN, fd=0, args=[buf.paddr, mode])
+        res = self.guest_ipc(msg)
+        return unpack(">i", res.read()[4:8])[0]
 
     def IOSClose(self, fd):
         msg = IPCMsg(self.IPC_CLOSE, fd=fd)
-        res_buf = self.ipc_request(msg)
-        return unpack(">i", res_buf[4:8])[0]
+        res = self.guest_ipc(msg)
+        return unpack(">i", res.read()[4:8])[0]
 
-    def IOSRead(self, fd, size, dst=None):
-        if dst == None:
-            data_buf_ptr = self.mem.alloc(size)
+    def __ioctlv_parse(self, fmt, args):
+        """ Parse some ioctlv arguments into a set of memory handles """
+        handles = []
+
+        for (c, v) in zip(fmt, args):
+            print("{} {}".format(c, v))
+            if c == 'b': 
+                handles.append(self.alloc_buf(pack(">B", v & 0xff)))
+            elif c == 'h': 
+                handles.append(self.alloc_buf(pack(">H", v & 0xffff)))
+            elif c == 'i': 
+                handles.append(self.alloc_buf(pack(">I", v & 0xffffffff)))
+            elif c == 'q': 
+                handles.append(self.alloc_buf(pack(">Q", v & 0xffffffffffffffff)))
+            elif c == 'd': 
+                handles.append(v)
+            else:
+                raise ValueError("Invalid ioctlv format string")
+        return handles
+
+
+    def IOSIoctlv(self, fd, cmd, fmt, *args):
+        iargs = []
+        oargs = []
+        arglist = list(args)
+
+        if ':' not in fmt:
+            ifmt = list(fmt)
+            ofmt = ""
         else:
-            data_buf_ptr = dst
+            ifmt = list(fmt.split(":")[0])
+            ofmt = list(fmt.split(":")[1])
 
-        msg = IPCMsg(self.IPC_READ, fd=fd, args=[data_buf_ptr, size])
-        res_buf = self.ipc_request(msg)
-        return unpack(">i", res_buf[4:8])[0]
+        for c in ifmt: iargs.append(arglist.pop(0))
+        for c in ofmt: oargs.append(arglist.pop(0))
 
-    def IOSWrite(self, fd, dst, size=None):
-        assert (type(dst) == int) or (type(dst) == bytes) or (type(dst) == bytearray)
-        if type(dst) == int:
-            assert size != None
-            data_ptr = dst
-            data_len = size
-        elif (type(dst) == bytes) or (type(dst) == bytearray):
-            data_ptr = self.mem.alloc(len(dst))
-            data_len = len(dst)
-            self.write(data_ptr, dst)
+        print(ifmt, ofmt)
+        print(iargs, oargs)
 
-        msg = IPCMsg(self.IPC_WRITE, fd=fd, args=[data_ptr, data_len])
-        res_buf = self.ipc_request(msg)
-        return unpack(">i", res_buf[4:8])[0]
+        ibufs = self.__ioctlv_parse(ifmt, iargs)
+        obufs = self.__ioctlv_parse(ofmt, oargs)
+        print(ibufs, obufs)
 
-    def IOSSeek(self, fd, where, whence):
-        msg = IPCMsg(self.IPC_SEEK, fd=fd, args=[where, whence])
-        res_buf = self.ipc_request(msg)
-        return unpack(">i", res_buf[4:8])[0]
+        ioctlvbuf = bytearray()
+        for handle in ibufs:
+            ioctlvbuf += pack(">LL", handle.paddr, handle.size)
+        for handle in obufs:
+            ioctlvbuf += pack(">LL", handle.paddr, handle.size)
+        buf = self.alloc_buf(ioctlvbuf)
+        print(hexdump(buf.read()))
 
-    #def IOSIoctlv(self, fd, cmd, fmt, *args):
+        msg = IPCMsg(self.IPC_IOCTLV, fd=fd, 
+                args=[cmd, len(ibufs), len(obufs), buf.paddr])
+        print(hexdump(msg.to_buffer()))
+        res = self.guest_ipc(msg)
+        return unpack(">i", res.read()[4:8])[0]
+
+
+
 
 
 

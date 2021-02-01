@@ -106,10 +106,8 @@ impl PpcBackend {
                     Command::HostWrite => self.handle_write(&mut client, req),
                     Command::Message => {
                         self.handle_message(&mut client, req);
-                        if self.wait_for_ack() {
-                            let armmsg = self.bus.read().unwrap().hlwd.ipc.arm_msg;
-                            client.write(&u32::to_le_bytes(armmsg)).unwrap();
-                        }
+                        let armmsg = self.wait_for_resp();
+                        client.write(&u32::to_le_bytes(armmsg)).unwrap();
                     },
                     Command::Unimpl => break,
                 }
@@ -119,29 +117,57 @@ impl PpcBackend {
     }
 
     /// Block until we get a response from ARM-world.
-    fn wait_for_ack(&mut self) -> bool {
-        println!("[PPC] waiting for ACK ...");
+    fn wait_for_resp(&mut self) -> u32 {
+        println!("[PPC] waiting for response ...");
         loop {
             if self.bus.read().unwrap().hlwd.irq.ppc_irq_output {
                 println!("[PPC] got irq");
-                let mut res = false;
                 let mut bus = self.bus.write().unwrap();
 
                 if bus.hlwd.ipc.state.ppc_ack {
-                    bus.hlwd.ipc.state.ppc_ack = false;
                     println!("[PPC] got extra ACK");
+                    bus.hlwd.ipc.state.ppc_ack = false;
+                    bus.hlwd.irq.ppc_irq_status.unset(HollywoodIrq::PpcIpc);
+                    continue
                 }
+
                 if bus.hlwd.ipc.state.ppc_req {
                     let armmsg = bus.hlwd.ipc.arm_msg;
                     println!("[PPC] Got message from ARM {:08x}", armmsg);
                     bus.hlwd.ipc.state.ppc_req = false;
                     bus.hlwd.ipc.state.arm_ack = true;
-                    res = true;
+                    bus.hlwd.irq.ppc_irq_status.unset(HollywoodIrq::PpcIpc);
+                    return armmsg;
                 }
+            } else {
+                thread::sleep(std::time::Duration::from_millis(10));
+            }
+        }
+    }
 
-                println!("[PPC] cleared irq");
-                bus.hlwd.irq.ppc_irq_status.unset(HollywoodIrq::PpcIpc);
-                return res;
+
+    /// Block until we get an ACK from ARM-world.
+    fn wait_for_ack(&mut self) {
+        println!("[PPC] waiting for ACK ...");
+        loop {
+            if self.bus.read().unwrap().hlwd.irq.ppc_irq_output {
+                println!("[PPC] got irq");
+                let mut bus = self.bus.write().unwrap();
+
+                if bus.hlwd.ipc.state.ppc_ack {
+                    bus.hlwd.ipc.state.ppc_ack = false;
+                    println!("[PPC] got ACK");
+                    bus.hlwd.irq.ppc_irq_status.unset(HollywoodIrq::PpcIpc);
+                    break;
+                }
+                if bus.hlwd.ipc.state.ppc_req {
+                    let armmsg = bus.hlwd.ipc.arm_msg;
+                    println!("[PPC] Got extra message from ARM {:08x}", armmsg);
+                    bus.hlwd.ipc.state.ppc_req = false;
+                    bus.hlwd.ipc.state.arm_ack = true;
+                    bus.hlwd.irq.ppc_irq_status.unset(HollywoodIrq::PpcIpc);
+                    continue;
+                }
             } else {
                 thread::sleep(std::time::Duration::from_millis(10));
             }
