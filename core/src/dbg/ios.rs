@@ -141,6 +141,7 @@ pub fn get_syscall_desc(idx: u32) -> Option<SyscallDef> {
         0x40 => scdef!("SyncAfterWrite", Ptr),
         0x41 => scdef!("PpcBoot", StrPtr),
         0x42 => scdef!("IosBoot", StrPtr),
+        0x43 => scdef!("BootNewIosKernel", Ptr, Uint),
         0x46 => scdef!("DIResetCheck", ),
         0x47 => scdef!("WhichKernel", Ptr, Ptr),
         0x4d => scdef!("KernelGetVersion", ),

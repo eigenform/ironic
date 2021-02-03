@@ -20,7 +20,14 @@ use pretty_hex::*;
 /// A type of command sent over the socket.
 #[derive(Debug)]
 #[repr(u32)]
-pub enum Command { HostWrite, HostRead, Message, Ack, Unimpl }
+pub enum Command { 
+    HostWrite, 
+    HostRead, 
+    Message, 
+    Ack, 
+    MessageNoReturn,
+    Unimpl 
+}
 impl Command {
     fn from_u32(x: u32) -> Self {
         match x {
@@ -28,6 +35,7 @@ impl Command {
             2 => Self::HostWrite,
             3 => Self::Message,
             4 => Self::Ack,
+            5 => Self::MessageNoReturn,
             _ => Self::Unimpl,
         }
     }
@@ -108,6 +116,9 @@ impl PpcBackend {
                         self.handle_message(&mut client, req);
                         let armmsg = self.wait_for_resp();
                         client.write(&u32::to_le_bytes(armmsg)).unwrap();
+                    },
+                    Command::MessageNoReturn => {
+                        self.handle_message(&mut client, req);
                     },
                     Command::Unimpl => break,
                 }

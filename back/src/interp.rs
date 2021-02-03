@@ -23,7 +23,15 @@ use ironic_core::cpu::excep::ExceptionType;
 
 /// Current stage in the platform's boot process.
 #[derive(PartialEq)]
-pub enum BootStatus { Boot0, Boot1, Boot2Stub, Boot2, Kernel }
+pub enum BootStatus { 
+    Boot0, 
+    Boot1, 
+    Boot2Stub, 
+    Boot2, 
+    IOSKernel, 
+    IrisStub, 
+    IrisKernel 
+}
 
 /// Backend for interpreting-style emulation. 
 ///
@@ -97,9 +105,21 @@ impl InterpBackend {
             BootStatus::Boot2 => {
                 if self.cpu.read_fetch_pc() == 0xffff_2224 { 
                     println!("Entered kernel");
-                    self.boot_status = BootStatus::Kernel;
+                    self.boot_status = BootStatus::IOSKernel;
                 }
             }
+            BootStatus::IOSKernel => {
+                if self.cpu.read_fetch_pc() == 0x0001_0000 { 
+                    println!("Entered iris stub");
+                    self.boot_status = BootStatus::IrisStub;
+                }
+            }
+            BootStatus::IrisStub=> {
+                if self.cpu.read_fetch_pc() == 0xffff_0000 {
+                    println!("Entered iris kernel");
+                    self.boot_status = BootStatus::IrisKernel;
+                }
+            },
             _ => {},
         }
     }
@@ -147,14 +167,14 @@ impl InterpBackend {
                     ThumbInst::BlImmSuffix => return,
                     _ => {}
                 }
-                //let name = format!("{:?}", ThumbInst::decode(opcd));
-                //println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
-                println!("{:?}", self.cpu.reg);
+                let name = format!("{:?}", ThumbInst::decode(opcd));
+                println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
+                //println!("{:?}", self.cpu.reg);
             } else {
-                //let opcd = self.cpu.read32(pc);
-                //let name = format!("{:?}", ArmInst::decode(opcd));
-                //println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
-                println!("{:?}", self.cpu.reg);
+                let opcd = self.cpu.read32(pc);
+                let name = format!("{:?}", ArmInst::decode(opcd));
+                println!("({:08x}) {:12} {:x?}", opcd, name, self.cpu.reg);
+                //println!("{:?}", self.cpu.reg);
             };
         }
     }
@@ -175,7 +195,7 @@ impl InterpBackend {
     /// WL, and WD; presumably to avoid having to deal with emulating WLAN.
     pub fn hotpatch_check(&mut self) {
         use ironic_core::cpu::mmu::prim::{TLBReq, Access};
-        if self.boot_status == BootStatus::Kernel {
+        if self.boot_status == BootStatus::IOSKernel {
             let pc = self.cpu.read_fetch_pc();
             let vaddr = match pc {
                 0x13d9_0024 | // NCD

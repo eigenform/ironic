@@ -61,7 +61,13 @@ pub fn sub_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
     let (val, _) = barrel_shift(ShiftArgs::Imm {
         imm12: op.imm12(), c_in: cpu.reg.cpsr.c()
     });
-    let (res, n, z, c, v) = sub_generic(cpu.reg[op.rn()], val);
+    let rn_val = if op.rn() == 15 {
+        cpu.read_exec_pc()
+    } else {
+        cpu.reg[op.rn()]
+    };
+
+    let (res, n, z, c, v) = sub_generic(rn_val, val);
     if op.rd() == 15 {
         if op.s() {
             cpu.exception_return(res);
@@ -132,7 +138,15 @@ pub fn add_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
     let (val, _) = barrel_shift(ShiftArgs::Reg { rm, 
         stype: op.stype(), imm5: op.imm5(), c_in: cpu.reg.cpsr.c()
     });
-    let (res, n, z, c, v) = add_generic(cpu.reg[op.rn()], val);
+
+    let rn_val = if op.rn() == 15 {
+        cpu.read_exec_pc()
+    } else {
+        cpu.reg[op.rn()]
+    };
+
+    let (res, n, z, c, v) = add_generic(rn_val, val);
+
     if op.rd() == 15 {
         if op.s() {
             cpu.exception_return(res);
@@ -290,6 +304,7 @@ fn do_bitwise_reg(cpu: &mut Cpu, rn: u32, rm: u32, rd: u32, imm5: u32,
     let base = cpu.reg[rn];
     let res = match op {
         BitwiseOp::And => base & val,
+        BitwiseOp::Bic => base & !val,
         BitwiseOp::Orr => base | val,
         BitwiseOp::Eor => base ^ val,
         _ => panic!("ARM reg bitwise {:?} unimpl", op),
@@ -323,6 +338,11 @@ pub fn and_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
     do_bitwise_reg(cpu, op.rn(), op.rm(), op.rd(), op.imm5(), 
         op.s(), op.stype(), BitwiseOp::And)
 }
+pub fn bic_reg(cpu: &mut Cpu, op: DpRegBits) -> DispatchRes {
+    do_bitwise_reg(cpu, op.rn(), op.rm(), op.rd(), op.imm5(), 
+        op.s(), op.stype(), BitwiseOp::Bic)
+}
+
 
 
 fn do_bitwise_imm(cpu: &mut Cpu, rn: u32, rd: u32, imm: u32, 
@@ -336,6 +356,7 @@ fn do_bitwise_imm(cpu: &mut Cpu, rn: u32, rd: u32, imm: u32,
         BitwiseOp::And => base & val,
         BitwiseOp::Bic => base & !val,
         BitwiseOp::Orr => base | val,
+        BitwiseOp::Eor => base ^ val,
         _ => panic!("ARM imm bitwise {:?} unimplemented", op),
     };
     if rd == 15 {
@@ -364,6 +385,10 @@ pub fn bic_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
 pub fn orr_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
     do_bitwise_imm(cpu, op.rn(), op.rd(), op.imm12(), op.s(), BitwiseOp::Orr)
 }
+pub fn eor_imm(cpu: &mut Cpu, op: DpImmBits) -> DispatchRes {
+    do_bitwise_imm(cpu, op.rn(), op.rd(), op.imm12(), op.s(), BitwiseOp::Eor)
+}
+
 
 
 
@@ -425,5 +450,14 @@ pub fn tst_reg(cpu: &mut Cpu, op: DpTestRegBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn clz(cpu: &mut Cpu, op: ClzBits) -> DispatchRes {
+    assert_ne!(op.rm(), 15);
+    assert_ne!(op.rd(), 15);
 
+    let rm = cpu.reg[op.rm()];
+    let res = rm.leading_zeros();
+    cpu.reg[op.rd()] = res;
+
+    DispatchRes::RetireOk
+}
 

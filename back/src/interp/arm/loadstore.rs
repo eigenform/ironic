@@ -40,6 +40,24 @@ pub fn ldrb_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     DispatchRes::RetireOk
 }
 
+pub fn ldrh_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
+    assert_ne!(op.rt(), 15);
+    let res = if op.rn() == 15 {
+        assert_eq!(op.w(), false);
+        let addr = do_amode_lit(cpu.read_exec_pc(), op.imm12(), op.p(), op.u());
+        cpu.read16(addr)
+    } else {
+        let (addr, wb_addr) = do_amode(cpu.reg[op.rn()], 
+            op.imm12(), op.u(), op.p(), op.w());
+        cpu.reg[op.rn()] = wb_addr;
+        cpu.read16(addr)
+    };
+    cpu.reg[op.rt()] = res as u32;
+    DispatchRes::RetireOk
+}
+
+
+
 pub fn ldr_imm(cpu: &mut Cpu, op: LsImmBits) -> DispatchRes {
     let res = if op.rn() == 15 {
         assert_eq!(op.w(), false);
@@ -210,17 +228,30 @@ pub fn ldmia(cpu: &mut Cpu, op: LsMultiBits) -> DispatchRes {
     let mut addr = cpu.reg[op.rn()];
     let wb_addr = addr + (reglist.count_ones() * 4);
 
+    let mut branch = false;
     for i in 0..16 {
         if (reglist & (1 << i)) != 0 {
-            cpu.reg[i as u32] = cpu.read32(addr);
-            addr += 4;
+            if i == 15 {
+                let new_pc = cpu.read32(addr);
+                cpu.write_exec_pc(new_pc);
+                branch = true;
+                addr += 4;
+            } else {
+                cpu.reg[i as u32] = cpu.read32(addr);
+                addr += 4;
+            }
         }
     }
     assert!(addr == wb_addr);
     if op.w() { 
         cpu.reg[op.rn()] = wb_addr;
     }
-    DispatchRes::RetireOk
+
+    if branch {
+        DispatchRes::RetireBranch
+    } else {
+        DispatchRes::RetireOk
+    }
 }
 
 

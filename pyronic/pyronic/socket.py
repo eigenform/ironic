@@ -7,6 +7,7 @@ class IronicSocket(object):
     IRONIC_WRITE   = 2
     IRONIC_MSG     = 3
     IRONIC_ACK     = 4
+    IRONIC_MSGNORET= 5
 
     def __init__(self, filename="/tmp/ironic.sock"):
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -40,6 +41,14 @@ class IronicSocket(object):
         self.socket.send(msg)
         resp = self.socket.recv(2)
         assert resp.decode('utf-8') == "OK"
+    def send_ipcmsg_noret(self, ptr):
+        """ Send an IPC message command to the server """
+        msg = bytearray()
+        msg += pack("<LLL", self.IRONIC_MSGNORET, ptr, 4)
+        self.socket.send(msg)
+        resp = self.socket.recv(2)
+        assert resp.decode('utf-8') == "OK"
+
 
     def recv_ipcmsg(self):
         """ Wait for the server to respond with a pointer to an IPC message """

@@ -72,6 +72,7 @@ impl InstLutEntry for ArmFn {
 
             LdrImm      => ArmFn(afn!(arm::loadstore::ldr_imm)),
             LdrbImm     => ArmFn(afn!(arm::loadstore::ldrb_imm)),
+            LdrhImm     => ArmFn(afn!(arm::loadstore::ldrh_imm)),
             SubImm      => ArmFn(afn!(arm::dataproc::sub_imm)),
             SubReg      => ArmFn(afn!(arm::dataproc::sub_reg)),
 
@@ -106,6 +107,7 @@ impl InstLutEntry for ArmFn {
             OrrImm      => ArmFn(afn!(arm::dataproc::orr_imm)),
             OrrReg      => ArmFn(afn!(arm::dataproc::orr_reg)),
             EorReg      => ArmFn(afn!(arm::dataproc::eor_reg)),
+            EorImm      => ArmFn(afn!(arm::dataproc::eor_imm)),
             AndImm      => ArmFn(afn!(arm::dataproc::and_imm)),
             AndReg      => ArmFn(afn!(arm::dataproc::and_reg)),
             CmnImm      => ArmFn(afn!(arm::dataproc::cmn_imm)),
@@ -114,6 +116,8 @@ impl InstLutEntry for ArmFn {
             TstReg      => ArmFn(afn!(arm::dataproc::tst_reg)),
             TstImm      => ArmFn(afn!(arm::dataproc::tst_imm)),
             BicImm      => ArmFn(afn!(arm::dataproc::bic_imm)),
+            BicReg      => ArmFn(afn!(arm::dataproc::bic_reg)),
+            Clz         => ArmFn(afn!(arm::dataproc::clz)),
 
             OrrRegShiftReg => ArmFn(afn!(arm::dataproc::orr_rsr)),
             AndRegShiftReg => ArmFn(afn!(arm::dataproc::and_rsr)),

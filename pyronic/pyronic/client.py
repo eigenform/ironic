@@ -159,8 +159,6 @@ class IPCClient(object):
 
         msg = IPCMsg(self.IPC_IOCTLV, fd=fd, 
                 args=[cmd, len(ibufs), len(obufs), buf.paddr])
-        print(hexdump(msg.to_buffer()))
         res = self.guest_ipc(msg)
         return unpack(">i", res.read()[4:8])[0]
-
 
