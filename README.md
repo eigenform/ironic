@@ -38,7 +38,7 @@ a license, it will probably be as permissive as possible.
 ## Building
 I use Nightly by default, so you may have to do something like this:
 ```
-$ git clone https://github.com/hosaka-corp/ironic && cd ironic/
+$ git clone https://github.com/eigenform/ironic && cd ironic/
 ...
 $ rustup toolchain install nightly
 $ rustup override set nightly
