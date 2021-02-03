@@ -59,7 +59,7 @@ You can run the emulator with the interpreter backend like this:
 $ cargo run --release --bin ironic-tui interp
 ```
 
-Like `skyeye-starlet`, the `ironic-tui` target includes as server for PPC HLE.
+Like `skyeye-starlet`, the `ironic-tui` target includes a server for PPC HLE.
 Tools for interacting with the server and representing processes on the 
 PowerPC-side of the machine can be found in [`pyronic/`](pyronic/).
 
