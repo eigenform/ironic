@@ -6,7 +6,6 @@ pub mod dispatch;
 pub mod lut;
 
 use std::sync::{Arc, RwLock};
-use std::iter::FromIterator;
 
 use crate::lut::*;
 use crate::back::*;
@@ -29,8 +28,8 @@ pub enum BootStatus {
     Boot2Stub, 
     Boot2, 
     IOSKernel, 
-    IrisStub, 
-    IrisKernel 
+    UserKernelStub, 
+    UserKernel, 
 }
 
 /// Backend for interpreting-style emulation. 
@@ -110,14 +109,14 @@ impl InterpBackend {
             }
             BootStatus::IOSKernel => {
                 if self.cpu.read_fetch_pc() == 0x0001_0000 { 
-                    println!("Entered iris stub");
-                    self.boot_status = BootStatus::IrisStub;
+                    println!("Entered foreign kernel stub");
+                    self.boot_status = BootStatus::UserKernelStub;
                 }
             }
-            BootStatus::IrisStub=> {
+            BootStatus::UserKernelStub=> {
                 if self.cpu.read_fetch_pc() == 0xffff_0000 {
-                    println!("Entered iris kernel");
-                    self.boot_status = BootStatus::IrisKernel;
+                    println!("Entered foreign kernel kernel");
+                    self.boot_status = BootStatus::UserKernel;
                 }
             },
             _ => {},

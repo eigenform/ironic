@@ -1,9 +1,7 @@
 #!/usr/bin/python3
-""" iris_bootloader.py
-A bootloader for iris (like retna, but targeting ironic PPC HLE instead).
-For more details, see the repository at:
-    https://github.com/eigenform/iris
-
+""" kernel_boot.py
+A bootloader for foreign (non-IOS) kernels, via IOSv58.
+For more details, see the repository at https://github.com/eigenform/mana
 """
 
 from sys import argv
