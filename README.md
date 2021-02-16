@@ -7,6 +7,7 @@ implementation since the beginning:
 - [Team Twiizers' fork of Skyeye](https://github.com/marcan/skyeye-starlet)
 - [MINI](https://github.com/fail0verflow/mini)
 - [Wiibrew](https://wiibrew.org)
+- [YAGCD](https://gc-forever.com/yagcd/)
 - [libogc](https://github.com/devkitPro/libogc)
 - [archshift/llama](https://github.com/archshift/llama)
 - [MerryMage/dynarmic](https://github.com/MerryMage/dynarmic)

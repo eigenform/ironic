@@ -115,7 +115,7 @@ impl InterpBackend {
             }
             BootStatus::UserKernelStub=> {
                 if self.cpu.read_fetch_pc() == 0xffff_0000 {
-                    println!("Entered foreign kernel kernel");
+                    println!("Entered foreign kernel");
                     self.boot_status = BootStatus::UserKernel;
                 }
             },
