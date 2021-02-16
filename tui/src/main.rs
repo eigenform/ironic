@@ -1,7 +1,6 @@
 
 use ironic_core::bus::*;
 use ironic_backend::interp::*;
-use ironic_backend::jit::*;
 use ironic_backend::back::*;
 use ironic_backend::ppc::*;
 

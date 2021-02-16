@@ -6,7 +6,6 @@ use crate::interp::{ArmFn, ThumbFn};
 use crate::interp::{arm, thumb};
 use crate::decode::arm::ArmInst;
 use crate::decode::thumb::ThumbInst;
-use crate::lut::*;
 
 /// The result of dispatching an instruction.
 #[derive(Debug)]
@@ -59,9 +58,8 @@ macro_rules! tfn { ($func:expr) => { unsafe {
 
 
 /// Map each decoded instruction to an implementation of an ARM instruction.
-impl InstLutEntry for ArmFn {
-    type Inst = ArmInst;
-    fn from_inst(inst: ArmInst) -> Self {
+impl ArmFn {
+    pub const fn from_inst(inst: ArmInst) -> Self {
         use ArmInst::*;
         match inst {
             MsrImm      => ArmFn(afn!(arm::status::msr_imm)),
@@ -127,9 +125,8 @@ impl InstLutEntry for ArmFn {
 }
 
 
-impl InstLutEntry for ThumbFn {
-    type Inst = ThumbInst;
-    fn from_inst(inst: ThumbInst) -> Self {
+impl ThumbFn {
+    pub const fn from_inst(inst: ThumbInst) -> Self {
         use ThumbInst::*;
         match inst {
             Push        => ThumbFn(tfn!(thumb::loadstore::push)),

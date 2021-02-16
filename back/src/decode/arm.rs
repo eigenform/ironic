@@ -1,7 +1,5 @@
 //! Implementation of an ARM instruction decoder.
 
-use crate::lut::Instruction;
-
 /// Enumerated type describing different kinds of ARM instruction encodings.
 #[derive(Clone,Debug)]
 pub enum ArmInst {
@@ -34,9 +32,8 @@ pub enum ArmInst {
 }
 
 /// Decoder implementation.
-impl Instruction for ArmInst {
-    type Opcd = u32;
-    fn decode(opcd: u32) -> Self {
+impl ArmInst {
+    pub const fn decode(opcd: u32) -> Self {
         use ArmInst::*;
         match opcd & 0x0ff000f0 {
             0x01400050 => return Qdadd,

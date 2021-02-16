@@ -7,7 +7,6 @@ pub mod lut;
 
 use std::sync::{Arc, RwLock};
 
-use crate::lut::*;
 use crate::back::*;
 use crate::interp::lut::*;
 use crate::interp::dispatch::DispatchRes;
@@ -23,11 +22,18 @@ use ironic_core::cpu::excep::ExceptionType;
 /// Current stage in the platform's boot process.
 #[derive(PartialEq)]
 pub enum BootStatus { 
+    /// Execution in the mask ROM.
     Boot0, 
+    /// Execution in the first-stage bootloader.
     Boot1, 
+    /// Execution in the second-stage bootloader stub.
     Boot2Stub, 
+    /// Execution in the second-stage bootloader.
     Boot2, 
+    /// Execution in the kernel.
     IOSKernel, 
+
+    /// Execution in a user-loaded foreign kernel.
     UserKernelStub, 
     UserKernel, 
 }
@@ -46,9 +52,6 @@ pub enum BootStatus {
 /// should be completed before the next instruction).
 
 pub struct InterpBackend {
-    /// Lookup tables, used to dispatch instructions.
-    pub lut: InterpLut,
-
     /// Reference to a bus (attached to memories and devices).
     pub bus: Arc<RwLock<Bus>>,
 
@@ -69,7 +72,6 @@ impl InterpBackend {
     pub fn new(bus: Arc<RwLock<Bus>>) -> Self {
         InterpBackend {
             svc_buf: String::new(),
-            lut: InterpLut::new(),
             cpu: Cpu::new(bus.clone()),
             boot_status: BootStatus::Boot0,
             cpu_cycle: 0,
@@ -232,13 +234,13 @@ impl InterpBackend {
         let disp_res = if self.cpu.reg.cpsr.thumb() {
             self.dbg_print();
             let opcd = self.cpu.read16(self.cpu.read_fetch_pc());
-            let func = self.lut.thumb.lookup(opcd);
+            let func = INTERP_LUT.thumb.lookup(opcd);
             func.0(&mut self.cpu, opcd)
         } else {
             self.dbg_print();
             let opcd = self.cpu.read32(self.cpu.read_fetch_pc());
             if self.cpu.reg.cond_pass(opcd) {
-                let func = self.lut.arm.lookup(opcd);
+                let func = INTERP_LUT.arm.lookup(opcd);
                 func.0(&mut self.cpu, opcd)
             } else {
                 DispatchRes::CondFailed

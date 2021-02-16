@@ -1,7 +1,5 @@
 //! Thumb instruction decoder.
 
-use crate::lut::Instruction;
-
 #[derive(Clone, Debug)]
 pub enum ThumbInst {
     SbcReg, CmpReg, OrrReg, BicReg, TstReg, EorReg, MvnReg, CmnReg, AdcReg,
@@ -27,9 +25,8 @@ pub enum ThumbInst {
 }
 
 
-impl Instruction for ThumbInst {
-    type Opcd = u16;
-    fn decode(opcd: u16) -> ThumbInst {
+impl ThumbInst {
+    pub const fn decode(opcd: u16) -> ThumbInst {
         use ThumbInst::*;
         match opcd & 0xffc0 {
             0x4240 => return RsbImm,
