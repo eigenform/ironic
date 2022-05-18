@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-block-modes = "0.4.0"
-aes = "0.4.0"
+cbc = { version = "0.1.2", features = ["block-padding", "std"] }
+aes = "0.8.1"
 csv = "1.1.3"
 pretty-hex = "0.2.1"

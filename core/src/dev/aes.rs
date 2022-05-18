@@ -1,13 +1,13 @@
 
 extern crate aes;
-extern crate block_modes;
+extern crate cbc;
 extern crate pretty_hex;
 
 use pretty_hex::*;
-use aes::Aes128;
-use block_modes::{BlockMode, Cbc};
-use block_modes::block_padding::NoPadding;
-type Aes128Cbc = Cbc<Aes128, NoPadding>;
+use aes::cipher::{block_padding::NoPadding, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+
+type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
+type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
 
 use std::collections::VecDeque;
 
@@ -142,18 +142,19 @@ impl Bus {
             } else {
                 iv.copy_from_slice(self.aes.iv_fifo.as_slices().0);
             }
-            let cipher = Aes128Cbc::new_var(&key, &iv).unwrap();
 
             //println!("AES key={:02x?}", key);
             //println!("AES iv={:02x?}", iv);
             //println!("AES Decrypt src={:08x} dst={:08x} len={:08x}", 
             //  self.aes.src, self.aes.dst, cmd.len);
 
+            let cipher_dec = Aes128CbcDec::new_from_slices(&key, &iv).unwrap();
+            let cipher_enc = Aes128CbcEnc::new_from_slices(&key, &iv).unwrap();
             // Decrypt/encrypt the data, then DMA write to memory
             let aes_outbuf = if cmd.decrypt {
-                cipher.decrypt_vec(&aes_inbuf).unwrap()
+                cipher_dec.decrypt_padded_vec_mut::<NoPadding>(&aes_inbuf).unwrap()
             } else {
-                cipher.encrypt_vec(&aes_inbuf)
+                cipher_enc.encrypt_padded_vec_mut::<NoPadding>(&aes_inbuf)
             };
             self.dma_write(self.aes.dst, &aes_outbuf);
 
